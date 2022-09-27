@@ -1,0 +1,214 @@
+﻿using System.Collections.Generic;
+using System.Data;
+using System.Text.RegularExpressions;
+using Mobsub.AssFormat;
+using Mobsub.Utils;
+
+namespace Mobsub.SubtitleProcess;
+
+public class AssProcess
+{
+    internal static void Clean(FileInfo file, bool keepCmt, bool dropUnusedStyles)
+    {
+        string[] rmSectionArr = { "Fonts", "Graphics", "Aegisub Project Garbage", "Aegisub Extradata", "" };
+        string stylesVer = AssConst.assStyleVer;
+
+        string[] fileData = Files.Read(file);
+        var assData = AssParse.Parse(fileData);
+        var assDataNew = new Dictionary<string, AssData>(assData);
+        var eventDT = assData["Events"].Table;
+        var styleDT = assData[stylesVer].Table;
+
+        var cleanPart = new List<string> { };
+        string assName = Path.GetFileNameWithoutExtension(file.Name);
+
+        foreach (string s in rmSectionArr)
+        {
+            if (assDataNew.ContainsKey(s))
+            {
+                assDataNew.Remove(s);
+                cleanPart.Add(s);
+            }
+        }
+
+        foreach (string k in assData["Script Info"].Gernal.Keys)
+        {
+            if (k.StartsWith(";") || k.StartsWith("By") || (!keepCmt & k.StartsWith("Comment")) || assDataNew["Script Info"].Gernal[k] is "")
+            {
+                assDataNew["Script Info"].Gernal.Remove(k);
+                cleanPart.Add("Unused info");
+            }
+            else if (k == "Title")
+            {
+                if (assDataNew["Script Info"].Gernal[k] != assName)
+                {
+                    assDataNew["Script Info"].Gernal[k] = assName;
+                    cleanPart.Add("Title");
+                }
+            }
+        }
+
+        var checkStyleResult = CheckStyles(assData[stylesVer].Table, eventDT);
+        int checkStyleResultKey = checkStyleResult.Keys.ToArray()[0];
+        
+        if (checkStyleResultKey == 1 )
+        {
+            var undStyles = new List<string>{ };
+
+            foreach (string u in checkStyleResult[checkStyleResultKey])
+            {
+                undStyles.Add(u);
+            }
+
+            Console.WriteLine($"“{file}” have undefined styles: {String.Join(", ", undStyles)}. Please Check.");
+        }
+        else
+        {
+            string optDropStyles = "";
+            if (dropUnusedStyles)
+            {
+                string[] checkStyleResultVal = checkStyleResult[checkStyleResultKey];
+                if (checkStyleResultVal.Length > 0)
+                {
+                    for (int i = 0; i < styleDT.Rows.Count; i++)
+                    {
+                        if (checkStyleResultVal.Contains(styleDT.Rows[i]["Name"].ToString()))
+                        {
+                            assDataNew[stylesVer].Table.Rows.RemoveAt(i);
+                        }
+                    }
+
+                    optDropStyles += $"{Environment.NewLine}Drop unused styles: {String.Join(", ", checkStyleResultVal)}";
+                }
+            }
+
+            for (int i = 0; i < eventDT.Rows.Count; i++)
+            {
+#pragma warning disable CS8600 // Converting null literal or possible null value to non-nullable type.
+                string text = eventDT.Rows[i][eventDT.Columns.Count - 1].ToString();
+#pragma warning restore CS8600 // Converting null literal or possible null value to non-nullable type.
+                string pattern = @"^\{=\d+\}*";
+
+#pragma warning disable CS8604 // Possible null reference argument.
+                if (Regex.IsMatch(text, pattern))
+                {
+                    assDataNew["Events"].Table.Rows[i][eventDT.Columns.Count - 1] = Regex.Replace(text, pattern, "");
+                }
+#pragma warning restore CS8604 // Possible null reference argument.
+            }
+
+            string[] assNew = AssParse.JoinSections(assDataNew);
+
+            if (cleanPart.Any())
+            {
+                /// Windows use UTF-8 with Bom, other system use UTF-8
+                Files.Write(file, assNew);
+                Console.WriteLine($"{file}{Environment.NewLine}" +
+                    $"Effect: {String.Join(", ", cleanPart.Distinct().ToArray())}{optDropStyles}");
+            }
+            else
+            {
+                Console.WriteLine($"“{file}” no change.");
+            }
+
+        }
+
+    }
+    internal static Dictionary<string, AssData>[] Merge(Dictionary<string, AssData>[] toAss, Dictionary<string, AssData>[] fromAss, string section)
+    {
+        /// no resample and convert
+        string stylesVer = AssConst.assStyleVer;
+        var result = new Dictionary<string, AssData>[toAss.Length];
+
+        if (fromAss.Length > 1 & toAss.Length > 1)
+        {
+            throw new Exception("Merge: Don’t support many-to-many.");
+        }
+        else if (fromAss.Length > 1 & toAss.Length == 1)
+        {
+            var newAss = new Dictionary<string, AssData>(toAss[0]);
+
+            var tSDt = toAss[0][stylesVer].Table.Clone();
+            var newEDt = toAss[0]["Events"].Table.Clone();
+
+            foreach (var f in fromAss)
+            {
+                if (section == "styles" || section == "all")
+                {
+                    tSDt.Merge(f[stylesVer].Table);
+                }
+                else if (section == "events" || section == "all")
+                {
+                    newEDt.Merge(f["Events"].Table);
+                }
+            }
+            /// Only distinct styles section
+            var newSDt = DtProcess.DataTableDistinct(tSDt, "Name");
+
+            newAss[stylesVer].Table = newSDt;
+            newAss["Events"].Table = newEDt;
+            result[0] = newAss;
+            return result;
+        }
+        else if (fromAss.Length == 1 & toAss.Length >= 1)
+        {
+            for (int i = 0; i < toAss.Length; i++)
+            {
+                var newAss = new Dictionary<string, AssData>(toAss[i]);
+                var newSDt = newAss[stylesVer].Table;
+                
+                if (section == "styles" || section == "all")
+                {
+                    newSDt.Merge(fromAss[0][stylesVer].Table);
+                }
+                
+                if (section == "events" || section == "all")
+                {
+                    newAss["Events"].Table.Merge(fromAss[0]["Events"].Table);
+                }
+                
+                var newSDtDistinct = DtProcess.DataTableDistinct(newSDt, "Name");
+                newAss[stylesVer].Table = newSDtDistinct;
+                result[i] = newAss;
+            }
+            return result;
+        }
+        else
+        {
+            throw new Exception("Merge: Please check input.");
+        }
+    }
+    internal static DataTable Shift(DataTable et, TimeSpan span)
+    {
+        foreach (DataRow dr in et.Rows)
+        {
+            var start = Convert.ToString(dr["Start"]);
+            var end = Convert.ToString(dr["End"]);
+            dr["Start"] = AssParse.ToTime(AssParse.ParseTime(start).Add(span));
+            dr["End"] = AssParse.ToTime(AssParse.ParseTime(end).Add(span));
+        }
+        return et;
+    }
+
+    internal static Dictionary<int, string[]> CheckStyles(DataTable styleTable, DataTable eventTable)
+    {
+        var result = new Dictionary<int, string[]> { };
+        var usedStyles = AssParse.GetUsedStyles(eventTable);
+        var definedStyles = AssParse.GetDefinedStyles(styleTable);
+
+        var undefinedS = usedStyles.Except(definedStyles).ToArray();
+
+        if (undefinedS.Length > 0)
+        {
+            result.Add(1, undefinedS);
+        }
+        else
+        {
+            var unusedS = definedStyles.Except(usedStyles).ToArray();
+            result.Add(0, unusedS);
+        }
+
+        return result;
+    }
+    /// internal static 
+}

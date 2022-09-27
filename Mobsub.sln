@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.3.32819.101
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Mobsub", "Mobsub\Mobsub.csproj", "{0C3983D0-B81B-4246-B7EE-A48B0737A0D8}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{0C3983D0-B81B-4246-B7EE-A48B0737A0D8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0C3983D0-B81B-4246-B7EE-A48B0737A0D8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0C3983D0-B81B-4246-B7EE-A48B0737A0D8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0C3983D0-B81B-4246-B7EE-A48B0737A0D8}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {2FC5CB73-3C3F-4A8B-A51F-968D7B8BEE49}
+	EndGlobalSection
+EndGlobal
