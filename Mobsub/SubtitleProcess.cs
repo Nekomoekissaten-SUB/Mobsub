@@ -3,6 +3,7 @@ using System.Data;
 using System.Text.RegularExpressions;
 using Mobsub.AssFormat;
 using Mobsub.Utils;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace Mobsub.SubtitleProcess;
 
@@ -82,19 +83,30 @@ public class AssProcess
                 }
             }
 
+            char[] unusedChar = new char[] { '\u200E', '\u200F' };
             for (int i = 0; i < eventDT.Rows.Count; i++)
             {
-#pragma warning disable CS8600 // Converting null literal or possible null value to non-nullable type.
-                string text = eventDT.Rows[i][eventDT.Columns.Count - 1].ToString();
-#pragma warning restore CS8600 // Converting null literal or possible null value to non-nullable type.
-                string pattern = @"^\{=\d+\}*";
+                var orgText = eventDT.Rows[i][eventDT.Columns.Count - 1].ToString();
+                var pattern = @"^\{=\d+\}*";
+                
+                var unusedUnicodeChar = "Unused unicode char";
+                var text = string.Concat(orgText.Where(ch => !unusedChar.Contains(ch)).ToArray());
+                if (!cleanPart.Contains(unusedUnicodeChar) && !text.Equals(orgText))
+                {
+                    cleanPart.Add(unusedUnicodeChar);
+                }
 
-#pragma warning disable CS8604 // Possible null reference argument.
+                var MochaGarbage = "Unused unicode char";
                 if (Regex.IsMatch(text, pattern))
                 {
-                    assDataNew["Events"].Table.Rows[i][eventDT.Columns.Count - 1] = Regex.Replace(text, pattern, "");
+                    text = Regex.Replace(text, pattern, "");
+                    if (!cleanPart.Contains(MochaGarbage))
+                    {
+                        cleanPart.Add(MochaGarbage);
+                    }
                 }
-#pragma warning restore CS8604 // Possible null reference argument.
+
+                assDataNew["Events"].Table.Rows[i][eventDT.Columns.Count - 1] = text;
             }
 
             string[] assNew = AssParse.JoinSections(assDataNew);
