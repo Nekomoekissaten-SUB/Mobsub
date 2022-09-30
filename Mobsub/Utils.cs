@@ -77,7 +77,7 @@ public class DetectEncoding
     {
         switch (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
-            case true:
+            case false:
                 return new UTF8Encoding(false);
             default:
                 return Encoding.UTF8;
