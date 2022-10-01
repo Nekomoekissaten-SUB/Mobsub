@@ -3,7 +3,6 @@ using System.Data;
 using System.Text.RegularExpressions;
 using Mobsub.AssFormat;
 using Mobsub.Utils;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace Mobsub.SubtitleProcess;
 
@@ -194,10 +193,11 @@ public class AssProcess
     {
         foreach (DataRow dr in et.Rows)
         {
-            var start = Convert.ToString(dr["Start"]);
-            var end = Convert.ToString(dr["End"]);
-            dr["Start"] = AssParse.ToTime(AssParse.ParseTime(start).Add(span));
-            dr["End"] = AssParse.ToTime(AssParse.ParseTime(end).Add(span));
+            var start = AssParse.ParseTime(Convert.ToString(dr["Start"]));
+            var end = AssParse.ParseTime(Convert.ToString(dr["End"]));
+
+            dr["Start"] = AssParse.ToTime(TimecodesConvert.LimitShiftTime(start, span));
+            dr["End"] = AssParse.ToTime(TimecodesConvert.LimitShiftTime(end, span));
         }
         return et;
     }

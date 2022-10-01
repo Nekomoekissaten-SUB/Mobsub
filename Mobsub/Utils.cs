@@ -184,6 +184,58 @@ public class TimecodesConvert
             return Convert.ToDecimal(fpsString);
         }
     }
+
+    /// <summary>
+    /// Limit time shift, default applicable format is ASS
+    /// </summary>
+    /// <param name="time"></param>
+    /// <param name="span"></param>
+    /// <param name="timeMax"></param>
+    /// <param name="timeMin"></param>
+    /// <returns></returns>
+    internal static TimeOnly LimitShiftTime(TimeOnly time, TimeSpan span, [Optional] TimeOnly? timeMax, [Optional] TimeOnly? timeMin)
+    {
+        timeMin ??= TimeOnly.FromTimeSpan(TimeSpan.Zero);
+        timeMax ??= AssParse.ParseTime("9:59:59.99");
+
+        if (span < TimeSpan.Zero)
+        {
+            if (time - timeMin < span.Duration())
+            {
+                return (TimeOnly)timeMin;
+            }
+            else
+            {
+                return time.Add(span);
+            }
+        }
+        else if (span == TimeSpan.Zero)
+        {
+            if (time < timeMin)
+            {
+                return (TimeOnly)timeMin;
+            }
+            else if (time > timeMax) 
+            {
+                return (TimeOnly)timeMax;
+            }
+            else
+            {
+                return time;
+            }
+        }
+        else
+        {
+            if (timeMax - time < span)
+            {
+                return (TimeOnly)timeMax;
+            }
+            else
+            {
+                return time.Add(span);
+            }
+        }
+    }
 }
 
 public class ConfigYaml
