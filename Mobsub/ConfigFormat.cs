@@ -58,11 +58,11 @@ internal class ShiftMergeYaml
 
 internal class ShiftMergeYamlV2
 {
-    internal int Version { get; set; } = 2;
-    internal Dictionary<string, string> Namef { get; set; } = new Dictionary<string, string>();
-    internal string Fps { get; set; } = "24000/1001";
-    internal Dictionary<string, int> TplFr { get; set; } = new Dictionary<string, int>();
-    internal Dictionary<string, Dictionary<string, int[]>> ShiftFr { get; set; } = new Dictionary<string, Dictionary<string, int[]>>();
+    public int Version { get; set; } = 2;
+    public Dictionary<string, string> Namef { get; set; } = new Dictionary<string, string>();
+    public string Fps { get; set; } = "24000/1001";
+    public Dictionary<string, int> TplFr { get; set; } = new Dictionary<string, int>();
+    public Dictionary<string, Dictionary<string, int[]>> ShiftFr { get; set; } = new Dictionary<string, Dictionary<string, int[]>>();
 }
 
 /// https://github.com/aaubry/YamlDotNet/issues/321
