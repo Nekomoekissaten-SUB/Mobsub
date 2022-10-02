@@ -64,7 +64,7 @@ class AssProcess2
                 var shiftAssData = new Dictionary<string, AssData>(fromAssData);
                 var shiftEpCode = shiftEpDict[key];
 
-                if (shiftEpCode.Length > 1 && (tplDict[key] - shiftEpCode[1] != shiftEpCode[0]))
+                if (shiftEpCode.Length > 1 && (shiftEpCode[1] - tplDict[key] != shiftEpCode[0]))
                 {
                     throw new Exception("ShiftMerge: Please check your shift_fr, it may be wrong.");
                 }
