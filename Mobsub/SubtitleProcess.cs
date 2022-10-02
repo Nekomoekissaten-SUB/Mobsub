@@ -60,7 +60,7 @@ public class AssProcess
                 undStyles.Add(u);
             }
 
-            Console.WriteLine($"“{file}” have undefined styles: {String.Join(", ", undStyles)}. Please Check.");
+            Console.WriteLine($"“{file}” have undefined styles: {string.Join(", ", undStyles)}. Please Check.");
         }
         else
         {
@@ -70,15 +70,16 @@ public class AssProcess
                 string[] checkStyleResultVal = checkStyleResult[checkStyleResultKey];
                 if (checkStyleResultVal.Length > 0)
                 {
-                    for (int i = 0; i < styleDT.Rows.Count; i++)
+                    for (int i = styleDT.Rows.Count - 1; i >= 0; i--)
                     {
-                        if (checkStyleResultVal.Contains(styleDT.Rows[i]["Name"].ToString()))
+                        var styleName = (string)styleDT.Rows[i]["Name"];
+                        if (checkStyleResultVal.Contains(styleName))
                         {
                             assDataNew[stylesVer].Table.Rows.RemoveAt(i);
                         }
                     }
-
-                    optDropStyles += $"{Environment.NewLine}Drop unused styles: {String.Join(", ", checkStyleResultVal)}";
+                    cleanPart.Add("Unused styles");
+                    optDropStyles += $"{Environment.NewLine}Drop unused styles: {string.Join(", ", checkStyleResultVal)}";
                 }
             }
 
@@ -115,7 +116,7 @@ public class AssProcess
                 /// Windows use UTF-8 with Bom, other system use UTF-8
                 Files.Write(file, assNew);
                 Console.WriteLine($"{file}{Environment.NewLine}" +
-                    $"Effect: {String.Join(", ", cleanPart.Distinct().ToArray())}{optDropStyles}");
+                    $"Effect: {string.Join(", ", cleanPart.Distinct().ToArray())}{optDropStyles}");
             }
             else
             {

@@ -51,12 +51,12 @@ internal class Program
         /// cleanCommand.AddOption(pathOption);
 
         var keepCmtOption = new Option<bool>(
-            name: "--keep_comment", 
+            name: "--keep-comment", 
             description: $"Don’t remove Comment key-value lines in Script Info.");
         cleanCommand.AddOption(keepCmtOption);
         
         var dropStylesOption = new Option<bool>(
-            name: "--drop_unused",
+            name: "--drop-unused",
             description: $"Drop unused styles.");
         cleanCommand.AddOption(dropStylesOption);
 

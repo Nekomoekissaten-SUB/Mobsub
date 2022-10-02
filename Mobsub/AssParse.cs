@@ -55,12 +55,14 @@ public class AssParse
             if (line is not null)
             {
                 styles.AddRange(from string style in Regex.Matches(line, @"{[^{}]*\r[^{}]*")
-                                select style.ToString());
-                //foreach (string style in Regex.Matches(line, @"{[^{}]*\r[^{}]*").Cast<string>())
-                //{
-                //    styles.Add(style.ToString());
-                //}
+                                select style);
             }
+        }
+
+        /// Default style always use
+        if (!styles.Contains("Default"))
+        {
+            styles.Add("Default");
         }
         return styles.Distinct().ToArray();
     }
