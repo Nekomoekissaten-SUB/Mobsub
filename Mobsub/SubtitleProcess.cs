@@ -8,7 +8,7 @@ namespace Mobsub.SubtitleProcess;
 
 public class AssProcess
 {
-    internal static void Clean(FileInfo file, bool keepCmt, bool dropUnusedStyles)
+    internal static void Clean(FileInfo file, bool keepCmt, bool dropUnusedStyles, string[]? dropSelectionStyles)
     {
         string[] rmSectionArr = { "Fonts", "Graphics", "Aegisub Project Garbage", "Aegisub Extradata", "" };
         string stylesVer = AssConst.assStyleVer;
@@ -18,6 +18,7 @@ public class AssProcess
         var assDataNew = new Dictionary<string, AssData>(assData);
         var eventDT = assData["Events"].Table;
         var styleDT = assData[stylesVer].Table;
+        var newStyleDT = assDataNew[stylesVer].Table;
 
         var cleanPart = new List<string> { };
         string assName = Path.GetFileNameWithoutExtension(file.Name);
@@ -48,7 +49,7 @@ public class AssProcess
             }
         }
 
-        var checkStyleResult = CheckStyles(assData[stylesVer].Table, eventDT);
+        var checkStyleResult = CheckStyles(styleDT, eventDT);
         int checkStyleResultKey = checkStyleResult.Keys.ToArray()[0];
         
         if (checkStyleResultKey == 1 )
@@ -65,23 +66,38 @@ public class AssProcess
         else
         {
             string optDropStyles = "";
+            string[] checkStyleResultVal = checkStyleResult[checkStyleResultKey];
+            
             if (dropUnusedStyles)
             {
-                string[] checkStyleResultVal = checkStyleResult[checkStyleResultKey];
                 if (checkStyleResultVal.Length > 0)
                 {
-                    for (int i = styleDT.Rows.Count - 1; i >= 0; i--)
-                    {
-                        var styleName = (string)styleDT.Rows[i]["Name"];
-                        if (checkStyleResultVal.Contains(styleName))
-                        {
-                            assDataNew[stylesVer].Table.Rows.RemoveAt(i);
-                        }
-                    }
+                    newStyleDT = DropStyles(styleDT, checkStyleResultVal);
                     cleanPart.Add("Unused styles");
                     optDropStyles += $"{Environment.NewLine}Drop unused styles: {string.Join(", ", checkStyleResultVal)}";
                 }
             }
+
+            if (dropSelectionStyles is not null)
+            {
+                /// Only drop unused styles
+                var dropSelectionStylesChecked = dropSelectionStyles.Intersect(checkStyleResultVal).ToList();
+
+                /// Only way to drop Default style
+                if (dropSelectionStyles.Contains("Default"))
+                {
+                    dropSelectionStylesChecked.Add("Default");
+                }
+
+                newStyleDT = DropStyles(newStyleDT, dropSelectionStylesChecked.ToArray());
+
+                if (dropSelectionStylesChecked.Count > 0 )
+                {
+                    cleanPart.Add("Selection styles");
+                    optDropStyles += $"{Environment.NewLine}Drop selection styles: {string.Join(", ", dropSelectionStylesChecked)}";
+                }
+            }
+
 
             char[] unusedChar = new char[] { '\u200E', '\u200F' };
             for (int i = 0; i < eventDT.Rows.Count; i++)
@@ -222,6 +238,26 @@ public class AssProcess
         }
 
         return result;
+    }
+
+    internal static DataTable DropStyles(DataTable styleDT, string[]? styles)
+    {
+        if (styles is null)
+        {
+            return styleDT;
+        }
+        else
+        {
+            for (int i = styleDT.Rows.Count - 1; i >= 0; i--)
+            {
+                var styleName = (string)styleDT.Rows[i]["Name"];
+                if (styles.Contains(styleName))
+                {
+                    styleDT.Rows.RemoveAt(i);
+                }
+            }
+            return styleDT;
+        }
     }
     /// internal static 
 }

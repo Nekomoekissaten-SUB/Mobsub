@@ -52,22 +52,28 @@ internal class Program
 
         var keepCmtOption = new Option<bool>(
             name: "--keep-comment", 
-            description: $"Don’t remove Comment key-value lines in Script Info.");
+            description: "Don’t remove Comment key-value lines in Script Info.");
         cleanCommand.AddOption(keepCmtOption);
         
         var dropStylesOption = new Option<bool>(
             name: "--drop-unused",
-            description: $"Drop unused styles.");
+            description: "Drop unused styles.");
         cleanCommand.AddOption(dropStylesOption);
+
+        var dropSelectionStylesOption = new Option<string[]>(
+            name: "--drop-selection",
+            description: "Drop selection styles.")
+            { AllowMultipleArgumentsPerToken = true };
+        cleanCommand.AddOption(dropSelectionStylesOption);
 
         /// Decode bin from ass file (TO DO)
 
         cleanCommand.SetHandler(
-            (path, keepCmt, dropUnusedStyles) =>
+            (path, keepCmt, dropUnusedStyles, dropSelectionStyles) =>
             {
-                CleanMulti(path, keepCmt, dropUnusedStyles);
+                CleanMulti(path, keepCmt, dropUnusedStyles, dropSelectionStyles);
             },
-            pathOption, keepCmtOption, dropStylesOption);
+            pathOption, keepCmtOption, dropStylesOption, dropSelectionStylesOption);
 
         /// MergeASS
         /// TODO: resample? Assume resolution?
@@ -161,19 +167,19 @@ internal class Program
         return await rootCommand.InvokeAsync(args);
     }
 
-    internal static void Clean(FileSystemInfo path, bool keepCmt, bool dropUnusedStyles)
+    internal static void Clean(FileSystemInfo path, bool keepCmt, bool dropUnusedStyles, string[]? dropSelectionStyles)
     {
         switch (path)
         {
             case FileInfo file:
-                AssProcess.Clean(file, keepCmt, dropUnusedStyles);
+                AssProcess.Clean(file, keepCmt, dropUnusedStyles, dropSelectionStyles);
                 break;
             case DirectoryInfo dir:
                 foreach (FileInfo file in Files.Traversal(dir, ".ass"))
                 {
                     if (file is not null)
                     {
-                        AssProcess.Clean(file, keepCmt, dropUnusedStyles);
+                        AssProcess.Clean(file, keepCmt, dropUnusedStyles, dropSelectionStyles);
                     }
                 }
                 break;
@@ -181,19 +187,19 @@ internal class Program
                 throw new IOException();
         }
     }
-    internal static void CleanMulti(FileSystemInfo[] path, bool keepCmt, bool dropUnusedStyles)
+    internal static void CleanMulti(FileSystemInfo[] path, bool keepCmt, bool dropUnusedStyles, string[]? dropSelectionStyles)
     {
         DateTime timeBegin = DateTime.Now;
 
         if (path.Length == 1)
         {
-            Clean(path[0], keepCmt, dropUnusedStyles);
+            Clean(path[0], keepCmt, dropUnusedStyles, dropSelectionStyles);
         }
         else
         {
             foreach (var p in path)
             {
-                Clean(p, keepCmt, dropUnusedStyles);
+                Clean(p, keepCmt, dropUnusedStyles, dropSelectionStyles);
             }
         }
 
