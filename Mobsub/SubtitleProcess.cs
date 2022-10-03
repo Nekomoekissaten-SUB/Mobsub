@@ -99,7 +99,8 @@ public class AssProcess
             }
 
 
-            char[] unusedChar = new char[] { '\u200E', '\u200F' };
+            char[] unusedChar = new char[] { '\u200E', '\u200F'};
+            char[] spaceChar  = new char[] { '\u00a0' };
             for (int i = 0; i < eventDT.Rows.Count; i++)
             {
                 var orgText = eventDT.Rows[i][eventDT.Columns.Count - 1].ToString();
@@ -107,12 +108,19 @@ public class AssProcess
                 
                 var unusedUnicodeChar = "Unused unicode char";
                 var text = string.Concat(orgText.Where(ch => !unusedChar.Contains(ch)).ToArray());
+                
+                foreach (char ch in spaceChar)
+                {
+                    text = text.Replace(ch, '\u0020');
+                }
+                text = text.Trim();
+                
                 if (!cleanPart.Contains(unusedUnicodeChar) && !text.Equals(orgText))
                 {
                     cleanPart.Add(unusedUnicodeChar);
                 }
 
-                var MochaGarbage = "Unused unicode char";
+                var MochaGarbage = "Unused motion garbage";
                 if (Regex.IsMatch(text, pattern))
                 {
                     text = Regex.Replace(text, pattern, "");
