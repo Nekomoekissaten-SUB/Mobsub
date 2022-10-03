@@ -320,7 +320,7 @@ internal class Program
                         var numArr = numStrArr.Select(short.Parse).ToArray();
                         for (short i= numArr[0]; i<= numArr[1]; i++)
                         {
-                            newVarList.Add(string.Format($"%0{numStrArr[1].Length}d", i));
+                            newVarList.Add(i.ToString().PadLeft(numStrArr[1].Length, '0'));
                             newVarList.Add(var[1]);
                             AssProcess2.Merge2(dir, output, confFile, newVarList.ToArray());
                             newVarList.Clear();

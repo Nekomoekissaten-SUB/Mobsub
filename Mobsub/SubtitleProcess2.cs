@@ -49,36 +49,46 @@ class AssProcess2
             var mergeDict = ymlDataV2.Namef;
             var fps = ymlDataV2.Fps;
             var tplDict = ymlDataV2.TplFr;
-            var shiftEpDict = ymlDataV2.ShiftFr[confVar[0]];
+            var shiftDict = ymlDataV2.ShiftFr;
 
             var masterAss = mergeDict["master"];
             var toAssFile = new FileInfo(Path.Combine(path.FullName, $"{masterAss}.ass"));
-            var optAssFile = new FileInfo(Path.Combine(output.FullName, $"{masterAss}.ass"));
-            var toAssData = AssParse.Parse(Files.Read(toAssFile));
-            var toAssDataArr = new Dictionary<string, AssData>[] { toAssData };
+            var optAss = Path.Combine(output.FullName, $"{masterAss}.ass");
 
-            foreach ( var key in shiftEpDict.Keys )
+            if  (shiftDict.ContainsKey(confVar[0]))
             {
-                var fromAssFile = new FileInfo(Path.Combine(path.FullName, $"{mergeDict[key]}.ass"));
-                var fromAssData = AssParse.Parse(Files.Read(fromAssFile));
-                var shiftAssData = new Dictionary<string, AssData>(fromAssData);
-                var shiftEpCode = shiftEpDict[key];
+                var shiftEpDict = shiftDict[confVar[0]];
 
-                if (shiftEpCode.Length > 1 && (shiftEpCode[1] - tplDict[key] != shiftEpCode[0]))
+                var toAssData = AssParse.Parse(Files.Read(toAssFile));
+                var toAssDataArr = new Dictionary<string, AssData>[] { toAssData };
+
+                foreach (var key in shiftEpDict.Keys)
                 {
-                    throw new Exception("ShiftMerge: Please check your shift_fr, it may be wrong.");
+                    var fromAssFile = new FileInfo(Path.Combine(path.FullName, $"{mergeDict[key]}.ass"));
+                    var fromAssData = AssParse.Parse(Files.Read(fromAssFile));
+                    var shiftAssData = new Dictionary<string, AssData>(fromAssData);
+                    var shiftEpCode = shiftEpDict[key];
+
+                    if (shiftEpCode.Length > 1 && (shiftEpCode[1] - tplDict[key] != shiftEpCode[0]))
+                    {
+                        throw new Exception("ShiftMerge: Please check your shift_fr, it may be wrong.");
+                    }
+                    else
+                    {
+                        var spanTime = TimecodesConvert.ConvertToSpan($"{shiftEpDict[key][0]}frm", fps);
+                        shiftAssData["Events"].Table = AssProcess.Shift(fromAssData["Events"].Table, spanTime);
+                    }
+                    shiftMergeAssDataList.Add(shiftAssData);
                 }
-                else
-                {
-                    var spanTime = TimecodesConvert.ConvertToSpan($"{shiftEpDict[key][0]}frm", fps);
-                    shiftAssData["Events"].Table = AssProcess.Shift(fromAssData["Events"].Table, spanTime);
-                }
-                shiftMergeAssDataList.Add(shiftAssData);
+
+                var newAssData = AssParse.JoinSections(AssProcess.Merge(toAssDataArr, shiftMergeAssDataList.ToArray(), "all")[0]);
+
+                Files.Write(new FileInfo(optAss), newAssData);
             }
-
-            var newAssData = AssParse.JoinSections(AssProcess.Merge(toAssDataArr, shiftMergeAssDataList.ToArray(), "all")[0]);
-
-            Files.Write(optAssFile, newAssData);
+            else
+            {
+                toAssFile.CopyTo(optAss, true);
+            }
         }
     }
 }
