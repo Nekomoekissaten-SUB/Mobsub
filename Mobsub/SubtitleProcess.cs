@@ -164,18 +164,19 @@ public class AssProcess
         {
             var newAss = new Dictionary<string, AssData>(toAss[0]);
 
-            var tSDt = toAss[0][stylesVer].Table.Clone();
-            var newEDt = toAss[0]["Events"].Table.Clone();
+            var tSDt = toAss[0][stylesVer].Table.Copy();
+            var newEDt = toAss[0]["Events"].Table.Copy();
 
             foreach (var f in fromAss)
             {
                 if (section == "styles" || section == "all")
                 {
-                    tSDt.Merge(f[stylesVer].Table);
+                    tSDt.Merge(f[stylesVer].Table, true);
                 }
-                else if (section == "events" || section == "all")
+                
+                if (section == "events" || section == "all")
                 {
-                    newEDt.Merge(f["Events"].Table);
+                    newEDt.Merge(f["Events"].Table, true);
                 }
             }
             /// Only distinct styles section
