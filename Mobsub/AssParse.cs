@@ -90,7 +90,14 @@ public class AssParse
             else
             {
                 string[] arr = line.Split(':', 2);
-                section.Add(arr[0], arr[1].Trim());
+                try
+                {
+                    section.Add(arr[0], arr[1].Trim());
+                }
+                catch (ArgumentException)
+                {
+                    return section;
+                }
             }
         }
         return section;
