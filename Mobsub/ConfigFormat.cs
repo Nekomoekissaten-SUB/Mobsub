@@ -38,19 +38,16 @@ internal class ShiftMergeYaml
         foreach (var k in yamlData.ShiftFr.Keys)
         {
             var frameArr = yamlData.ShiftFr[k];
+            var valueDict = new Dictionary<string, int[]> { };
             for (var i = 0; i < frameArr.Length; i++)
             {
                 if (frameArr[i] != "x")
                 {
-                    var valueDict = new Dictionary<string, int[]> { };
                     valueDict.Add(v2SubKeyList[i + 1], new int[1] { int.Parse(frameArr[i]) });
-                    yamlDataV2.ShiftFr.Add(k, valueDict);
-                }
-                else
-                {
-                    break;
                 }
             }
+            if (valueDict.Count > 0)
+                yamlDataV2.ShiftFr.Add(k, valueDict);
         }
         return yamlDataV2;
     }
