@@ -19,6 +19,8 @@ public class AssProcess
         var eventDT = assData["Events"].Table;
         var styleDT = assData[stylesVer].Table;
         var newStyleDT = assDataNew[stylesVer].Table;
+        bool hasPlayRes = false;
+        bool hasLayoutRes = false;
 
         var cleanPart = new List<string> { };
         string assName = Path.GetFileNameWithoutExtension(file.Name);
@@ -47,6 +49,28 @@ public class AssProcess
                     cleanPart.Add("Title");
                 }
             }
+            else if (k.StartsWith("PlayRes"))
+            {
+                hasPlayRes = true;
+            }
+            else if (k.StartsWith("LayoutRes"))
+            {
+                hasLayoutRes = true;
+            }
+        }
+
+        if (hasPlayRes)
+        {
+            if (!hasLayoutRes)
+            {
+                cleanPart.Add("Add LayoutRes");
+                assDataNew["Script Info"].Gernal["LayoutResX"] = assData["Script Info"].Gernal["PlayResX"];
+                assDataNew["Script Info"].Gernal["LayoutResY"] = assData["Script Info"].Gernal["PlayResY"];
+            }
+        }
+        else
+        {
+            Console.WriteLine($"“{file}” Script Info don’t have PlayResX or PlayResY. Please Check.{Environment.NewLine}");
         }
 
         var checkStyleResult = CheckStyles(styleDT, eventDT);
