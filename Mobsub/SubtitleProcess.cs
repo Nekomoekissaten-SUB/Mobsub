@@ -16,6 +16,7 @@ public class AssProcess
         string[] fileData = Files.Read(file);
         var assData = AssParse.Parse(fileData);
         var assDataNew = new Dictionary<string, AssData>(assData);
+        var scriptInfo = new AssData.GernalSection() { };
         var eventDT = assData["Events"].Table;
         var styleDT = assData[stylesVer].Table;
         var newStyleDT = assDataNew[stylesVer].Table;
@@ -36,26 +37,34 @@ public class AssProcess
 
         foreach (string k in assData["Script Info"].Gernal.Keys)
         {
-            if (k.StartsWith(";") || k.StartsWith("By") || (!keepCmt & k.StartsWith("Comment")) || assDataNew["Script Info"].Gernal[k] is "")
+            if (k.StartsWith(";") || k.StartsWith("By") || (!keepCmt & k.StartsWith("Comment")) || assData["Script Info"].Gernal[k] is "")
             {
-                assDataNew["Script Info"].Gernal.Remove(k);
                 cleanPart.Add("Unused info");
             }
             else if (k == "Title")
             {
-                if (assDataNew["Script Info"].Gernal[k] != assName)
+                if (assData["Script Info"].Gernal[k] != assName)
                 {
-                    assDataNew["Script Info"].Gernal[k] = assName;
+                    scriptInfo[k] = assName;
                     cleanPart.Add("Title");
                 }
+                else
+                {
+                    scriptInfo[k] = assData["Script Info"].Gernal[k];
+                }
             }
-            else if (k.StartsWith("PlayRes"))
+            else
             {
-                hasPlayRes = true;
-            }
-            else if (k.StartsWith("LayoutRes"))
-            {
-                hasLayoutRes = true;
+                scriptInfo[k] = assData["Script Info"].Gernal[k];
+
+                if (k.StartsWith("PlayRes"))
+                {
+                    hasPlayRes = true;
+                }
+                else if (k.StartsWith("LayoutRes"))
+                {
+                    hasLayoutRes = true;
+                }
             }
         }
 
@@ -64,14 +73,15 @@ public class AssProcess
             if (!hasLayoutRes)
             {
                 cleanPart.Add("Add LayoutRes");
-                assDataNew["Script Info"].Gernal["LayoutResX"] = assData["Script Info"].Gernal["PlayResX"];
-                assDataNew["Script Info"].Gernal["LayoutResY"] = assData["Script Info"].Gernal["PlayResY"];
+                scriptInfo["LayoutResX"] = assData["Script Info"].Gernal["PlayResX"];
+                scriptInfo["LayoutResY"] = assData["Script Info"].Gernal["PlayResY"];
             }
         }
         else
         {
             Console.WriteLine($"“{file}” Script Info don’t have PlayResX or PlayResY. Please Check.{Environment.NewLine}");
         }
+        assDataNew["Script Info"].Gernal = scriptInfo;
 
         var checkStyleResult = CheckStyles(styleDT, eventDT);
         int checkStyleResultKey = checkStyleResult.Keys.ToArray()[0];
