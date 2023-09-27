@@ -311,8 +311,8 @@ public class AssProcess
             }
 
             var fpsArray = assumeFps.Split("/").Select(int.Parse).ToArray();
-            var startCfr = new TimeOnly((long)lineFrame[0] * fpsArray[0] / fpsArray[1] * 10000);
-            var endCfr   = new TimeOnly((long)lineFrame[1] * fpsArray[0] / fpsArray[1] * 10000);
+            var startCfr = new TimeOnly((long)((double)lineFrame[0] * fpsArray[1] / fpsArray[0] * 10000000));
+            var endCfr   = new TimeOnly((long)((double)lineFrame[1] * fpsArray[1] / fpsArray[0] * 10000000));
 
             dr["Start"] = AssParse.ToTime(startCfr);
             dr["End"] = AssParse.ToTime(endCfr);
