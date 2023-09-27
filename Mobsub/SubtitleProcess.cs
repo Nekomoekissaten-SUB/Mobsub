@@ -262,6 +262,65 @@ public class AssProcess
         return et;
     }
 
+    internal static DataTable ToCfr(DataTable et, MkvTimestamp tcfileData, string assumeFps)
+    {
+        for (var r = 0; r < et.Rows.Count; r++)
+        {
+            var dr = et.Rows[r];
+            var start = AssParse.ParseTime(Convert.ToString(dr["Start"])).Ticks / 10000;
+            var end = AssParse.ParseTime(Convert.ToString(dr["End"])).Ticks / 10000;
+            var lineFrame = new int[2];
+
+            for (int i = 0; i < tcfileData.timestamp.Keys.Count; i++)
+            {
+                var diff = start - tcfileData.timestamp[i];
+                if (diff < 0)
+                {
+                    var diffPre = start - tcfileData.timestamp[i - 1];
+                    lineFrame[0] = Math.Abs(diff) < diffPre ? i : i - 1;
+                    break;
+                }
+                else if (diff == 0)
+                {
+                    lineFrame[0] = i;
+                    break;
+                }
+            }
+
+            if (start < end)
+            {
+                for (int j = lineFrame[0]; j < tcfileData.timestamp.Keys.Count; j++)
+                {
+                    var diff = end - tcfileData.timestamp[j];
+                    if (diff < 0)
+                    {
+                        var diffPre = end - tcfileData.timestamp[j - 1];
+                        lineFrame[1] = Math.Abs(diff) < diffPre ? j : j - 1;
+                        break;
+                    }
+                    else if (diff == 0)
+                    {
+                        lineFrame[1] = j;
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                lineFrame[1] = lineFrame[0];
+            }
+
+            var fpsArray = assumeFps.Split("/").Select(int.Parse).ToArray();
+            var startCfr = new TimeOnly((long)lineFrame[0] * fpsArray[0] / fpsArray[1] * 10000);
+            var endCfr   = new TimeOnly((long)lineFrame[1] * fpsArray[0] / fpsArray[1] * 10000);
+
+            dr["Start"] = AssParse.ToTime(startCfr);
+            dr["End"] = AssParse.ToTime(endCfr);
+        }
+        
+        return et;
+    }
+
     internal static Dictionary<int, string[]> CheckStyles(DataTable styleTable, DataTable eventTable)
     {
         var result = new Dictionary<int, string[]> { };
@@ -302,5 +361,4 @@ public class AssProcess
             return styleDT;
         }
     }
-    /// internal static 
 }

@@ -242,3 +242,33 @@ public class ConfigYaml
 {
     public static readonly string[] Extension = { ".yml", ".yaml" };
 }
+
+public class MkvTimestamp
+{
+    public int version;
+    public Dictionary<int, float> timestamp = new() { };
+    public static MkvTimestamp ReadFile(FileInfo tcfile)
+    {
+        var mkvTsData = new MkvTimestamp();
+        var text = File.ReadAllLines(tcfile.FullName);
+        
+        for (int i = 0; i < text.Length; i++)
+        {
+            if (i == 0)
+            {
+                mkvTsData.version = int.Parse(text[i].Split(" ").Last()[1..]);
+
+                if (mkvTsData.version != 2)
+                {
+                    throw new Exception("Only support read v2 timestamp / timecode file");
+                }
+            }
+            else
+            {
+                mkvTsData.timestamp[i-1] = float.Parse(text[i]);
+            }
+        }
+
+        return mkvTsData;
+    }
+}

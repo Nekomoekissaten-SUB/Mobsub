@@ -16,6 +16,7 @@ internal class Program
         var mergeCommand = new Command("MergeASS", "Merge sections from source ass files to path ass files, don’t support many-to-many.");
         var shiftCommand = new Command("ShiftASS", "Shift ASS time by shift from path. Output can’t use file.");
         var shimgCommand = new Command("ShiftMergeASS", "A private function. Read config file to shift and merge ass files, both path and output are dir.");
+        var toCfrCommand = new Command("ToCfrASS", "Convert vfr ASS timestamp to cfr.");
         var fontsCommand = new Command("ASSFontTools", "Some useful tools about fonts with ass.");
         /// var convtCommand = new Command("Convert", "Convert subtitles to other types.");  srt, vtt
 
@@ -142,6 +143,20 @@ internal class Program
             },
             pathOption, shimgOptOption, confOption, shimgVarOption);
 
+        // Convert to CFR
+        toCfrCommand.AddAlias("tocfr");
+
+        var toCfrTcfOption = new Option<FileInfo>(
+            name: "--tcfile",
+            description: "The vfr ass tcfile (now only support v2)");
+        toCfrCommand.AddOption(toCfrTcfOption);
+        toCfrCommand.AddOption(fps);
+        toCfrCommand.AddOption(outputOption);
+
+        toCfrCommand.SetHandler(
+            ToCfr,
+            pathOption, outputOption, toCfrTcfOption, fps);
+
         /// AssFontTools
         fontsCommand.AddAlias("aft");
         var fontsListCommand = new Command("list", "List Ass Fonts");
@@ -162,6 +177,7 @@ internal class Program
         rootCommand.Add(mergeCommand);
         rootCommand.Add(shiftCommand);
         rootCommand.Add(shimgCommand);
+        rootCommand.Add(toCfrCommand);
         /// rootCommand.Add(fontsCommand);
 
         return await rootCommand.InvokeAsync(args);
@@ -338,5 +354,39 @@ internal class Program
             throw new Exception("ShiftMerge: path only support single directory.");
         }
     }
+    internal static void ToCfr(FileSystemInfo[] path, FileSystemInfo output, FileInfo tcfile, string fps)
+    {
+        fps ??= "24000/1001";
 
+        if (path.Length != 1 || path[0].Attributes == FileAttributes.Directory)
+        {
+            throw new Exception("ToCfr: input must be a file.");
+        }
+
+        if (!tcfile.Exists)
+        {
+            throw new Exception("ToCfr: tcfile must be a file.");
+        }
+        var tcData = MkvTimestamp.ReadFile(tcfile);
+
+        var assData = AssParse.ParseMulti(path[0]).First();
+        assData.Value["Events"].Table = AssProcess.ToCfr(assData.Value["Events"].Table, tcData, fps);
+
+        switch (output)
+        {
+            case null:
+                Files.Write(assData.Key, AssParse.JoinSections(assData.Value));
+                break;
+            case FileInfo file:
+                Files.Write(file, AssParse.JoinSections(assData.Value));
+                break;
+            case DirectoryInfo dir:
+                _ = Files.CheckDir(dir);
+                var optFileName = new FileInfo(Path.Combine(dir.FullName, assData.Key.Name));
+                Files.Write(optFileName, AssParse.JoinSections(assData.Value));
+                break;
+            default:
+                throw new IOException();
+        }
+    }
 }
