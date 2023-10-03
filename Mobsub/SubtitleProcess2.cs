@@ -34,14 +34,14 @@ class AssProcess2
             ShiftMergeYamlV2 ymlDataV2;
             if (!ymlString.StartsWith("version", StringComparison.OrdinalIgnoreCase))
             {
-                var ymlData = new StaticDeserializerBuilder(new StaticContext())
+                var ymlData = new DeserializerBuilder()
                     .WithNodeDeserializer(templatedShiftMergeYamlValue).WithNamingConvention(UnderscoredNamingConvention.Instance)
                     .Build().Deserialize<ShiftMergeYaml>(ymlString);
                  ymlDataV2 = ShiftMergeYaml.CovertToV2(ymlData);
             }
             else
             {
-                ymlDataV2 = new StaticDeserializerBuilder(new StaticContext())
+                ymlDataV2 = new DeserializerBuilder()
                 .WithNodeDeserializer(templatedShiftMergeYamlValue).WithNamingConvention(UnderscoredNamingConvention.Instance)
                 .Build().Deserialize<ShiftMergeYamlV2>(ymlString);
             }
