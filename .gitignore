@@ -1,0 +1,8 @@
+*/obj/*
+*/bin/*
+test_file/*
+.vs/*
+.idea/*
+*.vscode/*
+
+debug.log
