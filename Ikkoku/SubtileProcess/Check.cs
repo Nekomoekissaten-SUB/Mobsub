@@ -160,6 +160,7 @@ public partial class SubtileProcess
                             break;
                         case '}':
                             blk = false;
+                            record = false;
                             if (str.Length > 0)
                             {
                                 styles.Add(str.ToString());
