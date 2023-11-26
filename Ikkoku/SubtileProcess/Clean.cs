@@ -6,7 +6,7 @@ namespace Mobsub.Ikkoku;
 
 public partial class SubtileProcess
 {
-    public static void CleanAss( AssData data, bool keepComment, bool verbose, ReadOnlySpan<char> assFileName, bool addLayoutRes, bool dropUnusedStyles, out string msg, out bool untouched)
+    public static void CleanAss(AssData data, bool keepComment, ReadOnlySpan<char> assFileName, bool addLayoutRes, bool dropUnusedStyles, out string msg, out bool untouched)
     {
         var records = new StringBuilder();
 
@@ -18,45 +18,37 @@ public partial class SubtileProcess
             ];
 
         // remove list sections
-        if (verbose)
+        var removeRecords = new List<string>();
+        foreach (var s1 in rmSections)
         {
-            var removeRecords = new List<string>();
-            foreach (var s1 in rmSections)
+            if (data.Sections.Contains(s1))
             {
-                if (data.Sections.Contains(s1))
-                {
-                    removeRecords.Add(
-                        s1 switch
-                        {
-                            AssSection.Fonts => "Fonts",
-                            AssSection.Graphics => "Graphics",
-                            AssSection.AegisubProjectGarbage => "Aegisub Project Garbage",
-                            AssSection.AegisubExtradata => "Aegisub Extradata",
-                            _ => "Unknown Section"
-                        }
-                    );
-                }
-            }
-            if (removeRecords.Count > 0)
-            {
-                records.AppendLine($"Sections: remove {string.Join(", ", removeRecords)}");
+                removeRecords.Add(
+                    s1 switch
+                    {
+                        AssSection.Fonts => "Fonts",
+                        AssSection.Graphics => "Graphics",
+                        AssSection.AegisubProjectGarbage => "Aegisub Project Garbage",
+                        AssSection.AegisubExtradata => "Aegisub Extradata",
+                        _ => "Unknown Section"
+                    }
+                );
             }
         }
+        if (removeRecords.Count > 0)
+        {
+            records.AppendLine($"Sections: remove {string.Join(", ", removeRecords)}");
+        }
+
         data.Sections.ExceptWith(rmSections);
 
         // process script info
-        if (verbose)
-        {
-            records.Append("Script Info:");
-        }
+        records.Append("Script Info:");
         // remove comment lines
         if (!keepComment && (data.ScriptInfo.Comment.Count > 0))
         {
             data.ScriptInfo.Comment.Clear();
-            if (verbose)
-            {
-                records.Append(" remove comments;");
-            }
+            records.Append(" remove comments;");
         }
         // change title to ass filename without suffix
         if (assFileName.Length > 0)
@@ -64,44 +56,28 @@ public partial class SubtileProcess
             if (!data.ScriptInfo.Title.AsSpan().SequenceEqual(assFileName))
             {
                 data.ScriptInfo.Title = assFileName.ToString();
-                if (verbose)
-                {
-                    records.Append(" rename title;");
-                }
+                records.Append(" rename title;");
             }
         }
         // add layoutres
         if (addLayoutRes)
         {
-            if ((data.ScriptInfo.Orders.Add("LayoutResX") || data.ScriptInfo.Orders.Add("LayoutResY")) && verbose)
+            if (data.ScriptInfo.Orders.Add("LayoutResX") || data.ScriptInfo.Orders.Add("LayoutResY"))
             {
                 records.Append(" add LayoutResX/Y;");
             }
         }
-        if (verbose)
-        {
-            RecordRemoveLast(records, 12);
-        }
+        RecordRemoveLast(records, 12);
     
         // process events
-        if (verbose)
-        {
-            records.Append("Events:");
-        }
+        records.Append("Events:");
         // always record undefined styles
         var usedStyles = GetUsedStyles(data.Events.Collection);
         var undefinedStyles = new HashSet<string>(usedStyles);
         undefinedStyles.ExceptWith(data.Styles.Names);
         if (undefinedStyles.Count > 0)
         {
-            if (verbose)
-            {
-                records.Append($" undefined styles {string.Join(", ", undefinedStyles)};");
-            }
-            else
-            {
-                records.AppendLine($"Events: undefined styles {string.Join(", ", undefinedStyles)}");
-            }
+            records.Append($" undefined styles {string.Join(", ", undefinedStyles)};");
         }
         // remove weird chars, replace weird space, remove aegisub-motion garbage
         var unusedChar = new char[] { '\u200E', '\u200F'};
@@ -156,22 +132,21 @@ public partial class SubtileProcess
             }
             etsb.Clear();
         }
-        if (verbose)
+
+        if (hadMotionGarbage)
         {
-            if (hadMotionGarbage)
-            {
-                records.Append(" remove aegisub-motion garbage;");
-            }
-            if (hadUnusedChar)
-            {
-                records.Append(" remove unused unicode chars;");
-            }
-            if (hadWeridSpace)
-            {
-                records.Append(" replace weird space chars;");
-            }
-            RecordRemoveLast(records, 7);
+            records.Append(" remove aegisub-motion garbage;");
         }
+        if (hadUnusedChar)
+        {
+            records.Append(" remove unused unicode chars;");
+        }
+        if (hadWeridSpace)
+        {
+            records.Append(" replace weird space chars;");
+        }
+        RecordRemoveLast(records, 7);
+
 
         // process styles if drop unused styles
         if (dropUnusedStyles)
@@ -182,11 +157,7 @@ public partial class SubtileProcess
             {
                 data.Styles.Names.ExceptWith(unusedStyles);
                 data.Styles.Collection.RemoveAll(x => unusedStyles.Contains(x.Name));
-
-                if (verbose)
-                {
-                    records.AppendLine($"Styles: remove unused styles {string.Join(", ", unusedStyles)}");
-                }
+                records.AppendLine($"Styles: remove unused styles {string.Join(", ", unusedStyles)}");
             }
         }
 
@@ -199,16 +170,6 @@ public partial class SubtileProcess
         }
         msg = records.ToString();
     }
-
-    // public static string CleanAss( AssData data, bool record, string assFileName, bool addLayoutRes, bool dropUnusedStyles)
-    // {
-    //     return CleanAss( data, false, record, assFileName, addLayoutRes, dropUnusedStyles);
-    // }
-
-    // public static string CleanAss( AssData data, string assFileName)
-    // {
-    //     return CleanAss( data, false, true, assFileName, true, false);
-    // }
 
     private static void RecordRemoveLast( StringBuilder sb, int lineLength)
     {

@@ -73,7 +73,7 @@ partial class Program
         sw.Stop();
         if (verbose)
         {
-            Console.WriteLine(sw.Elapsed);
+            Console.WriteLine($"Total Time: {sw.Elapsed}");
         }
     }
 
@@ -88,14 +88,17 @@ partial class Program
             ExtractBinaries(data, binDir, verbose);
         }
 
-        SubtileProcess.CleanAss(data, keepCommentLines, verbose, fileNoSuffix, !notAddLayoutRes, dropUnusedStyles, out string msg, out bool untouched);
+        SubtileProcess.CleanAss(data, keepCommentLines, fileNoSuffix, !notAddLayoutRes, dropUnusedStyles, out string msg, out bool untouched);
         
         if (!untouched)
         {
             AssParse.WriteAssFile(data, opt.FullName);
         }
         
-        Console.WriteLine(msg);
+        if (verbose)
+        {
+            Console.WriteLine(msg);
+        }
     }
 
     private static void ExtractBinaries(AssData data, DirectoryInfo binDir, bool verbose)
