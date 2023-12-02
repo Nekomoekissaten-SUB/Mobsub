@@ -5,9 +5,10 @@ namespace Mobsub.SubtitleParse;
 
 public class AssFontParse
 {
-    public static void GetUsedFonts(List<AssEvent> events, List<AssStyle> styles, out Dictionary<string, List<char>> usedFontGlyphs)
+    public static void GetUsedFonts(List<AssEvent> events, List<AssStyle> styles, out Dictionary<string, List<Rune>> usedFontGlyphs)
     {
-        usedFontGlyphs = new Dictionary<string, List<char>>{};
+        usedFontGlyphs = [];
+        Rune rune;
         var lineNumberFirst = events.First().lineNumber;
         
         foreach (var eventLine in events)
@@ -24,108 +25,91 @@ public class AssFontParse
                 var weight = new StringBuilder().Append(eventStyle.Bold);
 
                 var ovr = false;
-                // var parentheses = false;
                 var tpass = false;
                 var maybeWrap = false;
-                var str = new List<char>(){};
+                List<char> str = [];
+                List<Rune> runes = [];
                 bool newfont;
 
-                for (var i = 0; i < textSpan.Length; i++)
+                var charsConsumed = 1;
+                for (var i = 0; i < textSpan.Length; i += charsConsumed)
                 {
                     var s = textSpan[i];
 
-                    switch (s)
+                    if (Rune.TryCreate(s, out rune))
                     {
-                        case '{':
-                            ovr = true;
-                            if (str.Count > 0)
-                            {
-                                RecordFontGlyphs(fn, fe, italic, weight, str, usedFontGlyphs);
-                                newfont = false;
-                                str.Clear();
-                            }
-                            break;
-                        case '}':
-                            if (str.Count > 0)
-                            {
-                                GetOvrideFont(str, eventStyle, styles, fn, fe, italic, weight, out newfont, lineNumber, lineNumberFirst);
-                            }
-                            ovr = false;
-                            str.Clear();
-                            break;
-                        // case '(':
-                            // if (ovr)
-                            // {
-                            //     parentheses = true;
-                            // }
-                        //     str.Add(s);
-                        //     break;
-                        // case ')':
-                            // if (ovr)
-                            // {
-                            //     parentheses = false;
-                            // }
-                            // str.Add(s);
-                            // break;
-                        case '\\':
-                            tpass = false;
-                            // if (ovr)
-                            // {
-                            //     if (parentheses)
-                            //     {
-                            //         str.Add(s);
-                            //     }
-                            //     else
-                            //     {
-                            //         if (str.Count > 0)
-                            //         {
-                            //             GetOvrideFont(str, eventStyle, styles, fn, fe, italic, weight, out newfont, lineNumber, lineNumberFirst);
-                            //             str.Clear();
-                            //         }
-                            //     }
-                            // }
-                            if (ovr)
-                            {
+                        charsConsumed = 1;
+                        switch (s)
+                        {
+                            case '{':
+                                ovr = true;
+                                if (str.Count > 0)
+                                {
+                                    RecordFontGlyphs(fn, fe, italic, weight, runes, usedFontGlyphs);
+                                    newfont = false;
+                                    str.Clear();
+                                }
+                                break;
+                            case '}':
                                 if (str.Count > 0)
                                 {
                                     GetOvrideFont(str, eventStyle, styles, fn, fe, italic, weight, out newfont, lineNumber, lineNumberFirst);
+                                }
+                                ovr = false;
+                                str.Clear();
+                                break;
+                            case '\\':
+                                tpass = false;
+                                if (ovr)
+                                {
+                                    if (str.Count > 0)
+                                    {
+                                        GetOvrideFont(str, eventStyle, styles, fn, fe, italic, weight, out newfont, lineNumber, lineNumberFirst);
+                                        str.Clear();
+                                    }
+                                }
+                                else
+                                {
+                                    maybeWrap = true;
+                                }
+                                break;
+                            case 'N':
+                            case 'n':
+                            case 'h':
+                                if (!maybeWrap)
+                                {
+                                    str.Add(s);
+                                    runes.Add(rune);
+                                }
+                                else
+                                {
+                                    maybeWrap = false;
+                                }
+                                break;
+
+                            default:
+
+                                if (str.Count == 2 && str[0] == 't' && str[1] == '(')
+                                {
+                                    tpass = true;
                                     str.Clear();
                                 }
-                            }
-                            else
-                            {
-                                maybeWrap = true;
-                            }
-                            break;
-                        case 'N':
-                        case 'n':
-                        case 'h':
-                            if (!maybeWrap)
-                            {
-                                str.Add(s);
-                            }
-                            else
-                            {
-                                maybeWrap = false;
-                            }
-                            break;
-
-                        default:
-
-                            if (str.Count == 2 && str[0] == 't' && str[1] == '(')
-                            {
-                                tpass = true;
-                                str.Clear();
-                            }
-                            if (!tpass)
-                            {
-                                str.Add(s);
-                            }
-                            break;
+                                if (!tpass)
+                                {
+                                    str.Add(s);
+                                    runes.Add(rune);
+                                }
+                                break;
+                        }
+                    }
+                    else
+                    {
+                        Rune.DecodeFromUtf16(textSpan[i..], out rune, out charsConsumed);
+                        runes.Add(rune);
                     }
                 }
 
-                RecordFontGlyphs(fn, fe, italic, weight, str, usedFontGlyphs);
+                RecordFontGlyphs(fn, fe, italic, weight, runes, usedFontGlyphs);
                 newfont = false;
                 str.Clear();
             }
@@ -255,19 +239,19 @@ public class AssFontParse
         }
     }
 
-    private static void RecordFontGlyphs(StringBuilder fn, StringBuilder fe, StringBuilder italic, StringBuilder weight, List<char> str, Dictionary<string, List<char>> usedFontGlyphs)
+    private static void RecordFontGlyphs(StringBuilder fn, StringBuilder fe, StringBuilder italic, StringBuilder weight, List<Rune> runes, Dictionary<string, List<Rune>> usedFontGlyphs)
     {
         var fontStr = new StringBuilder().Append(fn).Append(',').Append(weight).Append(',').Append(italic).Append(',').Append(fe).ToString();
-        if (!usedFontGlyphs.TryGetValue(fontStr, out List<char>? _))
+        if (!usedFontGlyphs.TryGetValue(fontStr, out List<Rune>? _))
         {
-            usedFontGlyphs.Add(fontStr, new List<char>{});
+            usedFontGlyphs.Add(fontStr, []);
         }
     
-        foreach (var c in str)
+        foreach (var r in runes)
         {
-            if (!usedFontGlyphs[fontStr].Contains(c))
+            if (!usedFontGlyphs[fontStr].Contains(r))
             {
-                usedFontGlyphs[fontStr].Add(c);
+                usedFontGlyphs[fontStr].Add(r);
             }
         }
     }
