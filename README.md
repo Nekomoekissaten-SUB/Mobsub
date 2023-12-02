@@ -16,7 +16,7 @@ Ikkoku | 控制台应用程序 | 字幕相关的处理工具
 1. 读取、解析、写入常规 4.00+ 样式版本的 ass 文件，支持的部分：
     - Script Info
     - V4+ Styles（旧版本需要确认，还有个别 format 可能有兼容性问题）
-    - Events（暂未支持 `；` 起始的注释行，后续可能会支持）
+    - Events（暂未支持 `;` 起始的注释行，后续可能会支持）
     - Fonts
     - Graphics
     - Aegisub Project Garbage
