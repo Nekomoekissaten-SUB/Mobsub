@@ -31,6 +31,8 @@ public class AssEvents
 public class AssEvent
 {
     public int lineNumber;
+    public bool StartSemicolon = false;
+    public string? Untouched = string.Empty;
     public bool IsDialogue = true;
     public int Layer = 0;
     public TimeOnly Start
@@ -103,48 +105,55 @@ public class AssEvent
 
     public void Write(StreamWriter sw, string[] fmts, bool ctsRounding)
     {
-        sw.Write(IsDialogue ? "Dialogue: " : "Comment: ");
-        
-        for (var i = 0; i < fmts.Length; i++)
+        if (StartSemicolon)
         {
-            var fmt = fmts[i];
-            switch (fmts[i])
-            {
-                case "Layer":
-                    sw.Write(Layer);
-                    break;
-                case "Start":
-                    WriteTime(sw, Start, ctsRounding);
-                    break;
-                case "End":
-                    WriteTime(sw, End, ctsRounding);
-                    break;
-                case "Style":
-                    sw.Write(Style);
-                    break;
-                case "Name":
-                    sw.Write(Name);
-                    break;
-                case "MarginL":
-                    sw.Write(MarginL);
-                    break;
-                case "MarginR":
-                    sw.Write(MarginR);
-                    break;
-                case "MarginV":
-                    sw.Write(MarginV);
-                    break;
-                case "Effect":
-                    sw.Write(Effect);
-                    break;
-                case "Text":
-                    sw.Write(Text);
-                    break;
-            }
+            sw.Write($";{Untouched}");
+        }
+        else
+        {
+            sw.Write(IsDialogue ? "Dialogue: " : "Comment: ");
             
-            if (i < fmts.Length - 1)
+            for (var i = 0; i < fmts.Length; i++)
             {
-                sw.Write(',');
+                var fmt = fmts[i];
+                switch (fmts[i])
+                {
+                    case "Layer":
+                        sw.Write(Layer);
+                        break;
+                    case "Start":
+                        WriteTime(sw, Start, ctsRounding);
+                        break;
+                    case "End":
+                        WriteTime(sw, End, ctsRounding);
+                        break;
+                    case "Style":
+                        sw.Write(Style);
+                        break;
+                    case "Name":
+                        sw.Write(Name);
+                        break;
+                    case "MarginL":
+                        sw.Write(MarginL);
+                        break;
+                    case "MarginR":
+                        sw.Write(MarginR);
+                        break;
+                    case "MarginV":
+                        sw.Write(MarginV);
+                        break;
+                    case "Effect":
+                        sw.Write(Effect);
+                        break;
+                    case "Text":
+                        sw.Write(Text);
+                        break;
+                }
+                
+                if (i < fmts.Length - 1)
+                {
+                    sw.Write(',');
+                }
             }
         }
     }

@@ -305,6 +305,20 @@ public class AssParse
 
                     switch (nextChar)
                     {
+                        case ';':
+
+                            sr.Read();
+                            if (line.Length == 0)
+                            {
+                                lineNumber += 1;
+                                assData.Events.Collection.Add(new AssEvent(){ StartSemicolon = true, Untouched = sr.ReadLine(), lineNumber = lineNumber });
+                            }
+                            else
+                            {
+                                line.Append((char)nextChar);
+                            }
+                            break;
+
                         case ':':
 
                             sr.Read();
