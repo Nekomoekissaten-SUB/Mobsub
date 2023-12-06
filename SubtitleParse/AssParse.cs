@@ -1,6 +1,7 @@
 using System.Text;
 using Mobsub.AssTypes;
 using Mobsub.Utils;
+using System.Diagnostics;
 
 namespace Mobsub.SubtitleParse;
 
@@ -390,7 +391,7 @@ public class AssParse
 
                             if (commaNum == eventFormatLength - 1)
                             {
-                                assData.Events.Collection.Last().Text = sr.ReadLine()!.Trim();
+                                assData.Events.Collection.Last().Text = ParseEventText(sr.ReadLine()!.Trim().AsSpan());
                                 lineNumber += 1;
                                 assData.Events.Collection.Last().lineNumber = lineNumber;
                             }
@@ -560,6 +561,72 @@ public class AssParse
         return new TimeOnly((long)ms * 1000 * 10);
     }
 
+    public static List<char[]> ParseEventText(ReadOnlySpan<char> span)
+    {
+        var blk = false;
+        List<char[]> records = [];
+        char c;
+        int _start = 0;
+        int _end = 0;
+        var backslash = false;
+
+
+        for (var i = 0; i < span.Length; i++)
+        {
+            if (i == span.Length - 1)
+            {
+                records.Add(span[_end..].ToArray());
+            }
+            else
+            {
+                c = span[i];
+                switch (c)
+                {
+                    case AssConstants.StartBlock:
+                        if (!blk)
+                        {
+                            if (i > 0)
+                            {
+                                records.Add(span[_end..i].ToArray());
+                            }
+                            _start = i;
+                            blk = true;
+                        }
+                        break;
+                    case AssConstants.EndBlock:
+                        if (blk)
+                        {
+                            _end = i + 1;
+                            records.Add(span[_start.._end].ToArray());
+                            blk = false;
+                        }
+                        break;
+                    case AssConstants.BackSlash:
+                        if (!blk)
+                        {
+                            _start = i;
+                            backslash = true;
+                            records.Add(span[_end.._start].ToArray());
+                        }
+                        break;
+                    case AssConstants.NBSP or AssConstants.WordBreaker or AssConstants.LineBreaker:
+                        if (backslash)
+                        {
+                            _end = i + 1;
+                            backslash = false;
+                            records.Add(span[_start.._end].ToArray());
+                        }
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
+        
+        Debug.Assert(records.Sum(l => l.Length) == span.Length);
+
+        return records;
+    }
     public static void WriteAssFile(AssData data, string filePath, bool forceEnv, bool ctsRounding)
     {
         var newline = forceEnv ? [.. Environment.NewLine] : (data.CarriageReturn ? new char[]{'\r', '\n'} : ['\n']);

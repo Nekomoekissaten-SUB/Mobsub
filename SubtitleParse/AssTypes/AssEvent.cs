@@ -51,7 +51,7 @@ public class AssEvent
     public int MarginR = 0;
     public int MarginV = 0;
     public string Effect = string.Empty;
-    public string Text = string.Empty;
+    public List<char[]> Text = [];
 
     private readonly TimeOnly assMaxTime = new TimeOnly(9, 59, 59, 990);
     private TimeOnly start = TimeOnly.MinValue;
@@ -146,7 +146,10 @@ public class AssEvent
                         sw.Write(Effect);
                         break;
                     case "Text":
-                        sw.Write(Text);
+                        foreach (var ca in Text)
+                        {
+                            sw.Write(ca);
+                        }
                         break;
                 }
                 
