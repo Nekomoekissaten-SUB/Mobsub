@@ -539,7 +539,7 @@ public class AssTagParse
                     RecordTag(tag, normalTags);
                 }
                 break;
-            case 't':   // t    // not record t tags
+            case 't':   // t
                 if (tag[^1] == ')')
                 {
                     foreach (var ca in GetTagsFromTransFunction(tag))
