@@ -51,7 +51,7 @@ public class AssEvent
     public int MarginR = 0;
     public int MarginV = 0;
     public string Effect = string.Empty;
-    public List<char[]> Text = [];
+    public List<char[]> Text = [];  // override tags block, special chars block, normal text block
 
     private readonly TimeOnly assMaxTime = new TimeOnly(9, 59, 59, 990);
     private TimeOnly start = TimeOnly.MinValue;

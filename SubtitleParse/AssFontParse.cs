@@ -5,10 +5,16 @@ namespace Mobsub.SubtitleParse;
 
 public class AssFontParse
 {
-    public static void GetUsedFonts(List<AssEvent> events, List<AssStyle> styles, out Dictionary<string, List<Rune>> usedFontGlyphs)
+    /// <summary>
+    /// Get ass font info as string and used glyphs from ass data.
+    /// Need to parse info string based on font file. Ass font encoding shoule be ingore.
+    /// </summary>
+    /// <param name="events">event line collection</param>
+    /// <param name="styles">style collection</param>
+    /// <returns>key is a string order by "font_used_name,font_weight,font_italic,font_encoding" (1 = true, 0 = false), value is rune collection</returns>
+    public static Dictionary<string, List<Rune>> GetUsedFonts(List<AssEvent> events, List<AssStyle> styles)
     {
-        usedFontGlyphs = [];
-        Rune rune;
+        Dictionary<string, List<Rune>> usedFontGlyphs = [];
         var lineNumberFirst = events.First().lineNumber;
         
         foreach (var eventLine in events)
@@ -16,107 +22,66 @@ public class AssFontParse
             if (eventLine.IsDialogue)
             {
                 var eventStyle = GetStyleByName(styles, eventLine.Style);
-                var textSpan = eventLine.Text.AsSpan();
+                var text = eventLine.Text.ToArray();
                 var lineNumber = eventLine.lineNumber;
 
                 var fn = new StringBuilder().Append(eventStyle.Fontname);
                 var fe = new StringBuilder().Append(eventStyle.Encoding);
                 var italic = new StringBuilder().Append(eventStyle.Italic ? '1' : '0');
-                var weight = new StringBuilder().Append(eventStyle.Bold);
-
-                var ovr = false;
-                var tpass = false;
-                var maybeWrap = false;
-                List<char> str = [];
+                var weight = new StringBuilder().Append(eventStyle.Bold ? '1' : '0');
                 List<Rune> runes = [];
-                bool newfont;
-
-                var charsConsumed = 1;
-                for (var i = 0; i < textSpan.Length; i += charsConsumed)
+                
+                int step;
+                for (var i = 0; i < text.Length; i += step)
                 {
-                    var s = textSpan[i];
+                    step = 1;
+                    var slice = text[i].AsSpan();
 
-                    if (Rune.TryCreate(s, out rune))
+                    if (slice.Length > 0 && slice[0] == '{' && slice[^1] == '}')
                     {
-                        charsConsumed = 1;
-                        switch (s)
+                        if (slice.Length > 2)
                         {
-                            case '{':
-                                ovr = true;
-                                if (str.Count > 0)
-                                {
-                                    RecordFontGlyphs(fn, fe, italic, weight, runes, usedFontGlyphs);
-                                    newfont = false;
-                                    str.Clear();
-                                }
-                                break;
-                            case '}':
-                                if (str.Count > 0)
-                                {
-                                    GetOvrideFont(str, eventStyle, styles, fn, fe, italic, weight, out newfont, lineNumber, lineNumberFirst);
-                                }
-                                ovr = false;
-                                str.Clear();
-                                break;
-                            case '\\':
-                                tpass = false;
-                                if (ovr)
-                                {
-                                    if (str.Count > 0)
-                                    {
-                                        GetOvrideFont(str, eventStyle, styles, fn, fe, italic, weight, out newfont, lineNumber, lineNumberFirst);
-                                        str.Clear();
-                                    }
-                                }
-                                else
-                                {
-                                    maybeWrap = true;
-                                }
-                                break;
-                            case 'N':
-                            case 'n':
+                            GetOverrideBlockFont(slice, eventStyle, styles, fn, fe, italic, weight, lineNumber, lineNumberFirst);
+                        }
+                        
+                        if (i != text.Length - 1)
+                        {
+                            var sliceNext = text[i + 1].AsSpan();
+                            DecodeCharsToRunes(sliceNext, runes);
+                            RecordFontGlyphs(fn, fe, italic, weight, runes, usedFontGlyphs);
+                            step += 1;
+                        }
+                    }
+                    else if (slice.Length == 2 && AssConstants.IsEventSpecialCharPair(slice))
+                    {
+                        switch (slice[1])
+                        {
                             case 'h':
-                                if (!maybeWrap)
-                                {
-                                    str.Add(s);
-                                    runes.Add(rune);
-                                }
-                                else
-                                {
-                                    maybeWrap = false;
-                                }
+                                runes.Add(new Rune(AssConstants.NBSP_Utf16));
+                                RecordFontGlyphs(fn, fe, italic, weight, runes, usedFontGlyphs);
                                 break;
-
                             default:
-
-                                if (str.Count == 2 && str[0] == 't' && str[1] == '(')
-                                {
-                                    tpass = true;
-                                    str.Clear();
-                                }
-                                if (!tpass)
-                                {
-                                    str.Add(s);
-                                    runes.Add(rune);
-                                }
                                 break;
                         }
                     }
                     else
                     {
-                        Rune.DecodeFromUtf16(textSpan[i..], out rune, out charsConsumed);
-                        runes.Add(rune);
+                        DecodeCharsToRunes(slice, runes);
+                        RecordFontGlyphs(fn, fe, italic, weight, runes, usedFontGlyphs);
                     }
                 }
-
-                RecordFontGlyphs(fn, fe, italic, weight, runes, usedFontGlyphs);
-                newfont = false;
-                str.Clear();
             }
-
         }
+    
+        return usedFontGlyphs;
     }
 
+    /// <summary>
+    /// Get AssStyle by styleName
+    /// </summary>
+    /// <param name="styles"></param>
+    /// <param name="styleName"></param>
+    /// <returns></returns>
     public static AssStyle GetStyleByName(List<AssStyle> styles, string styleName)
     {
         var sc = from st in styles where st.Name.Equals(styleName) select st;
@@ -138,103 +103,111 @@ public class AssFontParse
         }
     }
 
-    private static void GetOvrideFont(List<char> tag, AssStyle eventStyle, List<AssStyle> styles, StringBuilder fn, StringBuilder fe, StringBuilder italic, StringBuilder weight, out bool newfont, int lineNumber, int lineNumberFirst)
+    /// <summary>
+    /// Parse font info from override tags (ovr block)
+    /// </summary>
+    /// <param name="tag"></param>
+    /// <param name="eventStyle"></param>
+    /// <param name="styles"></param>
+    /// <param name="fn"></param>
+    /// <param name="fe"></param>
+    /// <param name="italic"></param>
+    /// <param name="weight"></param>
+    /// <param name="lineNumber"></param>
+    /// <param name="lineNumberFirst"></param>
+    private static void GetOverrideBlockFont(Span<char> tag, AssStyle eventStyle, List<AssStyle> styles, StringBuilder fn, StringBuilder fe, StringBuilder italic, StringBuilder weight, int lineNumber, int lineNumberFirst)
     {
-        var len = tag.Count;
-        newfont = false;
+        foreach (var ca in AssTagParse.GetTagsFromOvrBlock(tag))
+        {
+            GetOverrideFont(ca.AsSpan(), eventStyle, styles, fn, fe, italic, weight, lineNumber, lineNumberFirst);
+        }
+    }
 
-        if (tag[0].Equals('f'))
+    /// <summary>
+    /// Parse font info from override tag (start without backslash)
+    /// </summary>
+    /// <param name="tag"></param>
+    /// <param name="eventStyle"></param>
+    /// <param name="styles"></param>
+    /// <param name="fn"></param>
+    /// <param name="fe"></param>
+    /// <param name="italic"></param>
+    /// <param name="weight"></param>
+    /// <param name="lineNumber"></param>
+    /// <param name="lineNumberFirst"></param>
+    private static void GetOverrideFont(Span<char> tag, AssStyle eventStyle, List<AssStyle> styles, StringBuilder fn, StringBuilder fe, StringBuilder italic, StringBuilder weight, int lineNumber, int lineNumberFirst)
+    {
+        var len = tag.Length;
+        if (tag.StartsWith("fn".AsSpan()))
         {
-            if (tag[1] == 'n')
-            {
-                fn.Clear();
-                foreach (var c in tag[2..len])
-                {
-                    fn.Append(c);
-                }
-                newfont = true;
-            }
-            // \fe should be ignore
-            else if (tag[1] == 'e')
-            {
-                fe.Clear();
-                foreach (var c in tag[2..len])
-                {
-                    fe.Append(c);
-                }
-                newfont = true;
-            }
+            fn.Clear();
+            fn.Append(tag[2..]);
         }
-        else if (tag[0] == 'i')
+        else if (tag.StartsWith("fe".AsSpan()))
         {
-            italic.Clear().Append(tag.Count > 1 ? tag[1] : '0');
-            newfont = true;
+            fe.Clear();
+            fe.Append(tag[2..]);
         }
-        else if (tag[0] == 'r')
+        else if (tag.StartsWith("i".AsSpan()))
+        {
+            italic.Clear().Append(len > 1 ? tag[1] : '0');
+        }
+        else if (tag.StartsWith("r".AsSpan()))
         {
             if (len > 1)
             {
-                var af = GetStyleByName(styles, string.Concat(tag[1..len]));
+                var af = GetStyleByName(styles, new string(tag[1..len]));
                 fn.Clear().Append(af.Fontname);
-                weight.Clear().Append(af.Bold);
+                weight.Clear().Append(af.Bold ? '1' : '0');
                 italic.Clear().Append(af.Italic ? '1' : '0');
                 fe.Clear().Append(af.Encoding);
-                newfont = true;
             }
             else
             {
                 fn.Clear().Append(eventStyle.Fontname);
-                weight.Clear().Append(eventStyle.Bold);
+                weight.Clear().Append(eventStyle.Bold ? '1' : '0');
                 italic.Clear().Append(eventStyle.Italic ? '1' : '0');
                 fe.Clear().Append(eventStyle.Encoding);
-                newfont = true;
             }
         }
-        else if (tag[0] == 'b')
+        else if (tag.StartsWith("b") && !(tag[1] is 'o' or 'l' or 'e'))
         {
-            if (tag.Count > 1 && tag[1] is 'o' or 'l' or 'e')
+            weight.Clear();
+            if (len > 1)
             {
-            }
-            else
-            {
-                weight.Clear();
-                if (tag.Count > 1)
+                if (char.IsDigit(tag[1]))
                 {
-                    if (char.IsDigit(tag[1]))
+                    foreach (var c in tag[1..len])
                     {
-                        foreach (var c in tag[1..len])
+                        if (char.IsDigit(c))
                         {
-                            if (char.IsDigit(c))
-                            {
-                                weight.Append(c);
-                            }
-                            else
-                            {
-                                EventsIllegalTagException(string.Concat(tag), lineNumber, lineNumberFirst);
-                            }
+                            weight.Append(c);
                         }
-                    }
-                    else
-                    {
-                        EventsIllegalTagException(string.Concat(tag), lineNumber, lineNumberFirst);
-                        // if (tag[1] == '+')
-                        // {
-                        //     foreach (var c in tag[2..len])
-                        //     {
-                        //         weight.Append(c);
-                        //     }
-                        // }
-                        // else
-                        // {
-                        //     weight.Append('0');
-                        // }
+                        else
+                        {
+                            EventsIllegalTagException(new string(tag), lineNumber, lineNumberFirst);
+                        }
                     }
                 }
                 else
                 {
-                    weight.Append('0');
+                    EventsIllegalTagException(new string(tag), lineNumber, lineNumberFirst);
+                    // if (tag[1] == '+')
+                    // {
+                    //     foreach (var c in tag[2..len])
+                    //     {
+                    //         weight.Append(c);
+                    //     }
+                    // }
+                    // else
+                    // {
+                    //     weight.Append('0');
+                    // }
                 }
-                newfont = true;
+            }
+            else
+            {
+                weight.Append('0');
             }
         }
     }
@@ -253,6 +226,18 @@ public class AssFontParse
             {
                 usedFontGlyphs[fontStr].Add(r);
             }
+        }
+
+        runes.Clear();
+    }
+
+    private static void DecodeCharsToRunes(Span<char> span, List<Rune> runes)
+    {
+        int charsConsumed;
+        for (var i = 0; i < span.Length; i += charsConsumed)
+        {
+            Rune.DecodeFromUtf16(span[i..], out Rune rune, out charsConsumed);
+            runes.Add(rune);
         }
     }
 

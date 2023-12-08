@@ -6,79 +6,50 @@ namespace Mobsub.SubtitleParse;
 public class AssTagParse
 {
     /// <summary>
-    /// Extract override tags from event line text
+    /// Extract override tags from event line Text, classified into 3 types: mod, weird and normal.
     /// </summary>
     /// <param name="et">event line text</param>
     /// <param name="modTags">not defined in spec, maybe VSFilterMod tags</param>
     /// <param name="weirdTags">normal tag but no value, should be pay attention</param>
     /// <param name="normalTags">normal tags which defined in spec or mainstream subtitle render</param>
-    public static void GetEventTags(ReadOnlySpan<char> et, out StringBuilder modTags, out StringBuilder weirdTags, out StringBuilder normalTags)
+    public static void ClassifyTagsFromLine(List<char[]> et, out StringBuilder modTags, out StringBuilder weirdTags, out StringBuilder normalTags)
     {
-        var ovr = false;
-        var str = new List<char>(){};
         modTags = new StringBuilder();
         weirdTags = new StringBuilder();
         normalTags = new StringBuilder();
-        var tTag = false;
-        var record = false;
         
-        for (var i = 0; i < et.Length; i++)
+        var text = et.ToArray();
+        int step;
+        for (var i = 0; i < text.Length; i += step)
         {
-            var s = et[i];
-        
-            switch (s)
+            step = 1;
+            var slice = text[i].AsSpan();
+            if (slice.Length > 2 && slice[0] == '{' && slice[^1] == '}')
             {
-                case '{':
-                    str.Clear();
-                    ovr = true;
-                    break;
-                case '}':
-                    if (ovr && str.Count > 0)
+                var a = GetTagsFromOvrBlock(slice);
+                foreach (var ca in GetTagsFromOvrBlock(slice))
+                {
+                    try
                     {
-                        if (tTag && str.Last() == ')')
-                        {
-                            str.RemoveAt(str.Count - 1);
-                        }
-                        ExtractTag(str, modTags, weirdTags, normalTags);
+                        ClassifyTagsFromBlock(ca.AsSpan(), modTags, weirdTags, normalTags);
                     }
-                    str.Clear();
-                    ovr = false;
-                    record = false;
-                    break;
-                case '\\':
-                    record = true;
-                    if (ovr && str.Count > 0)
+                    catch (InvalidDataException)
                     {
-                        if (tTag && str.Last() == ')')
-                        {
-                            str.RemoveAt(str.Count - 1);
-                        }
-                        ExtractTag(str, modTags, weirdTags, normalTags);
-                        str.Clear();
+                        Console.WriteLine(slice.ToString());
                     }
-                    break;
-
-                default:
-                    if (str.Count == 2 && str[0] == 't' && str[1] == '(')
-                    {
-                        record = false;
-                        tTag = true;
-                        str.Clear();
-                    }
-                    if (record)
-                    {
-                        str.Add(s);
-                    }
-                    break;
+                }
             }
         }
-        
-        str.Clear();
     }
 
-    private static void ExtractTag(List<char> tag, StringBuilder modTags, StringBuilder weirdTags, StringBuilder normalTags)
+    private static void ClassifyTagsFromBlock(Span<char> tag, StringBuilder modTags, StringBuilder weirdTags, StringBuilder normalTags)
     {
-        var len = tag.Count;
+        var len = tag.Length;
+
+        if (len == 0)
+        {
+            throw new InvalidDataException("Tag is empty because consecutive backslash or bracket.");
+        }
 
         switch (tag[0])
         {
@@ -412,7 +383,7 @@ public class AssTagParse
                 }
                 else
                 {
-                    if (len > 2 && tag[1] == '&' && tag[2] == 'H' && tag.Last() == '&')
+                    if (len > 2 && tag[1] == '&' && tag[2] == 'H' && tag[^1] == '&')
                     {
                         RecordTag(tag, normalTags);
                     }
@@ -569,6 +540,24 @@ public class AssTagParse
                 }
                 break;
             case 't':   // t    // not record t tags
+                if (tag[^1] == ')')
+                {
+                    foreach (var ca in GetTagsFromTransFunction(tag))
+                    {
+                        try
+                        {
+                            ClassifyTagsFromBlock(ca, modTags, weirdTags, normalTags);
+                        }
+                        catch (InvalidDataException)
+                        {
+                            Console.WriteLine(tag.ToString());
+                        }
+                    }
+                }
+                else
+                {
+                    RecordTag(tag, weirdTags);
+                }
                 break;
             case 'm':   // move
                 if (len > 3 && tag[1] == 'o' && tag[2] == 'v' && tag[3] == 'e')
@@ -693,18 +682,150 @@ public class AssTagParse
         }
     }
 
-    private static void RecordTag(List<char> tag, StringBuilder tags)
+    private static void RecordTag(Span<char> tag, StringBuilder tags)
     {
         if (tags.Length > 0)
         {
             tags.Append(':');
         }
+        tags.Append(tag);
+    }
 
-        foreach (var c in tag)
+    /// <summary>
+    /// Parse tag without backslash from event override tags block. Maybe record tags block which only have backslash.
+    /// </summary>
+    /// <param name="block">override tags block</param>
+    /// <returns></returns>
+    public static List<char[]> GetTagsFromOvrBlock(Span<char> block)
+    {
+        List<char[]> cal = [];
+
+        if (block[0] == '{' && block[^1] == '}')
         {
-            tags.Append(c);
+            block = block[1..^1];
+        }
+
+        var valueStartIndex = block.IndexOf(AssConstants.StartValueBlock);
+        var preEndIndex = -1;
+
+        if (valueStartIndex == -1)
+        {
+            // No functions
+            SplitOnlyOvrTags(block, cal);
+        }
+
+        while (valueStartIndex != -1)
+        {
+            // parse tags between the previous function
+            var preOvr = block[..valueStartIndex].LastIndexOf(AssConstants.BackSlash);
+            if (preOvr == -1)
+            {
+                throw new InvalidDataException($"Invaild override block: {block.ToString()}");
+            }
+            
+            if (preOvr != 0)
+            {
+                SplitOnlyOvrTags(block[(preEndIndex + 1)..preOvr], cal);
+            }
+
+            // function endwith )
+            var valueEndIndex = block[valueStartIndex..].IndexOf(AssConstants.EndValueBlock);
+
+            if (valueEndIndex != -1)
+            {
+                // get function value block
+                GetTagsFromFunction(block.Slice(preOvr + 1, valueStartIndex + valueEndIndex - preOvr), cal, out Span<char> function);
+
+                preEndIndex = valueStartIndex + valueEndIndex;
+                valueStartIndex = block[preEndIndex..].IndexOf(AssConstants.StartValueBlock);
+                if (valueStartIndex != -1)
+                {
+                    valueStartIndex += preEndIndex;
+                }
+            }
+            else
+            {
+                SplitOnlyOvrTags(block[(preOvr + 1)..], cal);
+                valueStartIndex = -1;
+            }
+        }
+        return cal;
+    }
+
+    /// <summary>
+    /// split override tags, maybe return empty when have consecutive backslash or bracket (maybe a bug, need fix)
+    /// </summary>
+    /// <param name="block"></param>
+    /// <param name="cal"></param>
+    /// <param name="ingoreConsecutive"></param>
+    private static void SplitOnlyOvrTags(Span<char> block, List<char[]> cal, bool ingoreConsecutive)
+    {
+        if (block.IsEmpty)
+        {
+            return ;
+        }
+        var startIndex = block.IndexOf(AssConstants.BackSlash);
+        Span<char> slice = default;
+
+        while (startIndex != -1)
+        {
+            int endIndex = block[(startIndex + 1)..].IndexOf(AssConstants.BackSlash);
+            if (endIndex != -1)
+            {
+                slice = block.Slice(startIndex + 1, endIndex);
+                startIndex += endIndex + 1;
+            }
+            else
+            {
+                slice = block[(startIndex + 1)..];
+                break;
+            }
+            
+            if (ingoreConsecutive)
+            {
+                if (slice.Length > 0)
+                {
+                    cal.Add(slice.ToArray());
+                }
+            }
+        }
+
+        if (ingoreConsecutive)
+        {
+            if (slice.Length > 0)
+            {
+                cal.Add(slice.ToArray());
+            }
+        }
+    }
+    private static void SplitOnlyOvrTags(Span<char> block, List<char[]> cal) => SplitOnlyOvrTags(block, cal, true);
+
+    private static void GetTagsFromFunction(Span<char> block, List<char[]> cal, out Span<char> function)
+    {
+        var openFunc = block.IndexOf(AssConstants.StartValueBlock);
+        function = block[..openFunc];
+        var closeFine = block.EndsWith(")".AsSpan());
+        var startIndex = block.IndexOf(AssConstants.BackSlash);
+        if (startIndex != -1)
+        {
+            var slice = closeFine ? block[startIndex..^1].Trim() : block[startIndex..].Trim();
+            SplitOnlyOvrTags(slice, cal);
+        }
+        else
+        {
+            cal.Add(block.ToArray());
         }
     }
 
+    public static List<char[]> GetTagsFromTransFunction(Span<char> block)
+    {
+        List<char[]> cal = [];
+        GetTagsFromFunction(block, cal, out Span<char> function);
+        if (function.Length != 1 && function[0] != 't')
+        {
+            throw new Exception($"Invaild transformation function: {block.ToString()}");
+        }
+        return cal;
+    }
 
 }

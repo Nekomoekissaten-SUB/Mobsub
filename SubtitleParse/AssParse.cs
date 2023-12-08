@@ -573,16 +573,27 @@ public class AssParse
 
         for (var i = 0; i < span.Length; i++)
         {
-            if (i == span.Length - 1)
+            if (i == span.Length - 1 && span[i] != '}')
             {
-                records.Add(span[_end..].ToArray());
+                // In gerneral, blocks are arranged in this order: (text block -) ovr block - text block - ovr block( - text block)
+                // but sometimes, text block will be mistakenly identified as ovr block because it start with open brace but does not have close brace until line end
+                // It should be a type error, but parse will ignore it
+                // Not considering libass extensions, such as \{ and \}
+                if (blk)
+                {
+                    records.Add(span[_start..].ToArray());
+                }
+                else
+                {
+                    records.Add(span[_end..].ToArray());
+                }
             }
             else
             {
                 c = span[i];
                 switch (c)
                 {
-                    case AssConstants.StartBlock:
+                    case AssConstants.StartOvrBlock:
                         if (!blk)
                         {
                             if (i > 0)
@@ -593,7 +604,7 @@ public class AssParse
                             blk = true;
                         }
                         break;
-                    case AssConstants.EndBlock:
+                    case AssConstants.EndOvrBlock:
                         if (blk)
                         {
                             _end = i + 1;
@@ -618,6 +629,7 @@ public class AssParse
                         }
                         break;
                     default:
+                        backslash = false;
                         break;
                 }
             }
@@ -691,7 +703,6 @@ public class AssParse
         memStream.CopyTo(fileStream);
         fileStream.Close();
     }
-
     public static void WriteAssFile(AssData data, string filePath) => WriteAssFile(data, filePath, false, false);
 
 }
