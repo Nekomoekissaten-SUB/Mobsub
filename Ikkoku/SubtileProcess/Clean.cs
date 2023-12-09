@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text;
 using Mobsub.AssTypes;
+using Mobsub.SubtitleParse;
 
 namespace Mobsub.Ikkoku;
 
@@ -83,54 +84,58 @@ public partial class SubtileProcess
         var unusedChar = new char[] { '\u200E', '\u200F'};
         var weirdSpace = new char[] { '\u00a0' };
         var etsb = new StringBuilder();
-        var et1Blk = false;
         var hadMotionGarbage = false;
         var hadUnusedChar = false;
         var hadWeridSpace = false;
+        
         for (var i = 0; i < data.Events.Collection.Count; i++)
         {
             var et = data.Events.Collection[i].Text;
-            etsb.Append(et);
-            for (var j = 0; j < etsb.Length; j++)
+
+            // {=} {=0} {=99}            
+            if (AssTagParse.IsOvrrideBlock(et[0].AsSpan()) && et[0][1] == '=' && ((et[0].Length > 3 && char.IsDigit(et[0][2])) || et[0].Length == 3))
             {
-                var c = etsb[j];
-                if (j == 0 && c == '{')
-                {
-                    et1Blk = true;
-                }
-                else if (et1Blk && c == '}' && etsb[1] == '=' && char.IsDigit(etsb[2]))
-                {
-                    etsb.Remove(0, j + 1);
-                    j = 0;
-                    et1Blk = false;
-                    if (!hadMotionGarbage)
-                    {
-                        hadMotionGarbage = true;
-                    }
-                }
-                else if (unusedChar.Contains(c))
-                {
-                    etsb.Remove(j, 1);
-                    j--;
-                    if (!hadUnusedChar)
-                    {
-                        hadUnusedChar = true;
-                    }
-                }
-                else if (weirdSpace.Contains(c))
-                {
-                    etsb[j] = '\u0020';
-                    if (!hadWeridSpace)
-                    {
-                        hadWeridSpace = true;
-                    }
-                }
+                et.RemoveAt(0);
+                hadMotionGarbage = true;
             }
-            if (!etsb.Equals(et.AsSpan()))
+
+            var _mod = false;
+            for (var j = 0; j < et.Count; j++)
             {
-                data.Events.Collection[i].Text = etsb.ToString();
+                var blk = et.ToArray()[j];
+                foreach (var c in blk)
+                {
+                    if (unusedChar.Contains(c))
+                    {
+                        _mod = true;
+                        if (!hadUnusedChar)
+                        {
+                            hadUnusedChar = true;
+                        }
+                    }
+                    else if (weirdSpace.Contains(c))
+                    {
+                        _mod = true;
+                        etsb.Append('\u0020');
+                        if (!hadWeridSpace)
+                        {
+                            hadWeridSpace = true;
+                        }
+                    }
+                    else
+                    {
+                        etsb.Append(c);
+                    }
+                }
+                
+                if (_mod)
+                {
+                    char[] _new = [];
+                    etsb.CopyTo(0, _new, etsb.Length);
+                    et[j] = _new;
+                }
+                etsb.Clear();
             }
-            etsb.Clear();
         }
 
         if (hadMotionGarbage)

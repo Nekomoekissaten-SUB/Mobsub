@@ -19,7 +19,7 @@ public partial class SubtileProcess
             {
                 var lineNumber = eventLine.lineNumber;
 
-                AssTagParse.GetEventTags(eventLine.Text.AsSpan(), out StringBuilder modTags, out StringBuilder weirdTags, out StringBuilder normalTags);
+                AssTagParse.ClassifyTagsFromLine(eventLine.Text, out StringBuilder modTags, out StringBuilder weirdTags, out StringBuilder normalTags);
 
                 if (verbose)
                 {
@@ -143,42 +143,23 @@ public partial class SubtileProcess
         {
             if (et.IsDialogue)
             {
-                var text = et.Text.AsSpan();
+                var text = et.Text.ToArray();
 
                 styles.Add(et.Style);
 
-                var blk = false;
-                var record = false;
-
+                char[] block = [];
                 for (var i = 0; i < text.Length; i++)
                 {
-                    switch (text[i])
+                    block = text[i];
+                    if (block[0] == '{' && block[^1] == '}' && block.Length > 2 && i != text.Length - 1)
                     {
-                        case '{':
-                            blk = true;
-                            str.Clear();
-                            break;
-                        case '}':
-                            blk = false;
-                            record = false;
-                            if (str.Length > 0)
+                        foreach (var ca in AssTagParse.GetTagsFromOvrBlock(block))
+                        {
+                            if (ca[0] == 'r' && ca.Length > 1)
                             {
-                                styles.Add(str.ToString());
-                                str.Clear();
+                                styles.Add(ca[1..].ToString()!);
                             }
-                            break;
-                        case 'r':
-                            if (blk && text[i - 1] == '\\')
-                            {
-                                record = true;
-                            }
-                            break;
-                        default:
-                            if (record)
-                            {
-                                str.Append(text[i]);
-                            }
-                            break;
+                        }
                     }
                 }
             }
