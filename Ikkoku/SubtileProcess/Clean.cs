@@ -93,7 +93,7 @@ public partial class SubtileProcess
             var et = data.Events.Collection[i].Text;
 
             // {=} {=0} {=99}            
-            if (AssTagParse.IsOvrrideBlock(et[0].AsSpan()) && et[0][1] == '=' && ((et[0].Length > 3 && char.IsDigit(et[0][2])) || et[0].Length == 3))
+            if (et.Count > 0 && AssTagParse.IsOvrrideBlock(et[0].AsSpan()) && et[0][1] == '=' && ((et[0].Length > 3 && char.IsDigit(et[0][2])) || et[0].Length == 3))
             {
                 et.RemoveAt(0);
                 hadMotionGarbage = true;

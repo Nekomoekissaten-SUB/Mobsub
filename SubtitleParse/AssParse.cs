@@ -596,7 +596,7 @@ public class AssParse
                     case AssConstants.StartOvrBlock:
                         if (!blk)
                         {
-                            if (i > 0)
+                            if (i > 0 && _end != i)
                             {
                                 records.Add(span[_end..i].ToArray());
                             }
@@ -617,7 +617,10 @@ public class AssParse
                         {
                             _start = i;
                             backslash = true;
-                            records.Add(span[_end.._start].ToArray());
+                            if (_end != _start)
+                            {
+                                records.Add(span[_end.._start].ToArray());
+                            }
                         }
                         break;
                     case AssConstants.NBSP or AssConstants.WordBreaker or AssConstants.LineBreaker:
