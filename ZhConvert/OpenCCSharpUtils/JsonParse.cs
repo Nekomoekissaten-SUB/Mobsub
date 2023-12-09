@@ -6,7 +6,7 @@ public partial class OpenCCSharpUtils
 {
     private static ReadOnlySpan<byte> Utf8Bom => [0xEF, 0xBB, 0xBF];
 
-    public static List<List<string?>> LoadJson(FileInfo file)
+    public static List<string?[]> LoadJson(FileInfo file)
     {
         var dir = file.Directory ?? throw new FileNotFoundException(file.Name);
         ReadOnlySpan<byte> jsonData = File.ReadAllBytes(file.FullName);
@@ -18,7 +18,7 @@ public partial class OpenCCSharpUtils
 
         var reader = new Utf8JsonReader(jsonData);
         var dict = false;
-        List<List<string?>> dictionaries = [];
+        List<string?[]> dictionaries = [];
         List<string?> dictFile = [];
 
         while (reader.Read())
@@ -48,7 +48,8 @@ public partial class OpenCCSharpUtils
                     if (dict)
                     {
                         dict = false;
-                        dictionaries.Add(dictFile);
+                        dictionaries.Add(dictFile.ToArray());
+                        dictFile.Clear();
                     }
                     dict = !dict && dict;
                     break;
