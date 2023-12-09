@@ -24,7 +24,7 @@ public class AssTagParse
         {
             step = 1;
             var slice = text[i].AsSpan();
-            if (slice.Length > 2 && slice[0] == '{' && slice[^1] == '}')
+            if (IsOvrrideBlock(slice) && slice.Length > 2)
             {
                 var a = GetTagsFromOvrBlock(slice);
                 foreach (var ca in GetTagsFromOvrBlock(slice))
@@ -700,7 +700,7 @@ public class AssTagParse
     {
         List<char[]> cal = [];
 
-        if (block[0] == '{' && block[^1] == '}')
+        if (IsOvrrideBlock(block) && block.Length > 2)
         {
             block = block[1..^1];
         }
@@ -826,6 +826,15 @@ public class AssTagParse
             throw new Exception($"Invaild transformation function: {block.ToString()}");
         }
         return cal;
+    }
+
+    public static bool IsOvrrideBlock(Span<char> block)
+    {
+        if (block.Length < 2)
+        {
+            return false;
+        }
+        return block[0] == AssConstants.StartOvrBlock && block[^1] == AssConstants.EndOvrBlock;
     }
 
 }
