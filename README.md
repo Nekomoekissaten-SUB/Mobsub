@@ -4,6 +4,8 @@
 --- | --- | ---
 SubtitleParse | 类库 | 读取和写入字幕文件
 Ikkoku | 控制台应用程序 | 字幕相关的处理工具
+ZhConvert | 类库 | 中文繁体化
+Test | 控制台应用程序 | 测试用
 
 ## SubtitleParse
 
@@ -16,13 +18,12 @@ Ikkoku | 控制台应用程序 | 字幕相关的处理工具
 1. 读取、解析、写入常规 4.00+ 样式版本的 ass 文件，支持的部分：
     - Script Info
     - V4+ Styles（旧版本需要确认，还有个别 format 可能有兼容性问题）
-    - Events（暂未支持 `;` 起始的注释行，后续可能会支持）
+    - Events
     - Fonts
     - Graphics
     - Aegisub Project Garbage
     - Aegisub Extradata
 2. 提取 ass 中使用的字体和字形
-    - 因为字形存储为单个 utf-16 char，对于多个 char 组成的字形可能有问题，如 emoji（待修复）
 3. 提取 ass 中使用的特效标签（overide tags）
 4. 解析并转化 ass 中的内嵌字体和图片
     - 目前不支持转化字体为 ass 中的内嵌字体，因为还没搞懂使用的name和bold/italic/encoding判断依据
@@ -56,7 +57,7 @@ Ikkoku | 控制台应用程序 | 字幕相关的处理工具
 
 ##### 平移
 
-`--shift-by` 指定要平移的跨度，通过后缀分别，儒棍平移为帧时需要指定 `--fps`
+`--shift-by` 指定要平移的跨度，通过后缀分别，如果平移为帧时需要指定 `--fps`
 
 - 计划支持分样式、时间段（结合章节文件）的平移
 
@@ -94,3 +95,15 @@ v1 示范样例：[Nekomoekissaten-Storage/Danseur/Subs
 
 v2 示范样例：[Nekomoekissaten-Storage/Summertime/Subs
 /str_effect.yml](https://github.com/Nekomoekissaten-SUB/Nekomoekissaten-Storage/blob/e97e3f83bebe4ea6f6a02e5b0fe54b59859caea1/Summertime/Subs/str_effect.yml)
+
+## ZhConvert
+
+未定未来是否会支持[繁化姬](https://zhconvert.org/)
+
+### OpenCCSharpUtils
+
+基于受 [OpenCC](https://github.com/BYVoid/OpenCC) 启发由 CXuesong 开发的 [OpenCCSharp](https://github.com/CXuesong/OpenCCSharp)（License: Apache-2.0）。
+
+1. 文本字典需要转换为二进制格式 `tris`，文本格式与 OpenCC 的文本相同，二进制与 OpenCC 的 `ocd` / `ocd2` 不兼容
+2. 配置文件 `json` 定义转换使用的字典，每组 `Dictionaries` 有先后之分，内部顺序无区别
+    - 与 OpenCC 的 json 不兼容，暂未支持 json 的转换
