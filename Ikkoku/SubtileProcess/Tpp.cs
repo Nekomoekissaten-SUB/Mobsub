@@ -1,11 +1,20 @@
-using System.Diagnostics;
 using Mobsub.AssTypes;
 using Mobsub.Ikkoku.FormatData;
+using System.Diagnostics;
 
 namespace Mobsub.Ikkoku;
 
 public partial class SubtileProcess
 {
+    public static void ShiftAss(List<AssEvent> ets, TimeSpan time)
+    {
+        for (var i = 0; i < ets.Count; i++)
+        {
+            ets[i].Start = ets[i].Start.Add(time);
+            ets[i].End = ets[i].End.Add(time);
+        }
+    }
+
     public static void AssumeFPS(List<AssEvent> ets, AVTimestamp tcdata, string fps)
     {
         var fpsArray = fps.Split("/").Select(int.Parse).ToArray();
