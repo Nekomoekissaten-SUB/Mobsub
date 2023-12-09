@@ -5,4 +5,6 @@ test_file/*
 .idea/*
 *.vscode/*
 
+/Test/files/*
+
 debug.log
