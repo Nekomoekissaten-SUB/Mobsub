@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\SubtitleParse\SubtitleParse.csproj"></ProjectReference>
+    <ProjectReference Include="..\ZhConvert\ZhConvert.csproj"></ProjectReference>
   </ItemGroup>
 
   <ItemGroup>

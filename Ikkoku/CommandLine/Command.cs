@@ -4,6 +4,9 @@ using Mobsub.AssTypes;
 using Mobsub.Ikkoku.FormatData;
 using YamlDotNet.Serialization.NamingConventions;
 using YamlDotNet.Serialization;
+using OpenCCSharp.Conversion;
+using System.Text;
+using Mobsub.ZhConvert;
 
 namespace Mobsub.Ikkoku.CommandLine;
 
@@ -247,7 +250,7 @@ partial class Program
     {
         Console.WriteLine(f);
         var data = AssParse.ReadAssFile(f.FullName);
-        SubtileProcess.ShiftAss( data.Events.Collection, tsp);
+        SubtileProcess.ShiftAss(data.Events.Collection, tsp);
         AssParse.WriteAssFile(data, opt.FullName);
     }
 
@@ -451,6 +454,147 @@ partial class Program
         {
             return Convert.ToDecimal(fpsString);
         }
+    }
+
+    private static void ConvertAssByOpencc(FileInfo f, FileInfo opt, ChainedScriptConverter converter)
+    {
+        if (f.FullName.Equals(opt.FullName))
+        {
+            throw new ArgumentException("Output file path can’t same as input file!");
+        }
+
+        Console.WriteLine($"Input: {f}");
+        Console.WriteLine($"Output: {opt}");
+        var data = AssParse.ReadAssFile(f.FullName);
+        var sb = new StringBuilder();
+        Dictionary<int, string[]> changesRecord = [];
+
+        foreach (var et in data.Events.Collection)
+        {
+            if (!et.Style.AsSpan().Contains("JP".AsSpan(), StringComparison.OrdinalIgnoreCase))
+            {
+                SubtileProcess.ZhConvertEventLineByOpenccsharp(et.Text, sb, converter, out string[]? countChanges);
+
+                if (countChanges is not null)
+                {
+                    changesRecord.Add(et.lineNumber, countChanges);
+                }
+            }
+        }
+        
+        AssParse.WriteAssFile(data, opt.FullName);
+
+        if (changesRecord.Keys.Count > 0)
+        {
+            Console.WriteLine("Please pay attention:");
+            foreach (var pair in changesRecord)
+            {
+                Console.WriteLine($"Linenumber: {pair.Key}");
+                Console.WriteLine(pair.Value[0]);
+                Console.WriteLine(pair.Value[1]);
+                Console.WriteLine();
+            }
+        }
+
+        Console.WriteLine("fine");
+        Console.WriteLine();
+    }
+
+    internal static void CJKPostProcessor(FileSystemInfo path, FileSystemInfo opt, FileInfo config)
+    {
+        var dicts = OpenCCSharpUtils.LoadJson(config);
+        var converter = OpenCCSharpUtils.GetConverter(dicts);
+
+        switch (path)
+        {
+            case FileInfo f:
+                switch (opt)
+                {
+                    case FileInfo fo:
+                        ConvertAssByOpencc(f, fo, converter);
+                        break;
+                    case DirectoryInfo diro:
+                        if (!diro.Exists)
+                        {
+                            diro.Create();
+                        }
+                        ConvertAssByOpencc(f, new FileInfo(Path.Combine(diro.FullName, f.Name)), converter);
+                        break;
+                }
+                break;
+            
+            case DirectoryInfo dir:
+                
+                var subfiles = Traversal(dir, ".ass");
+                switch (opt)
+                {
+                    case DirectoryInfo diro:
+                        
+                        if (!diro.Exists)
+                        {
+                            diro.Create();
+                        }
+                        foreach (var f in subfiles)
+                        {
+                            ConvertAssByOpencc(f, new FileInfo(Path.Combine(diro.FullName, f.Name)), converter);
+                        }
+                        
+                        break;
+                }
+                break;
+        }
+    }
+
+    internal static async Task BuildOpenccsharpDict(FileSystemInfo path, FileSystemInfo opt)
+    {
+        var targetSuffix = ".tris";
+        
+        switch (path)
+        {
+            case FileInfo f:
+                switch (opt)
+                {
+                    case FileInfo fo:
+                        await OpenCCSharpUtils.BuildTriesDictionary(f, fo);
+                        break;
+                    case DirectoryInfo diro:
+                        if (!diro.Exists)
+                        {
+                            diro.Create();
+                        }
+                        await OpenCCSharpUtils.BuildTriesDictionary(f, ChangeSuffix(f, targetSuffix));
+                        break;
+                }
+                break;
+            
+            case DirectoryInfo dir:
+                
+                var subfiles = Traversal(dir, ".txt");
+                switch (opt)
+                {
+                    case DirectoryInfo diro:
+                        
+                        if (!diro.Exists)
+                        {
+                            diro.Create();
+                        }
+                        foreach (var f in subfiles)
+                        {
+                            await OpenCCSharpUtils.BuildTriesDictionary(f, ChangeSuffix(f, diro, targetSuffix));
+                        }
+                        
+                        break;
+                }
+                break;
+        }
+    }
+
+    private static FileInfo ChangeSuffix(FileInfo f, string suffix) => ChangeSuffix(f, f.Directory!, suffix);
+
+    private static FileInfo ChangeSuffix(FileInfo f, DirectoryInfo dir, string suffix)
+    {
+        return new FileInfo(Path.Combine(dir.FullName, Path.GetFileNameWithoutExtension(f.FullName) + suffix));
+
     }
 
 }

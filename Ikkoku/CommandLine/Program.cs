@@ -256,6 +256,61 @@ partial class Program
 
         rootCommand.Add(mergeCommand);
 
+        // cjkpp / zhconvert
+        var convConf = new Option<FileInfo>(
+            name: "--config",
+            description: "Zhconvert Config file."
+        ) { IsRequired = true };
+        convConf.AddAlias("-c");
+
+        var cjkppCommand = new Command("cjkpp", "CJK post-processor, such as simplified and traditional conversion of Hanzi.")
+        {
+            path, optPath, convConf
+        };
+        cjkppCommand.SetHandler(CJKPostProcessor, path, optPath, convConf);
+        
+        // cjkpp / zhconvert build-dict
+        var convDictCommand = new Command("build-dict", "Build tris dictinaries from txt files (txt file same as OpenCC).")
+        {
+            path, optPath
+        };
+        convDictCommand.SetHandler(BuildOpenccsharpDict, path, optPath);
+        convDictCommand.AddValidator((result) =>
+            {
+                switch (result.GetValueForOption(optPath))
+                {
+                    case FileInfo:
+                        switch (result.GetValueForArgument(path))
+                        {
+                            case DirectoryInfo:
+                                result.ErrorMessage = "Output path must be directory when input path is a dir!";
+                                break;
+                        }
+                        break;
+                }
+            }
+        );
+        cjkppCommand.Add(convDictCommand);
+        
+        cjkppCommand.AddValidator((result) =>
+            {
+                switch (result.GetValueForOption(optPath))
+                {
+                    case FileInfo:
+                        switch (result.GetValueForArgument(path))
+                        {
+                            case DirectoryInfo:
+                                result.ErrorMessage = "Output path must be directory when input path is a dir!";
+                                break;
+                        }
+                        break;
+                }
+            }
+        );
+        rootCommand.Add(cjkppCommand);
+
+
         return await rootCommand.InvokeAsync(args);
     }
+
 }

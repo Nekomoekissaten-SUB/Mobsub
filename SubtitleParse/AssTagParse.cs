@@ -837,4 +837,6 @@ public class AssTagParse
         return block[0] == AssConstants.StartOvrBlock && block[^1] == AssConstants.EndOvrBlock;
     }
 
+    public static bool IsTextBlock(Span<char> block) => !(IsOvrrideBlock(block) || AssConstants.IsEventSpecialCharPair(block));
+
 }
