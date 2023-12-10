@@ -1,5 +1,7 @@
 ﻿using Mobsub.SubtitleParse;
 using System.Text;
+using Mobsub.ZhConvert;
+using OpenCCSharp.Presets;
 
 namespace Mobsub.Test;
 
@@ -8,7 +10,7 @@ public class Program
     public static void Main()
     {
         // GetAssUsedFonts(@"D:\code\csharp\Mobsub\Test\files\sections.ass");
-        GetEventTags(@"F:\GitHub\Mobsub\Test\files\[Airota][To_Aru_Kagaku_no_Railgun_S][OVA][1280x720][x264_AAC][GB].ass");
+        // GetEventTags(@"F:\GitHub\Mobsub\Test\files\[Airota][To_Aru_Kagaku_no_Railgun_S][OVA][1280x720][x264_AAC][GB].ass");
         // GetTagsFromTransFunction(@"\t(1570,1840,\fry-90");
         // GetTagsFromOvrBlock(@"\t(1570,1840,\fry-90");
         // \t(
@@ -25,6 +27,12 @@ public class Program
         // \p1
         // \fad(0,100)
         // valueStartIndex = 78
+
+        ZhConvertTest("为了结束这场闹剧", new FileInfo(@"F:\GitHub\OpenCCSharp\OpenCCSharp.Presets\ConversionDictionaries\Hans-TW.json"));
+        // ZhConvertTest("为了结束这场闹剧");
+
+        // 爲了結束這場鬧劇
+        // 為了結束這場鬧劇
 
     }
 
@@ -67,6 +75,15 @@ public class Program
         var block = new char[text.Length].AsSpan();
         text.AsSpan().CopyTo(block);
         AssTagParse.GetTagsFromOvrBlock(block);
+    }
 
+    public static void ZhConvertTest(string text, FileInfo config)
+    {
+        var dicts = OpenCCSharpUtils.LoadJson(config);
+        var converter = OpenCCSharpUtils.GetConverter(dicts);
+
+        var sconvp = converter.Convert(text).AsSpan();
+
+        Console.WriteLine("fine");
     }
 }
