@@ -5,7 +5,7 @@ namespace Mobsub.ZhConvert;
 
 public partial class OpenCCSharpUtils
 {
-    public static ChainedScriptConverter GetConverter(List<List<string?>> conversionSteps)
+    public static ChainedScriptConverter GetConverter(List<string?[]> conversionSteps)
     {
         List<ScriptConverter> converters = [];
         List<TrieStringPrefixDictionary> dicts = [];
@@ -17,12 +17,13 @@ public partial class OpenCCSharpUtils
                 {
                     continue;
                 }
-                dicts.Add(GetDictionaryFrom(s));
+                dicts.Add(GetDictionaryFrom(s).AsTask().GetAwaiter().GetResult());
             }
             var mergedMapping = new MergedStringPrefixMapping(dicts);
             var lexer = new LongestPrefixLexer(mergedMapping);
             var converter = new ScriptConverter(lexer, mergedMapping);
             converters.Add(converter);
+            dicts.Clear();
         }
         return new ChainedScriptConverter(converters);
     }
@@ -45,10 +46,10 @@ public partial class OpenCCSharpUtils
         await osr.FlushAsync();
     }
 
-    public static TrieStringPrefixDictionary GetDictionaryFrom(string dictFileName)
+    public static async ValueTask<TrieStringPrefixDictionary> GetDictionaryFrom(string dictFileName)
     {
-        var sr = new FileStream(dictFileName, FileMode.Open, FileAccess.Read);
-        var trie = TrieSerializer.Deserialize(sr).AsTask().GetAwaiter().GetResult();
+        await using var sr = new FileStream(dictFileName, FileMode.Open, FileAccess.Read, FileShare.None, 4096, FileOptions.Asynchronous | FileOptions.SequentialScan);
+        var trie = await TrieSerializer.Deserialize(sr);
         var dict = new TrieStringPrefixDictionary(trie);
         return dict;
     }
