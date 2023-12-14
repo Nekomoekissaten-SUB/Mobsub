@@ -391,7 +391,15 @@ public class AssParse
 
                             if (commaNum == eventFormatLength - 1)
                             {
-                                assData.Events.Collection.Last().Text = ParseEventText(sr.ReadLine()!.Trim().AsSpan());
+                                var text = sr.ReadLine();
+                                if (text is null)
+                                {
+                                    assData.Events.Collection.Last().Text = [];
+                                }
+                                else
+                                {
+                                    assData.Events.Collection.Last().Text = ParseEventText(text.Trim().AsSpan());
+                                }
                                 lineNumber += 1;
                                 assData.Events.Collection.Last().lineNumber = lineNumber;
                             }
