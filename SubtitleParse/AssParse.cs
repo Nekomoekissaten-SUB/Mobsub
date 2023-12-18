@@ -214,7 +214,7 @@ public class AssParse
                                             style.Fontname = valueArray[i];
                                             break;
                                         case "Fontsize":
-                                            style.Fontsize = ushort.Parse(valueArray[i]);
+                                            style.Fontsize = float.Parse(valueArray[i]);
                                             break;
                                         case "PrimaryColour":
                                             style.PrimaryColour = AssRGB8.Parse(valueArray[i].AsSpan());

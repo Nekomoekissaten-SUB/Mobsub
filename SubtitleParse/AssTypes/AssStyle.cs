@@ -47,7 +47,7 @@ public class AssStyle
 {
     public string Name = string.Empty;
     public string Fontname = string.Empty;
-    public ushort Fontsize;
+    public float Fontsize;  // ushort; Is negative and float really correct?
     public AssRGB8? PrimaryColour;
     public AssRGB8? SecondaryColour;
     public AssRGB8? OutlineColour;
