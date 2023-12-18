@@ -181,7 +181,7 @@ partial class Program
         Console.WriteLine("Check completed.");
     }
 
-    internal static void TimingPostProcessor(FileSystemInfo path, FileSystemInfo? optPath, string? shiftSpan, string fps, FileInfo? tcfile)
+    internal static void TimingPostProcessor(FileSystemInfo path, FileSystemInfo? optPath, string? shiftSpan, string[] styles, string fps, FileInfo? tcfile)
     {
         // select mode
         var tsp = (shiftSpan is null) ? TimeSpan.Zero : GetTimespan(shiftSpan, fps);
@@ -204,7 +204,7 @@ partial class Program
                 };
                 if (tsp != TimeSpan.Zero)
                 {
-                    ShiftOneAss(iptFile, opt, tsp);
+                    ShiftOneAss(iptFile, opt, tsp, styles);
                 }
                 if (toCfr && tcfile is not null)
                 {
@@ -229,7 +229,7 @@ partial class Program
                             foreach (var f in subfiles)
                             {
                                 opt = new FileInfo(Path.Combine(d.FullName, f.Name));
-                                ShiftOneAss(f, opt, tsp);
+                                ShiftOneAss(f, opt, tsp, styles);
                             }
                         }
                         if (toCfr && tcfile is not null)
@@ -246,12 +246,23 @@ partial class Program
         }
     }
 
-    private static void ShiftOneAss(FileInfo f, FileInfo opt, TimeSpan tsp)
+    private static void ShiftOneAss(FileInfo f, FileInfo opt, TimeSpan tsp, string[] styles)
     {
         Console.WriteLine(f);
         var data = AssParse.ReadAssFile(f.FullName);
-        SubtileProcess.ShiftAss(data.Events.Collection, tsp);
+
+        if (styles.Length > 0)
+        {
+            var negation = styles[0] == "!";
+            SubtileProcess.ShiftAss(data.Events.Collection, tsp, negation ? styles[1..] : styles, negation);
+        }
+        else
+        {
+            SubtileProcess.ShiftAss(data.Events.Collection, tsp);
+        }
+
         AssParse.WriteAssFile(data, opt.FullName);
+        Console.WriteLine("fine.");
     }
 
     private static TimeSpan GetTimespan(string shiftSpan, string fps)

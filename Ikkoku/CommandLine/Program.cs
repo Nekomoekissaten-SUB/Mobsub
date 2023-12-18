@@ -106,6 +106,11 @@ partial class Program
             description: "Shift subtitle time. Support int ends with mls (millisecond), cts (centisecond), sec (second), min (minute), frm (frame); pure int use second; if use frm but not specify fps, fps will be 24000/1001."
         );
 
+        var shiftStyles = new Option<string[]>(
+            name: "--shift-styles",
+            description: "Experimental. Shift styles. Default is shift all styles or you select styles, first is ! means you will not shift styles."
+        ){ AllowMultipleArgumentsPerToken = true };
+
         var tcfile = new Option<FileInfo>(
             name: "--tcfile",
             description: "You should specify timecode file (v2) if you want convert vfr subtitles to cfr subtitles."
@@ -113,9 +118,9 @@ partial class Program
 
         var tppCommand = new Command("tpp", "Subtitle timing post-processor.")
         {
-            path, optPath, shiftSpan, fps, tcfile
+            path, optPath, shiftSpan, shiftStyles, fps, tcfile
         };
-        tppCommand.SetHandler(TimingPostProcessor, path, optPath, shiftSpan, fps, tcfile);
+        tppCommand.SetHandler(TimingPostProcessor, path, optPath, shiftSpan, shiftStyles, fps, tcfile);
         tppCommand.AddValidator((result) =>
             {
                 switch (result.GetValueForOption(optPath))
