@@ -63,7 +63,9 @@ public partial class SubtileProcess
         // add layoutres
         if (addLayoutRes)
         {
-            if (data.ScriptInfo.Orders.Add("LayoutResX") || data.ScriptInfo.Orders.Add("LayoutResY"))
+            var _addLayoutX = data.ScriptInfo.Orders.Add("LayoutResX");
+            var _addLayoutY = data.ScriptInfo.Orders.Add("LayoutResY");
+            if (_addLayoutX || _addLayoutY)
             {
                 records.Append(" add LayoutResX/Y;");
             }
