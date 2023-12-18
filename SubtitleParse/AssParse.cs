@@ -696,6 +696,7 @@ public class AssParse
                         sw.Write($"{kvp.Key}: {kvp.Value}");
                         sw.Write(newline);
                     }
+                    sw.Write(newline);
                     break;
                 case AssSection.AegisubExtradata:
                     sw.Write("[Aegisub Extradata]");
@@ -705,6 +706,7 @@ public class AssParse
                         sw.Write(data.AegiusbExtradata.ToArray()[i]);
                         sw.Write(newline);
                     }
+                    sw.Write(newline);
                     break;
             }
         }
