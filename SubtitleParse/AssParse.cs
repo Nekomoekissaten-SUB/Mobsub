@@ -629,6 +629,7 @@ public class AssParse
                             {
                                 records.Add(span[_end.._start].ToArray());
                             }
+                            _end = _start;
                         }
                         break;
                     case AssConstants.NBSP or AssConstants.WordBreaker or AssConstants.LineBreaker:
@@ -646,7 +647,7 @@ public class AssParse
             }
         }
         
-        Debug.Assert(records.Sum(l => l.Length) == span.Length);
+        Debug.Assert(records.Sum(l => l.Length) == span.Length, $"Parse records length is {records.Sum(l => l.Length)}, should be {span.Length}");
 
         return records;
     }
