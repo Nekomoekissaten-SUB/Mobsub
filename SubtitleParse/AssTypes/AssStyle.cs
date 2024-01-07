@@ -4,12 +4,15 @@ namespace Mobsub.AssTypes;
 
 public class AssStyles
 {
-    private readonly string format = "Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding";
+    private readonly string formatV4 = "Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, TertiaryColour, BackColour, Bold, Italic, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, AlphaLevel, Encoding";
+    private readonly string formatV4P = "Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding";
+    private readonly string formatV4PP = "Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginT, MarginB, Encoding, RelativeTo";
+    
     private string[]? formats;
     // public string Version;
     public string[] Formats
     {
-        get => formats ?? format.Split(',').Select(s => s.Trim()).ToArray();
+        get => formats ?? formatV4P.Split(',').Select(s => s.Trim()).ToArray();
         set => formats = value;
     }
     public List<AssStyle> Collection = [];
@@ -17,20 +20,33 @@ public class AssStyles
 
     public void Write(StreamWriter sw, char[] newline, string scriptType)
     {
+        var fmtStr = string.Join(", ", Formats);
         switch (scriptType)
         {
             case "v4.00":
+                if (fmtStr != formatV4)
+                {
+                    throw new Exception("Invalid style format for v4.00 script. Expected: " + formatV4 + ", got: " + fmtStr);
+                }
                 sw.Write("[V4 Styles]");
                 break;
             case "v4.00+":
+                if (fmtStr != formatV4P)
+                {
+                    throw new Exception("Invalid style format for v4.00 script. Expected: " + formatV4P + ", got: " + fmtStr);
+                }
                 sw.Write("[V4+ Styles]");
                 break;
             case "v4.00++":
+                if (fmtStr != formatV4PP)
+                {
+                    Formats = formatV4PP.Split(',').Select(s => s.Trim()).ToArray();
+                }
                 sw.Write("[V4++ Styles]");
             break;
         }
         sw.Write(newline);
-        sw.Write($"Format: {string.Join(", ", Formats)}");
+        sw.Write($"Format: {fmtStr}");
         sw.Write(newline);
 
         for (var i = 0; i < Collection.Count; i++)
@@ -67,7 +83,11 @@ public class AssStyle
     public int MarginL;
     public int MarginR;
     public int MarginV;
+    public int MarginT;
+    public int MarginB;
     public int Encoding;
+    public int AlphaLevel;
+    public int RelativeTo;
 
     // from libass, wait…
     // public int TreatFontNameAsPattern { get; set; }
@@ -163,8 +183,20 @@ public class AssStyle
                 case "MarginV":
                     sw.Write(MarginV);
                     break;
+                case "MarginT":
+                    sw.Write(MarginT);
+                    break;
+                case "MarginB":
+                    sw.Write(MarginB);
+                    break;
                 case "Encoding":
                     sw.Write(Encoding);
+                    break;
+                case "AlphaLevel":
+                    sw.Write(AlphaLevel);
+                    break;
+                case "RelativeTo":
+                    sw.Write(RelativeTo);
                     break;
             }
 

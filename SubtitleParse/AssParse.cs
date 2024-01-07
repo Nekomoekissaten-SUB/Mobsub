@@ -72,6 +72,7 @@ public class AssParse
                     "[Script Info]" => throw new Exception($"Line {lineNumber} have duplicate section [Script Info]"),
                     "[V4 Styles]" => AssSection.StylesV4,
                     "[V4+ Styles]" => AssSection.StylesV4P,
+                    "[V4++ Styles]" => AssSection.StylesV4PP,
                     "[Events]" => AssSection.Events,
                     "[Fonts]" => AssSection.Fonts,
                     "[Graphics]" => AssSection.Graphics,
@@ -216,7 +217,9 @@ public class AssParse
 
                     break;
 
+                case AssSection.StylesV4:
                 case AssSection.StylesV4P:
+                case AssSection.StylesV4PP:
 
                     var style = new AssStyle() { };
 
@@ -304,8 +307,20 @@ public class AssParse
                                         case "MarginV":
                                             style.MarginV = int.Parse(valueArray[i]);
                                             break;
+                                        case "MarginT":
+                                            style.MarginT = int.Parse(valueArray[i]);
+                                            break;
+                                        case "MarginB":
+                                            style.MarginB = int.Parse(valueArray[i]);
+                                            break;
+                                        case "AlphaLevel":
+                                            style.AlphaLevel = int.Parse(valueArray[i]);
+                                            break;
                                         case "Encoding":
                                             style.Encoding = int.Parse(valueArray[i]);
+                                            break;
+                                        case "RelativeTo":
+                                            style.RelativeTo = int.Parse(valueArray[i]);
                                             break;
                                     }
                                 }
