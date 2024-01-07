@@ -350,6 +350,8 @@ public class AssParse
 
                 case AssSection.Events:
 
+                    var scriptType = assData.ScriptInfo.ScriptType;
+
                     switch (nextChar)
                     {
                         case ';':
@@ -371,6 +373,10 @@ public class AssParse
                             sr.Read();
                             if (line.Equals("Format".AsSpan()))
                             {
+                                if (scriptType == "v4.00++")
+                                {
+                                    throw new Exception($"{scriptType} not have format line");
+                                }
                                 eventFormats = sr.ReadLine()!.Split(',').Select(s => s.Trim()).ToList();
                                 eventFormatLength = eventFormats.Count;
                                 assData.Events.Formats = eventFormats.ToArray();
@@ -401,6 +407,8 @@ public class AssParse
                             sr.Read();
                             switch (eventFormats[commaNum])
                             {
+                                case "Marked":
+                                    break;
                                 case "Layer":
                                     assData.Events.Collection.Last().Layer = int.Parse(line.ToString());
                                     break;
@@ -424,6 +432,12 @@ public class AssParse
                                     break;
                                 case "MarginV":
                                     assData.Events.Collection.Last().MarginV = int.Parse(line.ToString());
+                                    break;
+                                case "MarginT":
+                                    assData.Events.Collection.Last().MarginT = int.Parse(line.ToString());
+                                    break;
+                                case "MarginB":
+                                    assData.Events.Collection.Last().MarginB = int.Parse(line.ToString());
                                     break;
                                 case "Effect":
                                     assData.Events.Collection.Last().Effect = line.ToString();

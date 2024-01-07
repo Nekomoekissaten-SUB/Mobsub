@@ -4,11 +4,13 @@ namespace Mobsub.AssTypes;
 
 public class AssEvents
 {
-    private readonly string format = "Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text";
+    private readonly string formatV4P = "Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text";
+    private readonly string formatV4PP = "Layer, Start, End, Style, Name, MarginL, MarginR, MarginT, MarginB, Effect, Text";
+    private readonly string formatV4 = "Marked, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text";
     private string[]? formats;
     public string[] Formats
     {
-        get => formats ?? format.Split(',').Select(s => s.Trim()).ToArray();
+        get => formats ?? formatV4P.Split(',').Select(s => s.Trim()).ToArray();
         set => formats = value;
     }
     public List<AssEvent> Collection = [];
@@ -30,11 +32,17 @@ public class AssEvents
 
 public class AssEvent
 {
+    private int layer = 0;
     public int lineNumber;
     public bool StartSemicolon = false;
     public string? Untouched = string.Empty;
     public bool IsDialogue = true;
-    public int Layer = 0;
+    public int Layer
+    {
+        get => layer;
+        set => layer = value >= 0 ? value : 0;
+    }
+    public readonly int Marked = 0;
     public TimeOnly Start
     {
         get => start;
@@ -50,7 +58,9 @@ public class AssEvent
     public int MarginL = 0;
     public int MarginR = 0;
     public int MarginV = 0;
-    public string Effect = string.Empty;
+    public int MarginT = 0;
+    public int MarginB = 0;
+    public string? Effect;
     public List<char[]> Text = [];  // override tags block, special chars block, normal text block
 
     private readonly TimeOnly assMaxTime = new TimeOnly(9, 59, 59, 990);
@@ -115,9 +125,12 @@ public class AssEvent
             
             for (var i = 0; i < fmts.Length; i++)
             {
-                var fmt = fmts[i];
+                // var fmt = fmts[i];
                 switch (fmts[i])
                 {
+                    case "Marked":
+                        sw.Write(Marked);
+                        break;
                     case "Layer":
                         sw.Write(Layer);
                         break;
@@ -141,6 +154,12 @@ public class AssEvent
                         break;
                     case "MarginV":
                         sw.Write(MarginV);
+                        break;
+                    case "MarginT":
+                        sw.Write(MarginT);
+                        break;
+                    case "MarginB":
+                        sw.Write(MarginB);
                         break;
                     case "Effect":
                         sw.Write(Effect);
