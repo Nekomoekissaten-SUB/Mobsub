@@ -14,6 +14,31 @@ public class AssConstants
     public const char FunctionValueSeparator = ',';
     public const int NBSP_Utf16 = 0x00A0;
 
+    public class ScriptInfo
+    {
+        // Functional Headers
+        public const string ScriptType = "ScriptType";
+        public const string PlayResX = "PlayResX";
+        public const string PlayResY = "PlayResY";
+        public const string LayoutResX = "LayoutResX";
+        public const string LayoutResY = "LayoutResY";
+        public const string WrapStyle = "WrapStyle";
+        public const string Timer = "Timer";
+        public const string ScaledBorderAndShadow = "ScaledBorderAndShadow";
+        public const string Kerning = "Kerning";    // unused?
+        public const string YCbCrMatrix = "YCbCr Matrix";
+
+        // Informational Headers
+        public const string Title = "Title";
+        public const string OriginalScript = "Original Script";
+        public const string OriginalTranslation = "Original Translation";
+        public const string OriginalEditing = "Original Editing";
+        public const string OriginalTiming = "Original Timing";
+        public const string ScriptUpdatedBy = "Script Updated By";
+        public const string UpdateDetails = "Update Details";
+
+    }
+
 
     public static bool IsEventSpecialCharPair(char[] ca) => ca.Length == 2 && ca[0] == '\\' && (ca[1] is LineBreaker or WordBreaker or NBSP);
     public static bool IsEventSpecialCharPair(Span<char> ca) => ca.Length == 2 && ca[0] == '\\' && (ca[1] is LineBreaker or WordBreaker or NBSP);

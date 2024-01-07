@@ -23,7 +23,6 @@ public class AssScriptInfo
             scriptType = value;
         }
     }
-    public string Title {get; set;} = string.Empty;
     public int PlayResX {get; set;} = 640;
     public int PlayResY {get; set;} = 480;
     public int LayoutResX
@@ -56,9 +55,16 @@ public class AssScriptInfo
     public bool ScaledBorderAndShadow {get; set;} = true; // yes or no
     public bool Kerning {get; set;} = false;    // yes or no, only libass, vsfilter is disabled
     public AssYCbCrMatrix YCbCrMatrix {get; set;} = new AssYCbCrMatrix();
+
+    
+    public string? Title;
+    public string? OriginalScript, OriginalTranslation, OriginalEditing, OriginalTiming, ScriptUpdatedBy, UpdateDetails;
+
+    
     public List<string> Comment = [];
-    public Dictionary<string, string> Others = [];
-    public int status = 0;
+    public List<string> CustomData = [];
+    // public Dictionary<string, string> Others = [];
+    // public int status = 0;
     public HashSet<string> Orders = [];
 
     public void Write(StreamWriter sw, char[] newline)
@@ -76,48 +82,75 @@ public class AssScriptInfo
         {
             switch (k)
             {
-                case "Title":
+                case AssConstants.ScriptInfo.ScriptType:
+                    sw.Write($"{k}: {ScriptType}");
+                    break;
+                case AssConstants.ScriptInfo.PlayResX:
+                    sw.Write($"{k}: {PlayResX}");
+                    break;
+                case AssConstants.ScriptInfo.PlayResY:
+                    sw.Write($"{k}: {PlayResY}");
+                    break;
+                case AssConstants.ScriptInfo.LayoutResX:
+                    sw.Write($"{k}: {LayoutResX}");
+                    break;
+                case AssConstants.ScriptInfo.LayoutResY:
+                    sw.Write($"{k}: {LayoutResY}");
+                    break;
+                case AssConstants.ScriptInfo.Timer:
+                    sw.Write($"{k}: {Timer:0.000}");
+                    break;
+                case AssConstants.ScriptInfo.WrapStyle:
+                    sw.Write($"{k}: {WrapStyle}");
+                    break;
+                case AssConstants.ScriptInfo.ScaledBorderAndShadow:
+                    sw.Write(string.Format("{0}: {1}", k, ScaledBorderAndShadow ? "yes" : "no"));
+                    break;
+                case AssConstants.ScriptInfo.Kerning:
+                    sw.Write(string.Format("{0}: {1}", k, Kerning ? "yes" : "no"));
+                    break;
+                case AssConstants.ScriptInfo.YCbCrMatrix:
+                    sw.Write($"{k}: {YCbCrMatrix.ToStringBuilder()}");
+                    break;
+                
+                case AssConstants.ScriptInfo.Title:
                     sw.Write($"Title: {Title}");
                     break;
-                case "ScriptType":
-                    sw.Write($"ScriptType: {ScriptType}");
+                case AssConstants.ScriptInfo.OriginalScript:
+                    sw.Write($"{k}: {OriginalScript}");
                     break;
-                case "PlayResX":
-                    sw.Write($"PlayResX: {PlayResX}");
+                case AssConstants.ScriptInfo.OriginalTranslation:
+                    sw.Write($"{k}: {OriginalTranslation}");
                     break;
-                case "PlayResY":
-                    sw.Write($"PlayResY: {PlayResY}");
+                case AssConstants.ScriptInfo.OriginalEditing:
+                    sw.Write($"{k}: {OriginalEditing}");
                     break;
-                case "LayoutResX":
-                    sw.Write($"LayoutResX: {LayoutResX}");
+                case AssConstants.ScriptInfo.OriginalTiming:
+                    sw.Write($"{k}: {OriginalTiming}");
                     break;
-                case "LayoutResY":
-                    sw.Write($"LayoutResY: {LayoutResY}");
+                case AssConstants.ScriptInfo.ScriptUpdatedBy:
+                    sw.Write($"{k}: {ScriptUpdatedBy}");
                     break;
-                case "Timer":
-                    sw.Write($"Timer: {Timer:0.000}");
+                case AssConstants.ScriptInfo.UpdateDetails:
+                    sw.Write($"{k}: {UpdateDetails}");
                     break;
-                case "WrapStyle":
-                    sw.Write($"WrapStyle: {WrapStyle}");
-                    break;
-                case "ScaledBorderAndShadow":
-                    sw.Write(string.Format("ScaledBorderAndShadow: {0}", ScaledBorderAndShadow ? "yes" : "no"));
-                    break;
-                case "Kerning":
-                    sw.Write(string.Format("Kerning: {0}", Kerning ? "yes" : "no"));
-                    break;
-                case "YCbCr Matrix":
-                    sw.Write($"YCbCr Matrix: {YCbCrMatrix.ToStringBuilder()}");
-                    break;
+
                 default:
-                    if (Others.TryGetValue(k, out string? v))
-                    {
-                        sw.Write($"{k}: {v}");
-                    }
+                    // if (Others.TryGetValue(k, out string? v))
+                    // {
+                    //     sw.Write($"{k}: {v}");
+                    // }
                     break;
             }
             sw.Write(newline);
         }
+
+        foreach (var s in CustomData)
+        {
+            sw.Write($"!: {s}");
+            sw.Write(newline);
+        }
+
         sw.Write(newline);
     }
 }

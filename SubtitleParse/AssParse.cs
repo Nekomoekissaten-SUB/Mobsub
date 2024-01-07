@@ -97,6 +97,16 @@ public class AssParse
                             assData.ScriptInfo.Comment.Add(sr.ReadLine()!.Trim());
                             lineNumber += 1;
                             break;
+                        
+                        case '!':
+                            sr.Read();
+                            if (sr.Peek() == ':')
+                            {
+                                sr.Read();
+                            }
+                            assData.ScriptInfo.CustomData.Add(sr.ReadLine()!.Trim());
+                            lineNumber += 1;
+                            break;
 
                         case ':':
                             key = line.ToString();
@@ -105,66 +115,87 @@ public class AssParse
 
                             switch (key)
                             {
-                                case "ScriptType":
+                                // Functional headers
+                                case AssConstants.ScriptInfo.ScriptType:
                                     assData.ScriptInfo.ScriptType = value;
                                     break;
 
-                                case "Title":
-                                    assData.ScriptInfo.Title = value;
-                                    break;
-
-                                case "PlayResX":
-                                case "PlayResY":
-                                case "LayoutResX":
-                                case "LayoutResY":
-                                case "WrapStyle":
+                                case AssConstants.ScriptInfo.PlayResX:
+                                case AssConstants.ScriptInfo.PlayResY:
+                                case AssConstants.ScriptInfo.LayoutResX:
+                                case AssConstants.ScriptInfo.LayoutResY:
+                                case AssConstants.ScriptInfo.WrapStyle:
                                     if (int.TryParse(value, out int intValue))
                                     {
                                         switch (key)
                                         {
-                                            case "PlayResX":
+                                            case AssConstants.ScriptInfo.PlayResX:
                                                 assData.ScriptInfo.PlayResX = intValue;
                                                 break;
-                                            case "PlayResY":
+                                            case AssConstants.ScriptInfo.PlayResY:
                                                 assData.ScriptInfo.PlayResY = intValue;
                                                 break;
-                                            case "LayoutResX":
+                                            case AssConstants.ScriptInfo.LayoutResX:
                                                 assData.ScriptInfo.LayoutResX = intValue;
                                                 break;
-                                            case "LayoutResY":
+                                            case AssConstants.ScriptInfo.LayoutResY:
                                                 assData.ScriptInfo.LayoutResY = intValue;
                                                 break;
-                                            case "WrapStyle":
+                                            case AssConstants.ScriptInfo.WrapStyle:
                                                 assData.ScriptInfo.WrapStyle = intValue;
                                                 break;
                                         }
                                     }
                                     break;
 
-                                case "Timer":
+                                case AssConstants.ScriptInfo.Timer:
                                     if (float.TryParse(value, out float floatValue))
                                     {
                                         assData.ScriptInfo.Timer = floatValue;
                                     }
                                     break;
 
-                                case "ScaledBorderAndShadow":
+                                case AssConstants.ScriptInfo.ScaledBorderAndShadow:
                                     assData.ScriptInfo.ScaledBorderAndShadow = value == "yes";
                                     break;
 
-                                case "Kerning":
+                                case AssConstants.ScriptInfo.Kerning:
                                     assData.ScriptInfo.Kerning = value == "yes";
                                     break;
 
-                                case "YCbCr Matrix":
+                                case AssConstants.ScriptInfo.YCbCrMatrix:
                                     var l = value.Split('.');
                                     assData.ScriptInfo.YCbCrMatrix.Full = l.Length > 1 && l.First() != "TV";
                                     assData.ScriptInfo.YCbCrMatrix.Matrix = l.Last();
                                     break;
 
-                                default:
-                                    assData.ScriptInfo.Others[key] = value;
+                                // Metadata headers
+                                case AssConstants.ScriptInfo.Title:
+                                    assData.ScriptInfo.Title = value;
                                     break;
+                                case AssConstants.ScriptInfo.OriginalScript:
+                                    assData.ScriptInfo.OriginalScript = value;
+                                    break;
+                                case AssConstants.ScriptInfo.OriginalTranslation:
+                                    assData.ScriptInfo.OriginalTranslation = value;
+                                    break;
+                                case AssConstants.ScriptInfo.OriginalEditing:
+                                    assData.ScriptInfo.OriginalEditing = value;
+                                    break;
+                                case AssConstants.ScriptInfo.OriginalTiming:
+                                    assData.ScriptInfo.OriginalTiming = value;
+                                    break;
+                                case AssConstants.ScriptInfo.ScriptUpdatedBy:
+                                    assData.ScriptInfo.ScriptUpdatedBy = value;
+                                    break;
+                                case AssConstants.ScriptInfo.UpdateDetails:
+                                    assData.ScriptInfo.UpdateDetails = value;
+                                    break;
+
+                                default:
+                                    // assData.ScriptInfo.Others[key] = value;
+                                    // break;
+                                    throw new Exception($"Unknown key in Script Info: {key}");
                             }
                             
                             if (!assData.ScriptInfo.Orders.Add(key))
