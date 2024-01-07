@@ -83,8 +83,8 @@ public partial class SubtileProcess
             }
             
             Debug.Assert(vfrFrame1 != null && vfrFrame2 != null);
-            ets[i].Start = new TimeOnly((long)((double)vfrFrame1 * fpsArray[1] / fpsArray[0] * 10000000));
-            ets[i].End   = new TimeOnly((long)((double)vfrFrame2 * fpsArray[1] / fpsArray[0] * 10000000));
+            ets[i].Start = new AssTime((long)((double)vfrFrame1 * fpsArray[1] / fpsArray[0] * 10000000));
+            ets[i].End   = new AssTime((long)((double)vfrFrame2 * fpsArray[1] / fpsArray[0] * 10000000));
         }
     }
 

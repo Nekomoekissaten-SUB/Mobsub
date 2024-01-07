@@ -575,58 +575,75 @@ public class AssParse
         return ReadAssFile(fs);
     }
 
-    public static TimeOnly ParseTime(StringBuilder sb)
+    public static AssTime ParseTime(StringBuilder sb)
     {
         // hours:minutes:seconds:centiseconds
-        // 0:00:00.00
+        // 0:00:00.00, number of digits of hours is variable
         var ms = 0;
+        var sepPosFirst = 1;
+
         for (int i = 0; i < sb.Length; i++)
+        {
+            if (sb[i] == ':')
+            {
+                sepPosFirst = i;
+                break;
+            }
+        }
+
+        int h = 0;
+        for (var i = sepPosFirst; i > -1; i--)
+        {
+            h += (sb[i] - '0') * (int)Math.Pow(10, i - 1);
+        }
+        ms += h * 1000 * 60 * 60;
+
+        for (int i = sepPosFirst + 1; i < sb.Length; i++)
         {
             var c = sb[i];
             var n = c - '0';
             
-            switch (i)
+            if (i == sepPosFirst + 1)
             {
-                case 0:
-                    ms += n * 1000 * 60 * 60;
-                    break;
-                case 2:
-                    ms += n * 1000 * 60 * 10;
-                    break;
-                case 3:
-                    ms += n * 1000 * 60;
-                    break;
-                case 5:
-                    ms += n * 1000 * 10;
-                    break;
-                case 6:
-                    ms += n * 1000;
-                    break;
-                case 8:
-                    ms += n * 100;
-                    break;
-                case 9:
-                    ms += n * 10;
-                    break;
-                case 1:
-                case 4:
-                    if (c != ':')
-                    {
-                        throw new Exception($"Wrong timestamp in ass: {sb}");
-                    }
-                    break;
-                case 7:
-                    if (c != '.')
-                    {
-                        throw new Exception($"Wrong timestamp in ass: {sb}");
-                    }
-                    break;
-                default:
+                ms += n * 1000 * 60 * 10;
+            }
+            else if (i == sepPosFirst + 2)
+            {
+                ms += n * 1000 * 60;
+            }
+            else if (i == sepPosFirst + 4)
+            {
+                ms += n * 1000 * 10;
+            }
+            else if (i == sepPosFirst + 5)
+            {
+                ms += n * 1000;
+            }
+            else if (i == sepPosFirst + 6)
+            {
+                if (c != '.')
+                {
                     throw new Exception($"Wrong timestamp in ass: {sb}");
+                }
+            }
+            else if (i == sepPosFirst + 7)
+            {
+                ms += n * 100;
+            }
+            else if (i == sepPosFirst + 8)
+            {
+                ms += n * 10;
+            }
+            else
+            {
+                if (c != ':')
+                {
+                    throw new Exception($"Wrong timestamp in ass: {sb}");
+                }
             }
         }
 
-        return new TimeOnly((long)ms * 1000 * 10);
+        return new AssTime(ms);
     }
 
     public static List<char[]> ParseEventText(ReadOnlySpan<char> span)

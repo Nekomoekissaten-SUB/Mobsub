@@ -43,16 +43,8 @@ public class AssEvent
         set => layer = value >= 0 ? value : 0;
     }
     public readonly int Marked = 0;
-    public TimeOnly Start
-    {
-        get => start;
-        set => start = value > assMaxTime ? assMaxTime : value < TimeOnly.MinValue ? TimeOnly.MinValue : value;
-    }
-    public TimeOnly End
-    {
-        get => end;
-        set => end = value > assMaxTime ? assMaxTime : value < TimeOnly.MinValue ? TimeOnly.MinValue : value;
-    }
+    public AssTime Start;
+    public AssTime End;
     public string Style = "Default";
     public string Name = string.Empty;
     public int MarginL = 0;
@@ -63,11 +55,7 @@ public class AssEvent
     public string? Effect;
     public List<char[]> Text = [];  // override tags block, special chars block, normal text block
 
-    private readonly TimeOnly assMaxTime = new TimeOnly(9, 59, 59, 990);
-    private TimeOnly start = TimeOnly.MinValue;
-    private TimeOnly end = TimeOnly.MinValue;
-
-    public static void WriteTime(StreamWriter sw, TimeOnly time, bool ctsRounding)
+    public static void WriteTime(StreamWriter sw, AssTime time, bool ctsRounding)
     {
         sw.Write(time.Hour);
         sw.Write(':');
