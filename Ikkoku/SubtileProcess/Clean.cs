@@ -57,6 +57,7 @@ public partial class SubtileProcess
             if (!data.ScriptInfo.Title.AsSpan().SequenceEqual(assFileName))
             {
                 data.ScriptInfo.Title = assFileName.ToString();
+                data.ScriptInfo.Orders.Add("Title");
                 records.Append(" rename title;");
             }
         }
