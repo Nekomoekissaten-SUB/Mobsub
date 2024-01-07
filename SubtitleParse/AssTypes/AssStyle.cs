@@ -61,8 +61,18 @@ public class AssStyles
 
 public class AssStyle
 {
-    public string Name = string.Empty;
-    public string Fontname = string.Empty;
+    private string? name;
+    private string? fontname;
+    public string Name
+    {
+        get => name is null ? "Default" : name;
+        set => name = value;
+    }
+    public string Fontname
+    {
+        get => fontname is null ? "Arial" : fontname.Length > 31 ? fontname[..31] : fontname;  // GDI max 32, last is null
+        set => fontname = value;
+    }
     public float Fontsize;  // ushort; Is negative and float really correct?
     public AssRGB8? PrimaryColour;
     public AssRGB8? SecondaryColour;
