@@ -592,9 +592,9 @@ public class AssParse
         }
 
         int h = 0;
-        for (var i = sepPosFirst; i > -1; i--)
+        for (var i = sepPosFirst - 1; i > -1; i--)
         {
-            h += (sb[i] - '0') * (int)Math.Pow(10, i - 1);
+            h += (sb[i] - '0') * (int)Math.Pow(10, i);
         }
         ms += h * 1000 * 60 * 60;
 

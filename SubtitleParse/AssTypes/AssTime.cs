@@ -23,7 +23,7 @@ public readonly struct AssTime
     public long Ticks => _ticks;
 
     public AssTime(long ticks) => _ticks = ticks;
-    public AssTime(int ms) => _ticks = ms * 10000;
+    public AssTime(int ms) => _ticks = (long)ms * 10000;
 
 
     private AssTime AddTicks(long ticks) => new AssTime((_ticks + TimeSpan.TicksPerDay + (ticks % TimeSpan.TicksPerDay)) % TimeSpan.TicksPerDay);
