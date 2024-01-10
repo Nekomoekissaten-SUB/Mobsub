@@ -5,8 +5,8 @@ namespace Mobsub.AssTypes;
 public class AssEvents
 {
     private readonly string formatV4P = "Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text";
-    private readonly string formatV4PP = "Layer, Start, End, Style, Name, MarginL, MarginR, MarginT, MarginB, Effect, Text";
-    private readonly string formatV4 = "Marked, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text";
+    // private readonly string formatV4PP = "Layer, Start, End, Style, Name, MarginL, MarginR, MarginT, MarginB, Effect, Text";
+    // private readonly string formatV4 = "Marked, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text";
     private string[]? formats;
     public string[] Formats
     {
