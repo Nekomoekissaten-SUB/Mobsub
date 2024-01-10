@@ -194,9 +194,9 @@ public class AssParse
                                     break;
 
                                 default:
-                                    // assData.ScriptInfo.Others[key] = value;
-                                    // break;
-                                    throw new Exception($"Unknown key in Script Info: {key}");
+                                    assData.ScriptInfo.Others[key] = value;
+                                    break;
+                                    // throw new Exception($"Unknown key in Script Info: {key}");
                             }
                             
                             if (!assData.ScriptInfo.Orders.Add(key))

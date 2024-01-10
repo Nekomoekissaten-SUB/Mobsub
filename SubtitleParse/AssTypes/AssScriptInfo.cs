@@ -63,7 +63,7 @@ public class AssScriptInfo
     
     public List<string> Comment = [];
     public List<string> CustomData = [];
-    // public Dictionary<string, string> Others = [];
+    public Dictionary<string, string> Others = [];
     // public int status = 0;
     public HashSet<string> Orders = [];
 
@@ -136,10 +136,10 @@ public class AssScriptInfo
                     break;
 
                 default:
-                    // if (Others.TryGetValue(k, out string? v))
-                    // {
-                    //     sw.Write($"{k}: {v}");
-                    // }
+                    if (Others.TryGetValue(k, out string? v))
+                    {
+                        sw.Write($"{k}: {v}");
+                    }
                     break;
             }
             sw.Write(newline);
