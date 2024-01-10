@@ -7,6 +7,7 @@ using YamlDotNet.Serialization;
 using OpenCCSharp.Conversion;
 using System.Text;
 using Mobsub.ZhConvert;
+using Mobsub.Utils;
 
 namespace Mobsub.Ikkoku.CommandLine;
 
@@ -405,6 +406,77 @@ partial class Program
             }
             
         }
+    }
+
+    internal static void ConvertSubtitles(FileSystemInfo path, FileSystemInfo? optPath, string convertSuffix, string inputSuffix)
+    {
+        switch (path)
+        {
+            case FileInfo f:
+                ConvertSubtitle(f, optPath, convertSuffix);
+                break;
+            case DirectoryInfo d:
+                var files = Traversal(d, inputSuffix);
+                foreach (var f in files)
+                {
+                    ConvertSubtitle(f, optPath, convertSuffix);
+                }
+                break;
+        }
+    }
+
+
+    internal static void ConvertSubtitle(FileInfo fromFile, FileSystemInfo? optPath, string convertSuffix)
+    {
+        if (fromFile.Extension == convertSuffix)
+        {
+            throw new Exception($"{convertSuffix} can’t same as {fromFile.Extension}");
+        }
+        
+        DirectoryInfo optDir = fromFile.Directory!;
+        switch (optPath)
+        {
+            case DirectoryInfo d:
+                optDir = d;
+                break;
+            case FileInfo f:
+                optDir = f.Directory!;
+                break;
+            default:
+                break;
+        }
+        
+        var optFile = ChangeSuffix(fromFile, optDir, convertSuffix);
+        var fs = new FileStream(optFile.FullName, FileMode.Create, FileAccess.Write);
+        using var memStream = new MemoryStream();
+        using var sw = new StreamWriter(memStream, DetectEncoding.EncodingRefOS());
+        
+        switch (fromFile.Extension)
+        {
+            case ".ass":
+                var ass = AssParse.ReadAssFile(fromFile.FullName);
+
+                switch (convertSuffix)
+                {
+                    case ".txt":
+                        SubtileProcess.ConvertAssToTxt(sw, ass);
+                        break;
+                    default:
+                        // fs.Close();
+                        throw new NotImplementedException($"Unsupport: {fromFile.Extension} convert to {convertSuffix}.");
+                }
+
+                break;
+            default:
+                // fs.Close();
+                throw new NotImplementedException($"Unsupport: {fromFile.Extension}.");
+        }
+
+        sw.Flush();
+
+        memStream.Seek(0, SeekOrigin.Begin);
+        memStream.CopyTo(fs);
+        // fs.Close();
     }
 
     private static void MergeBase(FileInfo baseFile, FileInfo[] mergeFile, FileSystemInfo optPath, string mergeSection)

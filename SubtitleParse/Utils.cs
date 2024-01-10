@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 
 namespace Mobsub.Utils;
 
-class DetectEncoding
+public class DetectEncoding
 {
     public static Encoding GuessEncoding(byte[] buffer)
     {

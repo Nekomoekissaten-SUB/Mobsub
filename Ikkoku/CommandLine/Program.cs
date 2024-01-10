@@ -314,6 +314,22 @@ partial class Program
         );
         rootCommand.Add(cjkppCommand);
 
+        // convert
+        var inputSuffix = new Option<string>(
+            name: "--from-format",
+            description: "Format which will convert from"
+        );
+        var convertSuffix = new Option<string>(
+            name: "--to-format",
+            description: "Format which will convert to"
+        ) { IsRequired = true };
+        var convSubtitleCommand = new Command("convert", "Convert subtitle format")
+        {
+            path, optPath, convertSuffix
+        };
+        convSubtitleCommand.SetHandler(ConvertSubtitles, path, optPath, convertSuffix, inputSuffix);
+        rootCommand.Add(convSubtitleCommand);
+
 
         return await rootCommand.InvokeAsync(args);
     }
