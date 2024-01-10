@@ -340,6 +340,20 @@ public class AssParse
                             line.Clear();
                             break;
 
+                        case '/':
+
+                            if (line.Length == 0)
+                            {
+                                sr.ReadLine();
+                                lineNumber += 1;
+                            }
+                            else
+                            {
+                                sr.Read();
+                                line.Append((char)nextChar);
+                            }
+                            break;
+
                         default:
                             sr.Read();
                             line.Append((char)nextChar);
