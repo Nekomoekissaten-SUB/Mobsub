@@ -325,7 +325,7 @@ partial class Program
         ) { IsRequired = true };
         var convSubtitleCommand = new Command("convert", "Convert subtitle format")
         {
-            path, optPath, convertSuffix
+            path, optPath, convertSuffix, inputSuffix
         };
         convSubtitleCommand.SetHandler(ConvertSubtitles, path, optPath, convertSuffix, inputSuffix);
         rootCommand.Add(convSubtitleCommand);
