@@ -26,4 +26,6 @@ public readonly struct AssTime
 
     public AssTime Add(TimeSpan value) => AddTicks(value.Ticks);
 
+    public int CompareTo(AssTime value) => _ticks.CompareTo(value._ticks);
+
 }

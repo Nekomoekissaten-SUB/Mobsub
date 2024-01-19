@@ -87,15 +87,25 @@ public partial class SubtileProcess
         var unusedChar = new char[] { '\u200E', '\u200F', '\u200B' };
         var weirdSpace = new char[] { '\u00a0' };
         var etsb = new StringBuilder();
+        var hadWeridTime = false;
+        var weirdTimeEventLines = new List<int>();
+        var eventLineFirst = data.Events.Collection[0].lineNumber;
         var hadMotionGarbage = false;
         var hadUnusedChar = false;
         var hadWeridSpace = false;
         
         for (var i = 0; i < data.Events.Collection.Count; i++)
         {
+            if (data.Events.Collection[i].IsDialogue && (data.Events.Collection[i].Start.CompareTo(data.Events.Collection[i].End) > 0))
+            {
+                data.Events.Collection[i].IsDialogue = false;
+                hadWeridTime = true;
+                weirdTimeEventLines.Add(data.Events.Collection[i].lineNumber - eventLineFirst + 1);
+            }
+
             var et = data.Events.Collection[i].Text;
 
-            // {=} {=0} {=99}            
+            // {=} {=0} {=99}
             if (et.Count > 0 && AssTagParse.IsOvrrideBlock(et[0].AsSpan()) && et[0][1] == '=' && ((et[0].Length > 3 && char.IsDigit(et[0][2])) || et[0].Length == 3))
             {
                 et.RemoveAt(0);
@@ -141,6 +151,10 @@ public partial class SubtileProcess
             }
         }
 
+        if (hadWeridTime)
+        {
+            records.Append($" comment start > end event lines: {string.Join(", ", weirdTimeEventLines)};");
+        }
         if (hadMotionGarbage)
         {
             records.Append(" remove aegisub-motion garbage;");

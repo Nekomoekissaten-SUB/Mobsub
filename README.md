@@ -41,10 +41,11 @@ Test | 控制台应用程序 | 测试用
 3. `Script Info` 中的 `Tilte` 值改为 ass 的文件名，不含后缀，暂时不支持自定义
 4. `Script Info` 添加 `LayoutResX/Y`，默认与 `PlayResX/Y` 值相同，可以通过 `--no-layoutres` 不添加
 5. 检查并记录 `Events` 中使用但 `Styles` 中未定义的样式
-6. `Events` 中移除 `U+200E`、`U+200F`，将 `U+00A0` 替换为 `U+0020`
+6. `Events` 中移除 `U+200E`、`U+200F`、`U+200B`，将 `U+00A0` 替换为 `U+0020`
 7. `Events` 中清理 aegisub-motion 产生的多余字符
-8. 如果使用 `--drop-unused-styles` 可以删除没有使用的样式，默认不开启
-9. 如果使用 `--extract-binaries` 可以将 `Fonts`、`Graphics` 中的数据转回二进制文件，与 ass 输出路径同级目录
+8. 注释并打印 `Events` 中开始时间大于结束时间的行
+9. 如果使用 `--drop-unused-styles` 可以删除没有使用的样式，默认不开启
+10. 如果使用 `--extract-binaries` 可以将 `Fonts`、`Graphics` 中的数据转回二进制文件，与 ass 输出路径同级目录
 
 #### check（字幕检查）
 
