@@ -84,7 +84,7 @@ public partial class SubtileProcess
             records.Append($" undefined styles {string.Join(", ", undefinedStyles)};");
         }
         // remove weird chars, replace weird space, remove aegisub-motion garbage
-        var unusedChar = new char[] { '\u200E', '\u200F'};
+        var unusedChar = new char[] { '\u200E', '\u200F', '\u200B' };
         var weirdSpace = new char[] { '\u00a0' };
         var etsb = new StringBuilder();
         var hadMotionGarbage = false;
@@ -133,7 +133,7 @@ public partial class SubtileProcess
                 
                 if (_mod)
                 {
-                    char[] _new = [];
+                    var _new = new char[etsb.Length];
                     etsb.CopyTo(0, _new, etsb.Length);
                     et[j] = _new;
                 }
