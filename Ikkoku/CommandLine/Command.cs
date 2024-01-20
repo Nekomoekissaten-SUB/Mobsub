@@ -346,65 +346,27 @@ partial class Program
         else
         {
             DirectoryInfo baseDir = mergeConf.Directory!;
-            var tmpValues = new ShiftMergeYamlValue(confVar![0], confVar![1]);
-            var ymlString = File.ReadAllText(mergeConf.FullName);
-            if (ymlString.Length == 0)
-            {
-                throw new FormatException("Configuration file is empty.");
-            }
-            var _deserializer = new StaticDeserializerBuilder(new YamlStaticContext()).WithNodeDeserializer(tmpValues).WithNamingConvention(UnderscoredNamingConvention.Instance).Build();
-            var ymlData = ymlString.AsSpan().StartsWith("version") ? _deserializer.Deserialize<ShiftMergeYamlV2>(ymlString) : _deserializer.Deserialize<ShiftMergeYaml>(ymlString).CovertToV2();
-            Debug.Assert(ymlData is not null);
 
-            var baseFileName = $"{ymlData.Namef["master"]}.ass";
-            var mergeDataList = new List<AssData>();
+            var _sepIndex = confVar![0].AsSpan().IndexOf(':');
 
-            string optFileName;
-            switch (optPath)
-            {
-                case DirectoryInfo d:
-                    if (!d.Exists)
-                    {
-                        d.Create();
-                    }
-                    optFileName = Path.Combine(optPath.FullName, baseFileName);
-                    break;
-                default:
-                    throw new ArgumentException("Output must be a directory.");
-            }
-
-            foreach (var kvp in ymlData.ShiftFr.Where(kvp => kvp.Key == confVar[0]))
-            {
-                TimeSpan tsp;
-                foreach (var kvpEp in kvp.Value)
+            if (_sepIndex > -1)
+            {                
+                if (int.TryParse(confVar[0].AsSpan()[.._sepIndex], out int _epStart) && int.TryParse(confVar[0].AsSpan()[(_sepIndex + 1)..], out int _epEnd))
                 {
-                    if (kvpEp.Value.Length > 1 && (kvpEp.Value[1] - ymlData.TplFr[kvpEp.Key] != kvpEp.Value[0]))
+                    for (var i = _epStart; i <= _epEnd; i++)
                     {
-                        throw new Exception("Merge: Please check your configuration file shift_fr, it may be wrong.");
-                    }
-                    else
-                    {
-                        var dataFrom = AssParse.ReadAssFile(Path.Combine(baseDir.FullName, $"{ymlData.Namef[kvpEp.Key]}.ass"));
-                        tsp = GetTimespan($"{kvpEp.Value[0]}frm", ymlData.Fps);
-                        SubtileProcess.ShiftAss(dataFrom.Events.Collection, tsp);
-                        mergeDataList.Add(dataFrom);
+                        MergeByConfigBase(i.ToString().PadLeft(CountDigits(_epEnd), '0'), confVar[1], mergeConf, baseDir, optPath, mergeSection);
                     }
                 }
-            }
-
-            var bf = Path.Combine(baseDir.FullName, baseFileName);
-            var baseData = AssParse.ReadAssFile(bf);
-            
-            if (mergeDataList is null)
-            {
-                File.Copy(bf, optFileName);
+                else
+                {
+                    throw new Exception("Please check first confVal");
+                }
             }
             else
             {
-                SubtileProcess.MergeAss(baseData, [.. mergeDataList], mergeSection);
-                AssParse.WriteAssFile(baseData, optFileName);
+                MergeByConfigBase(confVar[0], confVar[1], mergeConf, baseDir, optPath, mergeSection);
             }
-            
         }
     }
 
@@ -487,6 +449,86 @@ partial class Program
         SubtileProcess.MergeAss(baseData, mergeData, mergeSection);
         
         WriteAssFile(baseData, baseFile, optPath);
+    }
+
+    private static void MergeByConfigBase(string episode, string lang, FileInfo mergeConf, DirectoryInfo baseDir, FileSystemInfo optPath, string mergeSection)
+    {
+
+        var tmpValues = new ShiftMergeYamlValue(episode, lang);
+        var ymlString = File.ReadAllText(mergeConf.FullName);
+        if (ymlString.Length == 0)
+        {
+            throw new FormatException("Configuration file is empty.");
+        }
+        var _deserializer = new StaticDeserializerBuilder(new YamlStaticContext()).WithNodeDeserializer(tmpValues).WithNamingConvention(UnderscoredNamingConvention.Instance).Build();
+        var ymlData = ymlString.AsSpan().StartsWith("version") ? _deserializer.Deserialize<ShiftMergeYamlV2>(ymlString) : _deserializer.Deserialize<ShiftMergeYaml>(ymlString).CovertToV2();
+        Debug.Assert(ymlData is not null);
+
+        var baseFileName = $"{ymlData.Namef["master"]}.ass";
+        var mergeDataList = new List<AssData>();
+
+        string optFileName;
+        switch (optPath)
+        {
+            case DirectoryInfo d:
+                if (!d.Exists)
+                {
+                    d.Create();
+                }
+                optFileName = Path.Combine(optPath.FullName, baseFileName);
+                break;
+            default:
+                throw new ArgumentException("Output must be a directory.");
+        }
+
+        foreach (var kvp in ymlData.ShiftFr.Where(kvp => kvp.Key == episode))
+        {
+            TimeSpan tsp;
+            foreach (var kvpEp in kvp.Value)
+            {
+                if (kvpEp.Value.Length > 1 && (kvpEp.Value[1] - ymlData.TplFr[kvpEp.Key] != kvpEp.Value[0]))
+                {
+                    throw new Exception("Merge: Please check your configuration file shift_fr, it may be wrong.");
+                }
+                else
+                {
+                    var dataFrom = AssParse.ReadAssFile(Path.Combine(baseDir.FullName, $"{ymlData.Namef[kvpEp.Key]}.ass"));
+                    tsp = GetTimespan($"{kvpEp.Value[0]}frm", ymlData.Fps);
+                    SubtileProcess.ShiftAss(dataFrom.Events.Collection, tsp);
+                    mergeDataList.Add(dataFrom);
+                }
+            }
+        }
+        
+        var bf = Path.Combine(baseDir.FullName, baseFileName);
+        var baseData = AssParse.ReadAssFile(bf);
+        
+        if (mergeDataList.Count == 0)
+        {
+            File.Copy(bf, optFileName);
+        }
+        else
+        {
+            SubtileProcess.MergeAss(baseData, [.. mergeDataList], mergeSection);
+            AssParse.WriteAssFile(baseData, optFileName);
+        }
+    }
+
+    private static int CountDigits(int number)
+    {
+        if (number == 0)
+        {
+            return 1;
+        }
+
+        int digitCount = 0;
+        while (number != 0)
+        {
+            number /= 10;
+            digitCount++;
+        }
+
+        return digitCount;
     }
 
     private static void WriteAssFile(AssData data, FileInfo baseFile, FileSystemInfo optPath)
