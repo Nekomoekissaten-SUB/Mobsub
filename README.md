@@ -121,6 +121,15 @@ v1 示范样例：[Nekomoekissaten-Storage/Danseur/Subs
 v2 示范样例：[Nekomoekissaten-Storage/Summertime/Subs
 /str_effect.yml](https://github.com/Nekomoekissaten-SUB/Nekomoekissaten-Storage/blob/e97e3f83bebe4ea6f6a02e5b0fe54b59859caea1/Summertime/Subs/str_effect.yml)
 
+##### v2
+
+1. `namef`、`tpl_fr`和 `shift_fr` 集数下的同一 key 表示同一文件
+2. `shift_fr` 下的 key 代表集数，集数 key 下文件 key 的 value 是一个 int 数组，根据位置具有不同含义：
+    
+    1. 相对 `tpl_fr` 的偏移量（必有）
+    2. 在视频中 `tpl_fr` 帧的帧号，如果这一帧不存在可以根据其他参考点计算偏移量，并记录该点（一般有，值为 -1 跳过解析）
+    3. 如果不需要完整的文件合并进去，则填入一个开始需要合并的帧号，前面的部分会被截断（需要时有，值为 -1 跳过解析）
+
 ## ZhConvert
 
 未定未来是否会支持[繁化姬](https://zhconvert.org/)

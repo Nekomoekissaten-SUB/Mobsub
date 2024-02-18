@@ -33,6 +33,24 @@ public partial class SubtileProcess
         }
     }
 
+    public static void ShiftAss(List<AssEvent> ets, TimeSpan time, AssTime truncateStart)
+    {
+        AssTime s;
+        for (var i = ets.Count - 1; i >= 0; i--)
+        {
+            s = ets[i].Start.Add(time);
+            if (s.CompareTo(truncateStart) >= 0)
+            {
+                ets[i].Start = s;
+                ets[i].End = ets[i].End.Add(time);
+            }
+            else
+            {
+                ets.RemoveAt(i);
+            }
+        }
+    }
+
     public static void AssumeFPS(List<AssEvent> ets, AVTimestamp tcdata, string fps)
     {
         var fpsArray = fps.Split("/").Select(int.Parse).ToArray();

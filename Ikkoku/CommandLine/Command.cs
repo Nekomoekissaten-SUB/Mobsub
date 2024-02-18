@@ -486,17 +486,25 @@ partial class Program
             TimeSpan tsp;
             foreach (var kvpEp in kvp.Value)
             {
-                if (kvpEp.Value.Length > 1 && (kvpEp.Value[1] - ymlData.TplFr[kvpEp.Key] != kvpEp.Value[0]))
+                if (kvpEp.Value.Length > 3 || (kvpEp.Value.Length > 1 && kvpEp.Value[1] != -1 && (kvpEp.Value[1] - ymlData.TplFr[kvpEp.Key] != kvpEp.Value[0])))
                 {
                     throw new Exception("Merge: Please check your configuration file shift_fr, it may be wrong.");
                 }
+
+                var dataFrom = AssParse.ReadAssFile(Path.Combine(baseDir.FullName, $"{ymlData.Namef[kvpEp.Key]}.ass"));
+                tsp = GetTimespan($"{kvpEp.Value[0]}frm", ymlData.Fps);
+
+                if (kvpEp.Value.Length == 3 && kvpEp.Value[2] != -1)
+                {
+                    var start = new AssTime((int)FrameToMillisecond(kvpEp.Value[2], UnifiedFps(ymlData.Fps)));
+                    SubtileProcess.ShiftAss(dataFrom.Events.Collection, tsp, start);
+                }
                 else
                 {
-                    var dataFrom = AssParse.ReadAssFile(Path.Combine(baseDir.FullName, $"{ymlData.Namef[kvpEp.Key]}.ass"));
-                    tsp = GetTimespan($"{kvpEp.Value[0]}frm", ymlData.Fps);
                     SubtileProcess.ShiftAss(dataFrom.Events.Collection, tsp);
-                    mergeDataList.Add(dataFrom);
                 }
+
+                mergeDataList.Add(dataFrom);
             }
         }
         
