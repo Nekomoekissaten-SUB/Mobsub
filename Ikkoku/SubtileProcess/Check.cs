@@ -198,7 +198,7 @@ public partial class SubtileProcess
         }
     }
 
-    private static bool WeridTimeOneLine(AssEvent evt) => evt.IsDialogue && (evt.Start.CompareTo(evt.End) > 0);
+    public static bool WeridTimeOneLine(AssEvent evt) => evt.IsDialogue && (evt.Start.CompareTo(evt.End) > 0);
     
     /// <summary>
     /// such like {=} {=0} {=99}
@@ -210,7 +210,7 @@ public partial class SubtileProcess
     private static readonly char[] EventUnusedChars = ['\u200E', '\u200F', '\u200B'];
     private static readonly char[] EventWeirdSpace = ['\u00A0'];
 
-    private static void CheckWeridChars(List<char[]> et, out bool hadUnusedChar, out bool hadWeridSpace)
+    public static void CheckWeridChars(List<char[]> et, out bool hadUnusedChar, out bool hadWeridSpace)
     {
         hadUnusedChar = false;
         hadWeridSpace = false;

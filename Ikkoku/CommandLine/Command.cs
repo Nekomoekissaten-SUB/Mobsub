@@ -207,6 +207,43 @@ partial class Program
                 Console.WriteLine($"Undefined styles {string.Join(", ", undefinedStyles)}");
             }
         }
+
+        // var evtStartLine = data.Events.Collection.First().lineNumber;
+        List<int> weridTimeLines = [];
+        List<int> unusedCharLines = [];
+        List<int> weridSpaceLines = [];
+        foreach (var evt in data.Events.Collection)
+        {
+            if (SubtileProcess.WeridTimeOneLine(evt))
+            {
+                weridTimeLines.Add(evt.lineNumber);
+            }
+
+            SubtileProcess.CheckWeridChars(evt.Text, out bool hadUnusedChar, out bool hadWeridSpace);
+            if (hadUnusedChar)
+            {
+                unusedCharLines.Add(evt.lineNumber);
+            }
+            if (hadWeridSpace)
+            {
+                weridSpaceLines.Add(evt.lineNumber);
+            }
+        }
+
+        if (weridTimeLines.Count > 0)
+        {
+            Console.WriteLine($"Dialogue end time less than start time: {string.Join(", ", weridTimeLines)}");
+        }
+
+        if (unusedCharLines.Count > 0)
+        {
+            Console.WriteLine($"Maybe use unused chars: {string.Join(", ", unusedCharLines)}");
+        }
+
+        if (weridSpaceLines.Count > 0)
+        {
+            Console.WriteLine($"Maybe use wrong space char: {string.Join(", ", weridSpaceLines)}");
+        }
         
         Console.WriteLine("Check completed.");
     }
