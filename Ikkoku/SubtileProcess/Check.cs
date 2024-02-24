@@ -157,7 +157,7 @@ public partial class SubtileProcess
                         {
                             if (ca[0] == 'r' && ca.Length > 1)
                             {
-                                styles.Add(ca[1..].ToString()!);
+                                styles.Add(new string(ca[1..]));
                             }
                         }
                     }
