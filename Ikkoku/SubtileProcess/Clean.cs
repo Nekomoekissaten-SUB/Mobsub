@@ -92,6 +92,8 @@ public partial class SubtileProcess
         if (args.processEvents || args.dropUnusedStyles)
         {
             var usedStyles = GetUsedStyles(data.Events.Collection);
+            // Default style always use
+            usedStyles.Add("Default");
 
             // process events
             if (args.processEvents)

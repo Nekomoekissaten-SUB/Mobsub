@@ -164,8 +164,6 @@ public partial class SubtileProcess
                 }
             }
         }
-        // Default style always use
-        styles.Add("Default");
         return styles;
     }
 
