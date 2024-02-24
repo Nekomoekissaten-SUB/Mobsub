@@ -155,7 +155,7 @@ public partial class SubtileProcess
                     {
                         foreach (var ca in AssTagParse.GetTagsFromOvrBlock(block))
                         {
-                            if (ca[0] == 'r' && ca.Length > 1)
+                            if (ca[0] == 'r' && ca.Length > 1 && ca.Length >= 3 && !ca.AsSpan()[..3].SequenceEqual("rnd".AsSpan()))
                             {
                                 styles.Add(new string(ca[1..]));
                             }
