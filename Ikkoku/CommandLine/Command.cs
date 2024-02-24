@@ -41,9 +41,12 @@ partial class Program
         }
 
         // override
-        args.keepComment = keepCommentLines;
-        args.addLayoutRes = addLayoutRes;
-        args.dropUnusedStyles = dropUnusedStyles;
+        if (keepCommentLines)
+            args.keepComment = true;
+        if (addLayoutRes)
+            args.addLayoutRes = true;
+        if (dropUnusedStyles)
+            args.dropUnusedStyles = true;
 
         switch (path)
         {
