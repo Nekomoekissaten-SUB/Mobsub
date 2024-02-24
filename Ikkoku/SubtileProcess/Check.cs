@@ -198,5 +198,37 @@ public partial class SubtileProcess
         }
     }
 
+    private static bool WeridTimeOneLine(AssEvent evt) => evt.IsDialogue && (evt.Start.CompareTo(evt.End) > 0);
+    
+    /// <summary>
+    /// such like {=} {=0} {=99}
+    /// </summary>
+    /// <param name="et">Event.Text</param>
+    /// <returns></returns>
+    private static bool IsMotionGarbage(List<char[]> et) => et.Count > 0 && AssTagParse.IsOvrrideBlock(et[0].AsSpan()) && et[0][1] == '=' && ((et[0].Length > 3 && char.IsDigit(et[0][2])) || et[0].Length == 3);
+
+    private static readonly char[] EventUnusedChars = ['\u200E', '\u200F', '\u200B'];
+    private static readonly char[] EventWeirdSpace = ['\u00A0'];
+
+    private static void CheckWeridChars(List<char[]> et, out bool hadUnusedChar, out bool hadWeridSpace)
+    {
+        hadUnusedChar = false;
+        hadWeridSpace = false;
+        for (var i = 0; i < et.Count; i++)
+        {
+            var blk = et.ToArray()[i];
+            foreach (var c in blk)
+            {
+                if (EventUnusedChars.Contains(c))
+                {
+                    hadUnusedChar = true;
+                }
+                else if (EventWeirdSpace.Contains(c))
+                {
+                    hadWeridSpace = true;
+                }
+            }
+        }
+    }
 
 }

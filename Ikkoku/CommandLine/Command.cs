@@ -13,7 +13,7 @@ namespace Mobsub.Ikkoku.CommandLine;
 
 partial class Program
 {
-    internal static void Clean(FileSystemInfo path, FileSystemInfo? optPath, bool extractBinaries, bool keepCommentLines, bool verbose, bool notAddLayoutRes, bool dropUnusedStyles)
+    internal static void Clean(FileSystemInfo path, FileSystemInfo? optPath, bool extractBinaries, bool keepCommentLines, bool verbose, bool addLayoutRes, bool dropUnusedStyles, CleanPreset preset)
     {
         var sw = new Stopwatch();
         sw.Start();
@@ -21,7 +21,30 @@ partial class Program
         DirectoryInfo? binDir = null;
         FileInfo opt;
         var ext = ".ass";
-        
+
+        var args = new SubtileProcess.CleanAssArgs();
+        switch (preset)
+        {
+            case CleanPreset.Basic:
+                args.keepComment = true;
+                break;
+            case CleanPreset.More:
+                args.keepComment = false;
+                args.renameTitle = true;
+                args.addLayoutRes = true;
+                args.dropUnusedStyles = false;
+                args.processEvents = true;
+                args.rmMotionGarbage = true;
+                break;
+            default:
+                break;
+        }
+
+        // override
+        args.keepComment = keepCommentLines;
+        args.addLayoutRes = addLayoutRes;
+        args.dropUnusedStyles = dropUnusedStyles;
+
         switch (path)
         {
             case FileInfo iptFile:
@@ -44,7 +67,7 @@ partial class Program
                         throw new IOException();
                 }
 
-                CleanOneAss(iptFile, opt, binDir, keepCommentLines, verbose, notAddLayoutRes, dropUnusedStyles);
+                CleanOneAss(iptFile, opt, binDir, verbose, args);
                 break;
             
             case DirectoryInfo iptDir:
@@ -65,7 +88,7 @@ partial class Program
                         foreach (var f in subfiles)
                         {
                             opt = new FileInfo(Path.Combine(d.FullName, f.Name));
-                            CleanOneAss(f, opt, binDir, keepCommentLines, verbose, notAddLayoutRes, dropUnusedStyles);
+                            CleanOneAss(f, opt, binDir, verbose, args);
                         }
                         break;
                     default:
@@ -81,7 +104,13 @@ partial class Program
         }
     }
 
-    private static void CleanOneAss(FileInfo f, FileInfo opt, DirectoryInfo? binDir, bool keepCommentLines, bool verbose, bool notAddLayoutRes, bool dropUnusedStyles)
+    internal enum CleanPreset
+    {
+        Basic,  // for vcb-s
+        More,   // for nekomoe
+    }
+
+    private static void CleanOneAss(FileInfo f, FileInfo opt, DirectoryInfo? binDir, bool verbose, SubtileProcess.CleanAssArgs args)
     {
         Console.WriteLine(f);
         var fs = new FileStream(f.FullName, FileMode.Open, FileAccess.ReadWrite);
@@ -92,7 +121,7 @@ partial class Program
             ExtractBinaries(data, binDir, verbose);
         }
 
-        SubtileProcess.CleanAss(data, keepCommentLines, fileNoSuffix, !notAddLayoutRes, dropUnusedStyles, out string msg, out bool untouched);
+        SubtileProcess.CleanAss(data, fileNoSuffix, args, out string msg, out bool untouched);
         
         if (!untouched)
         {

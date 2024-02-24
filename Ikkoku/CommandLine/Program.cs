@@ -70,16 +70,19 @@ partial class Program
         description: "Extract binaries, such as section Fonts and Graphics.");
         var keepCommentLines = new Option<bool>(name: "--keep-comments",
         description: "Keep comment lines (start with ;) in section Script Info.");
-        var notAddLayoutRes = new Option<bool>(name: "--no-layoutres",
-        description: "Not add LayoutResX/Y in Script Info, default value will same as PlayResX/Y");
+        var addLayoutRes = new Option<bool>(name: "--add-layoutres",
+        description: "Add LayoutResX/Y in Script Info, default value will same as PlayResX/Y");
         var dropUnusedStyles = new Option<bool>(name: "--drop-unused-styles",
         description: "Remove unused styles not used in Events");
+        var cleanPreset = new Option<CleanPreset>(name: "--preset",
+        description: "CleanAss preset, default is Basic",
+        getDefaultValue: () => CleanPreset.Basic);
         
         var cleanCommand = new Command("clean", "Clean Your ASS! Remove unused script info and sections, check undefined styles.")
         {
-            path, optPath, extractBinaries, keepCommentLines, verbose, notAddLayoutRes, dropUnusedStyles
+            path, optPath, extractBinaries, keepCommentLines, verbose, addLayoutRes, dropUnusedStyles, cleanPreset
         };
-        cleanCommand.SetHandler(Clean, path, optPath, extractBinaries, keepCommentLines, verbose, notAddLayoutRes, dropUnusedStyles);
+        cleanCommand.SetHandler(Clean, path, optPath, extractBinaries, keepCommentLines, verbose, addLayoutRes, dropUnusedStyles, cleanPreset);
         rootCommand.Add(cleanCommand);
         
         // check
