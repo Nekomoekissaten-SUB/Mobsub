@@ -207,7 +207,7 @@ partial class Program
             
             if (undefinedStyles.Count > 0)
             {
-                Console.WriteLine($"Undefined styles {string.Join(", ", undefinedStyles)}");
+                Console.WriteLine($"Undefined styles: {string.Join(", ", undefinedStyles)}");
             }
         }
 
