@@ -53,7 +53,7 @@ public class AssTagParse
 
         switch (tag[0])
         {
-            case 'b':   // b, bold, be, blur
+            case 'b':   // b, bord, be, blur
                 if (len > 1)
                 {
                     if (char.IsDigit(tag[1]))
@@ -62,7 +62,7 @@ public class AssTagParse
                     }
                     else if (tag[1].Equals('o'))
                     {
-                        if (len > 3 && tag[2].Equals('l') && tag[3].Equals('d'))
+                        if (len > 3 && tag[2].Equals('r') && tag[3].Equals('d'))
                         {
                             if (len == 4)
                             {
