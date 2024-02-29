@@ -40,4 +40,31 @@ public class DetectEncoding
         }
     }
 
+    public static void GuessEncoding(FileStream fs, out Encoding charEncoding)
+    {
+        var buffer = new byte[4];
+        fs.Read(buffer, 0, 4);
+        charEncoding = GuessEncoding(buffer);
+        fs.Seek(0, SeekOrigin.Begin);
+    }
+
+    public static void GuessEncoding(FileStream fs, out Encoding charEncoding, out bool isCarriageReturn)
+    {
+        var buffer = new byte[1024];
+        var b = fs.Read(buffer, 0, 1024);
+        charEncoding = GuessEncoding(buffer);
+        isCarriageReturn = false;
+        if (b > 0)
+        {
+            for (int i = 0; i < b - 1; i++)
+            {
+                if (buffer[i] == 0x0D && buffer[i + 1] == 0x0A)
+                {
+                    isCarriageReturn = true;
+                }
+            }
+        }
+        fs.Seek(0, SeekOrigin.Begin);
+    }
+
 }

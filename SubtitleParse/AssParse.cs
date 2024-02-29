@@ -13,10 +13,7 @@ public class AssParse
 
         var sr = new StreamReader(fs);
 
-        var buffer = new byte[4];
-        fs.Read(buffer, 0, 4);
-        assData.CharEncoding = DetectEncoding.GuessEncoding(buffer);
-        fs.Seek(0, SeekOrigin.Begin);
+        DetectEncoding.GuessEncoding(fs, out assData.CharEncoding);
 
         int lineNumber = 0;
         int nextChar;
