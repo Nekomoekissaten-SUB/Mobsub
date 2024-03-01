@@ -1,20 +1,28 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <IsAotCompatible>true</IsAotCompatible>
+
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\SubtitleParse\SubtitleParse.csproj"></ProjectReference>
-    <ProjectReference Include="..\ZhConvert\ZhConvert.csproj"></ProjectReference>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.6.0" />
+    <PackageReference Include="MSTest.TestAdapter" Version="3.0.4" />
+    <PackageReference Include="MSTest.TestFramework" Version="3.0.4" />
+    <PackageReference Include="coverlet.collector" Version="6.0.0" />
   </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="CXuesong.OpenCCSharp.Presets" Version="0.0.1-int.5" />
-  </ItemGroup>
+  <Target Name="CopyFolder" AfterTargets="Build">
+    <ItemGroup>
+      <FoldersToCopy Include="test_files\**\*" />
+    </ItemGroup>
+    
+    <Copy SourceFiles="@(FoldersToCopy)" DestinationFolder="$(OutputPath)\test_files\%(RecursiveDir)" />
+  </Target>
 
 </Project>
