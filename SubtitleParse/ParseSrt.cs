@@ -9,7 +9,7 @@ public struct SrtFrame
     public int Index { get; set; }
     public AssTime StartTime { get; set; }
     public AssTime EndTime { get; set; }
-    public string Text { get; set; }
+    public string[] Text { get; set; }
 }
 
 public class SubRipText
@@ -18,29 +18,24 @@ public class SubRipText
     public Encoding CharEncoding = DetectEncoding.EncodingRefOS();
     public SrtFrame[] srtFrames = [];
 
-    public SubRipText ReadSrtFile(FileStream fs, bool forceEnv)
+    public SubRipText ReadSrtFile(FileStream fs)
     {
         using var sr = new StreamReader(fs);
         DetectEncoding.GuessEncoding(fs, out CharEncoding, out CarriageReturn);
-        srtFrames = Parse(sr, forceEnv).ToArray();
+        srtFrames = Parse(sr).ToArray();
         return this;
     }
 
-    public SubRipText ReadSrtFile(FileStream fs) => ReadSrtFile(fs, false);
-
-    public SubRipText ReadSrtFile(string filePath, bool forceEnv)
+    public SubRipText ReadSrtFile(string filePath)
     {
         using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read);
-        return ReadSrtFile(fs, forceEnv);
+        return ReadSrtFile(fs);
     }
 
-    public SubRipText ReadSrtFile(string filePath) => ReadSrtFile(filePath, false);
-
-    internal IEnumerable<SrtFrame> Parse(StreamReader sr, bool forceEnv)
+    internal IEnumerable<SrtFrame> Parse(StreamReader sr)
     {
         string? line;
-        StringBuilder sb = new();
-        var newline = forceEnv ? [.. Environment.NewLine] : (CarriageReturn ? new char[]{'\r', '\n'} : ['\n']);
+        List<string> lines = [];
         while ((line = sr.ReadLine()) != null)
         {
             if (int.TryParse(line, out int index))
@@ -48,14 +43,11 @@ public class SubRipText
                 var timeCodeLine = sr.ReadLine().AsSpan();
                 var startTime = ParseTime(timeCodeLine, 0);
                 var endTime = ParseTime(timeCodeLine, 17);
-                // List<string> lines = [];
-
-                sb.Clear();
+                
+                lines.Clear();
                 while ((line = sr.ReadLine()) != null && !string.IsNullOrEmpty(line))
                 {
-                    sb.Append(line);
-                    sb.Append(newline);
-                    // lines.Add(line);
+                    lines.Add(line);
                 }
 
                 yield return new SrtFrame
@@ -63,7 +55,7 @@ public class SubRipText
                     Index = index,
                     StartTime = startTime,
                     EndTime = endTime,
-                    Text = sb.ToString(),
+                    Text = lines.ToArray(),
                 };
             }
         }
@@ -79,7 +71,6 @@ public class SubRipText
         return new AssTime(totalMs);
     }
 
-
     public void WriteSrtFile(string filePath, bool forceEnv)
     {
         var charEncoding = forceEnv ? DetectEncoding.EncodingRefOS() : CharEncoding;
@@ -91,7 +82,8 @@ public class SubRipText
         {
             sw.WriteLine(frame.Index);
             sw.WriteLine($"{WriteTime(frame.StartTime)} --> {WriteTime(frame.EndTime)}");
-            sw.WriteLine(frame.Text);
+            foreach (var l in frame.Text)
+                sw.WriteLine(l);
             sw.WriteLine();
         }
     }
