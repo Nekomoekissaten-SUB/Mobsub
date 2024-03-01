@@ -16,13 +16,13 @@ public class SubRipText
 {
     public bool CarriageReturn = false;
     public Encoding CharEncoding = DetectEncoding.EncodingRefOS();
-    public SrtFrame[] srtFrames = [];
+    public SrtFrame[] SrtFrames = [];
 
     public SubRipText ReadSrtFile(FileStream fs)
     {
         using var sr = new StreamReader(fs);
         DetectEncoding.GuessEncoding(fs, out CharEncoding, out CarriageReturn);
-        srtFrames = Parse(sr).ToArray();
+        SrtFrames = Parse(sr).ToArray();
         return this;
     }
 
@@ -32,7 +32,7 @@ public class SubRipText
         return ReadSrtFile(fs);
     }
 
-    internal IEnumerable<SrtFrame> Parse(StreamReader sr)
+    internal static IEnumerable<SrtFrame> Parse(StreamReader sr)
     {
         string? line;
         List<string> lines = [];
@@ -78,7 +78,7 @@ public class SubRipText
         using FileStream fileStream = new(filePath, FileMode.Create, FileAccess.Write);
         using var memStream = new MemoryStream();
         using var sw = new StreamWriter(memStream, charEncoding);
-        foreach (var frame in srtFrames)
+        foreach (var frame in SrtFrames)
         {
             sw.WriteLine(frame.Index);
             sw.WriteLine($"{WriteTime(frame.StartTime)} --> {WriteTime(frame.EndTime)}");
@@ -86,11 +86,87 @@ public class SubRipText
                 sw.WriteLine(l);
             sw.WriteLine();
         }
+        sw.Flush();
+
+        memStream.Seek(0, SeekOrigin.Begin);
+        memStream.CopyTo(fileStream);
+        fileStream.Close();
     }
     private static string WriteTime(AssTime timeSpan)
     {
         return $"{timeSpan.Hour:D2}:{timeSpan.Minute:D2}:{timeSpan.Second:D2},{timeSpan.Millisecond:D3}";
     }
 
+    public SubRipText FromAss(AssData ass)
+    {
+        List<SrtFrame> sf = [];
+        List<string> text = [];
+        StringBuilder sb = new();
+        var index = 1;
+        for (var i = 0; i < ass.Events.Collection.Count; i++)
+        {
+            var evt = ass.Events.Collection[i];
+
+            // skip commment and empty event lines
+            // Now not support tag convert
+            if (!evt.StartSemicolon && evt.IsDialogue && evt.Text.Count > 0)
+            {
+                foreach (var s in evt.Text)
+                {
+                    var sp = s.AsSpan();
+
+                    if (sp[0] == '{')
+                    {
+                        //if (!ignoreTags)
+                        //{
+                        //    TagConvertToSrt(sp, sb);
+                        //}
+                    }
+                    else if (sp.Length == 2 && sp[0] == AssConstants.BackSlash)
+                    {
+                        switch (sp[1])
+                        {
+                            case AssConstants.LineBreaker:
+                            case AssConstants.WordBreaker:
+                                if (sb.Length > 0)
+                                    text.Add(sb.ToString().Trim());
+                                    sb.Clear();
+                                break;
+                            default: break;
+                        }
+                    }
+                    else
+                    {
+                        sb.Append(sp);
+                    }
+                }
+                
+                if (sb.Length > 0)
+                    text.Add(sb.ToString().Trim());
+                    sb.Clear();
+
+                sf.Add(new SrtFrame()
+                {
+                    Index = index,
+                    StartTime = evt.Start,
+                    EndTime = evt.End,
+                    Text = text.ToArray(),
+                });
+                
+                index++;
+                text.Clear();
+            }
+
+        }
+
+        CarriageReturn = ass.CarriageReturn;
+        CharEncoding = ass.CharEncoding;
+        SrtFrames = sf.ToArray();
+        return this;
+    }
+    //private static void TagConvertToSrt(Span<char> sp, StringBuilder sb, AssStyle style)
+    //{
+
+    //}
 }
 
