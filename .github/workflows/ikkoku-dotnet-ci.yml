@@ -13,13 +13,13 @@ jobs:
     strategy:
       matrix:
         env:
-          # - os: windows-latest
-          #   identifier: win
-          # - os: macos-latest
-          #   identifier: osx
+          - os: windows-latest
+            identifier: win
+          - os: macos-latest
+            identifier: osx
           - os: ubuntu-latest
             identifier: linux
-        arch: ['arm64']
+        arch: ['x64', 'arm64']
         dotnet_version: ['8.x']
 
     name: build-${{ matrix.env.os }}-${{ matrix.arch }}
@@ -28,7 +28,7 @@ jobs:
     steps:
     
     - name: Install linux arm64 prereqs
-      # copy from dnvm
+      # copy from https://github.com/dn-vm/dnvm
       if: matrix.env.identifier == 'linux' && matrix.arch == 'arm64'
       run: |
         sudo dpkg --add-architecture arm64
