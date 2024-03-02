@@ -27,10 +27,10 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
     
     - name: Setup .NET
-      uses: actions/setup-dotnet@v3
+      uses: actions/setup-dotnet@v4
       with:
         dotnet-version: ${{ matrix.dotnet_version }}
 
@@ -41,7 +41,7 @@ jobs:
         dotnet publish -c Release -r "${{ matrix.env.identifier }}-${{ matrix.arch }}"
     
     - name: Upload exe files
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: Ikkoku-${{ matrix.env.identifier }}-${{ matrix.arch }}
         path: |
@@ -49,3 +49,4 @@ jobs:
           !Ikkoku/bin/Release/net8.0/${{ matrix.env.identifier }}-${{ matrix.arch }}/publish/*.pdb
           !Ikkoku/bin/Release/net8.0/${{ matrix.env.identifier }}-${{ matrix.arch }}/publish/*.dbg
           !Ikkoku/bin/Release/net8.0/${{ matrix.env.identifier }}-${{ matrix.arch }}/publish/*.dwarf
+          !Ikkoku/bin/Release/net8.0/${{ matrix.env.identifier }}-${{ matrix.arch }}/publish/*.dsym
