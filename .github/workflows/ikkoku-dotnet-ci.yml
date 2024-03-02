@@ -55,11 +55,17 @@ jobs:
         cd ./Ikkoku
         dotnet restore
         dotnet publish -c Release -r "${{ matrix.env.identifier }}-${{ matrix.arch }}"
-    
+
+    - name: Set short version
+      shell: bash
+      run: |
+          ver_short=`git rev-parse --short HEAD`
+          echo "VERSION=$ver_short" >> $GITHUB_ENV
+
     - name: Upload exe files
       uses: actions/upload-artifact@v4
       with:
-        name: Ikkoku-${{ matrix.env.identifier }}-${{ matrix.arch }}
+        name: Ikkoku-${{ matrix.env.identifier }}-${{ matrix.arch }}-${{ env.VERSION }}
         path: |
           Ikkoku/bin/Release/net8.0/${{ matrix.env.identifier }}-${{ matrix.arch }}/publish/
           !Ikkoku/bin/Release/net8.0/${{ matrix.env.identifier }}-${{ matrix.arch }}/publish/*.pdb
