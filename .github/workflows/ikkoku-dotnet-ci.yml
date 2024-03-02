@@ -33,7 +33,7 @@ jobs:
         if($IsWindows -eq$true){ Set-Location -Path ./Ikkoku }
         if($IsMacOS -eq$true || $IsLinux -eq$true){ cd ./Ikkoku }
         dotnet restore
-        dotnet publish -c Release -r ${{ concat(matrix.os.replace('latest', ''), matrix.arch) }}
+        dotnet publish -c Release -r $(echo${{ matrix.os.replace('latest', '') }}-${{ matrix.arch }})
     
     - name: Upload exe files
       uses: actions/upload-artifact@v3
