@@ -15,16 +15,14 @@ jobs:
         env:
           - os: windows-latest
             identifier: win
-            arch: [x64, arm64]
           - os: macos-latest
             identifier: osx
-            arch: [x64, arm64]
           - os: ubuntu-latest
             identifier: linux
-            arch: [x64]
+        arch: [x64, arm64]
         dotnet_version: ['8.x']
 
-    name: build-${{ matrix.env.os }}-${{ matrix.env.arch }}
+    name: build-${{ matrix.env.os }}-${{ matrix.arch }}
     runs-on: ${{ matrix.env.os }}
 
     steps:
@@ -40,14 +38,14 @@ jobs:
       run: |
         cd ./Ikkoku
         dotnet restore
-        dotnet publish -c Release -r "${{ matrix.env.identifier }}-${{ matrix.env.arch }}"
+        dotnet publish -c Release -r "${{ matrix.env.identifier }}-${{ matrix.arch }}"
     
     - name: Upload exe files
       uses: actions/upload-artifact@v3
       with:
-        name: Ikkoku-${{ matrix.env.identifier }}-${{ matrix.env.arch }}
+        name: Ikkoku-${{ matrix.env.identifier }}-${{ matrix.arch }}
         path: |
-          Ikkoku/bin/Release/net8.0/${{ matrix.env.identifier }}-${{ matrix.env.arch }}/publish/
-          !Ikkoku/bin/Release/net8.0/${{ matrix.env.identifier }}-${{ matrix.env.arch }}/publish/*.pdb
-          !Ikkoku/bin/Release/net8.0/${{ matrix.env.identifier }}-${{ matrix.env.arch }}/publish/*.dbg
-          !Ikkoku/bin/Release/net8.0/${{ matrix.env.identifier }}-${{ matrix.env.arch }}/publish/*.dwarf
+          Ikkoku/bin/Release/net8.0/${{ matrix.env.identifier }}-${{ matrix.arch }}/publish/
+          !Ikkoku/bin/Release/net8.0/${{ matrix.env.identifier }}-${{ matrix.arch }}/publish/*.pdb
+          !Ikkoku/bin/Release/net8.0/${{ matrix.env.identifier }}-${{ matrix.arch }}/publish/*.dbg
+          !Ikkoku/bin/Release/net8.0/${{ matrix.env.identifier }}-${{ matrix.arch }}/publish/*.dwarf
