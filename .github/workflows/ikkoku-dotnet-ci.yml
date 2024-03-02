@@ -19,7 +19,7 @@ jobs:
           #   identifier: osx
           - os: ubuntu-latest
             identifier: linux
-        arch: [arm64]
+        arch: ['arm64']
         dotnet_version: ['8.x']
 
     name: build-${{ matrix.env.os }}-${{ matrix.arch }}
@@ -29,7 +29,7 @@ jobs:
     
     - name: Install linux arm64 prereqs
       # copy from dnvm
-      if: matrix.identifier == 'linux' && matrix.arch == 'arm64'
+      if: matrix.env.identifier == 'linux' && matrix.arch == 'arm64'
       run: |
         sudo dpkg --add-architecture arm64
         sudo bash -c 'cat > /etc/apt/sources.list.d/arm64.list <<EOF
