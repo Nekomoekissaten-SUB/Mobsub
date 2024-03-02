@@ -13,12 +13,12 @@ jobs:
     strategy:
       matrix:
         env:
-          - os: windows-latest
-            identifier: win
-          - os: macos-latest
-            identifier: osx
-          # - os: ubuntu-latest
-          #   identifier: linux
+          # - os: windows-latest
+          #   identifier: win
+          # - os: macos-latest
+          #   identifier: osx
+          - os: ubuntu-latest
+            identifier: linux
         arch: [x64, arm64]
         dotnet_version: ['8.x']
 
