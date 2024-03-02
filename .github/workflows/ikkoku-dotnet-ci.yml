@@ -16,7 +16,7 @@ jobs:
           - os: windows-latest
             identifier: win
           - os: macos-latest
-            identifier: mac
+            identifier: osx
           - os: ubuntu-latest
             identifier: linux
         arch: [x64, arm64]
