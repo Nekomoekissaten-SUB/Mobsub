@@ -12,7 +12,7 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [windows-latest, macOS-latest, ubuntu-latest]
+        os: [windows-latest, macos-latest, ubuntu-latest]
         arch: [x64, arm64]
         dotnet_version: ['8.x']
 
@@ -30,17 +30,16 @@ jobs:
 
     - name: Change to Ikkoku and Publish
       run: |
-        if($IsWindows -eq$true){ Set-Location -Path ./Ikkoku }
-        if($IsMacOS -eq$true || $IsLinux -eq$true){ cd ./Ikkoku }
+        cd ./Ikkoku
         dotnet restore
-        dotnet publish -c Release -r $(echo${{ matrix.os.replace('latest', '') }}-${{ matrix.arch }})
+        dotnet publish -c Release -r "$(echo ${{ matrix.os }})-${{ matrix.arch }}"
     
     - name: Upload exe files
       uses: actions/upload-artifact@v3
       with:
         name: Ikkoku-${{ matrix.os }}-${{ matrix.arch }}
         path: |
-          Ikkoku/bin/Release/net8.0/${{ format('{0}-{1}', matrix.os.replace('-latest', ''), matrix.arch) }}/publish/
-          !Ikkoku/bin/Release/net8.0/${{ format('{0}-{1}', matrix.os.replace('-latest', ''), matrix.arch) }}/publish/*.pdb
-          !Ikkoku/bin/Release/net8.0/${{ format('{0}-{1}', matrix.os.replace('-latest', ''), matrix.arch) }}/publish/*.dbg
-          !Ikkoku/bin/Release/net8.0/${{ format('{0}-{1}', matrix.os.replace('-latest', ''), matrix.arch) }}/publish/*.dwarf
+          Ikkoku/bin/Release/net8.0/$(echo ${{ matrix.os }})-${{ matrix.arch }}/publish/
+          !Ikkoku/bin/Release/net8.0/$(echo ${{ matrix.os }})-${{ matrix.arch }}/publish/*.pdb
+          !Ikkoku/bin/Release/net8.0/$(echo ${{ matrix.os }})-${{ matrix.arch }}/publish/*.dbg
+          !Ikkoku/bin/Release/net8.0/$(echo ${{ matrix.os }})-${{ matrix.arch }}/publish/*.dwarf
