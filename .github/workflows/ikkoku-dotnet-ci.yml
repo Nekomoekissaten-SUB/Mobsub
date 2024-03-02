@@ -19,7 +19,7 @@ jobs:
           #   identifier: osx
           - os: ubuntu-latest
             identifier: linux
-        arch: [x64, arm64]
+        arch: [arm64]
         dotnet_version: ['8.x']
 
     name: build-${{ matrix.env.os }}-${{ matrix.arch }}
@@ -38,7 +38,7 @@ jobs:
       run: |
         cd ./Ikkoku
         dotnet restore
-        dotnet publish -c Release -r "${{ matrix.env.identifier }}-${{ matrix.arch }}"
+        dotnet publish -c Release -r "${{ matrix.env.identifier }}-${{ matrix.arch }}" -p:ObjCopyName=aarch64-linux-gnu-objcopy
     
     - name: Upload exe files
       uses: actions/upload-artifact@v4
