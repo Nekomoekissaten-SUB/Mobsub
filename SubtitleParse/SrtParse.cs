@@ -115,7 +115,7 @@ public class SubRipText
                 {
                     var sp = s.AsSpan();
 
-                    if (sp[0] == '{')
+                    if (AssTagParse.IsOvrrideBlock(sp))
                     {
                         //if (!ignoreTags)
                         //{
