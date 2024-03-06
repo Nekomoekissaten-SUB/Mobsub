@@ -24,4 +24,18 @@ public class ParseTest
         var l = AssTagParse.GetTagsFromTransFunction(block);
         Assert.AreEqual(l[0].AsSpan().ToString(), "fry-90");
     }
+
+    [TestMethod]
+    public void ReadWrite()
+    {
+        var assFile = ".\\test_files\\ass2srt.ass";
+        var assWriteFile = ".\\test_files\\ass2srt_write.ass";
+        var ass = AssParse.ReadAssFile(assFile);
+        AssParse.WriteAssFile(ass, assWriteFile);
+
+        var refAss = File.ReadAllText(assFile).AsSpan();
+        var writeAss = File.ReadAllText(assWriteFile).AsSpan();
+
+        Assert.IsTrue(refAss.SequenceEqual(writeAss));
+    }
 }

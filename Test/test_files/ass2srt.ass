@@ -19,11 +19,11 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 Comment: 0,0:00:37.81,0:00:37.85,Default,,0,0,0,,Staff
 Comment: 0,0:00:00.00,0:00:00.02,Default,,0,0,0,,------screen------
 Dialogue: 0,0:14:24.41,0:14:28.02,Screen,,0,0,0,,{\an7\pos(432.4,-0.6)\fad(390,0)\bord2\shad0\c&H000000&\3c&HFFFFFF&\fn方正像素12}血型：无\N\N年龄：诞生已有25年{\fn文泉驿点阵宋体14px}
-Dialogue: 0,0:14:24.41,0:14:28.02,Screen,,0,0,0,,{\pos(1375.6,1028.667)\fad(390,0)\shad4\fs60\u1}艾努·比利欧 \N{\u0}绰号：「艾比欧」\N国籍：宇宙船  \N喜欢的事物：身边的人、关照他人、冷笑话\N腼腆英雄的搭档 像它这样的个体还有很多
+Dialogue: 0,0:14:24.41,0:14:28.02,Screen,,0,0,0,,{\pos(1375.6,1028.667)\fad(390,0)\shad4\fs60\u1}艾努·比利欧 \N{\u0}绰号：「艾比欧」\N国籍：宇宙船  \N喜欢的事物：身边的人、关照他人、冷笑话\N腼腆英雄的搭档 像它这样的{个体还有很多
 Dialogue: 0,0:17:30.17,0:17:33.42,Screen,,0,0,0,,{\pos(1014,585)\fad(120,0)\c&H000000&\3c&H2939AF&\shad0\bord8\fnFZLanTingHei-DB-GBK\fay0.24\}周年
 Dialogue: 0,0:17:30.17,0:17:33.42,Screen,,0,0,0,,{\pos(889.156,578.333)\fad(120,0)\shad0\bord8\fay0.24\3c&H2939AF&\fs110\1vc(H44BAE6,FFFFFF,FFFFFF,H44BAE6)\fnFZLanTingHei-DB-GBK}30
 Dialogue: 0,0:17:30.17,0:17:33.42,Screen,,0,0,0,,{\an7\pos(546.133,417.534)\fad(120,0)\c&HC674DB&\3c&H2939AF&\shad0\bord8\fnFZLanTingHei-DB-GBK\1vc(FFFFFF,FFFFFF,HC674DB,HC674DB)\fay0.24}CiviRevo                       纪念特别活动
-Dialogue: 0,0:17:30.17,0:17:33.42,Screen,,0,0,0,,{\pos(1025.2,866.2)\fad(120,0)\3c&H9A463E&\shad0\bord6\fay0.18\fnFZLanTingYuan-EB-GBK\1vc(FFFFFF,FFFFFF,HEBD886,HEBD886)}腼腆英雄谈话节目
+Dialogue: 0,0:17:30.17,0:17:33.42,Screen,,0,0,0,,{\pos(1025.2,866.2)\fad(120,0)\3c&H9A463E&\shad0\bord6\fay0.18\fnFZLanTingYuan-EB-GBK\1vc(FFFFFF,FFFFFF,HEBD886,HEBD886)}腼腆英雄}谈话节目
 Comment: 0,0:00:37.81,0:00:37.85,Default,,0,0,0,,Omake
 Comment: 0,0:00:37.81,0:00:37.85,Default,,0,0,0,,OP
 Dialogue: 0,0:01:18.73,0:01:28.48,OP-JP,,0,0,0,,{\fad(360,360)\blur2}心のどこかで　泣いているのかい Baby
