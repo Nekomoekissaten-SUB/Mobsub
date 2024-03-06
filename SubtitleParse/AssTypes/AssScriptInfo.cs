@@ -1,4 +1,4 @@
-using System.Text;
+using static Mobsub.Utils.ParseHelper;
 
 namespace Mobsub.AssTypes;
 
@@ -55,17 +55,71 @@ public class AssScriptInfo
     public bool ScaledBorderAndShadow {get; set;} = true; // yes or no
     public bool Kerning {get; set;} = false;    // yes or no, only libass, vsfilter is disabled
     public AssYCbCrMatrix YCbCrMatrix {get; set;} = new AssYCbCrMatrix();
-
     
-    public string? Title;
-    public string? OriginalScript, OriginalTranslation, OriginalEditing, OriginalTiming, ScriptUpdatedBy, UpdateDetails;
+    public string? Title { get; set; }
+    public string? OriginalScript { get; set; }
+    public string? OriginalTranslation { get; set; }
+    public string? OriginalEditing { get; set; }
+    public string? OriginalTiming { get; set; }
+    public string? ScriptUpdatedBy { get; set; }
+    public string? UpdateDetails { get; set; }
 
-    
     public List<string> Comment = [];
     public List<string> CustomData = [];
     public Dictionary<string, string> Others = [];
     // public int status = 0;
     public HashSet<string> Orders = [];
+
+    public void Read(ReadOnlySpan<char> sp)
+    {
+        switch (sp[0])
+        {
+            case '!':
+                CustomData.Add(sp.Trim().ToString());
+                break;
+            case ';':
+                Comment.Add(sp.Trim().ToString());
+                break;
+            default:
+                if (TrySplitKeyValue(sp, out string k, out string v))
+                {
+                    if (IsStringInFields(new AssConstants.ScriptInfo(), k))
+                    {
+                        if (k.AsSpan().SequenceEqual(AssConstants.ScriptInfo.YCbCrMatrix.AsSpan()))
+                        {
+                            var idx = v.AsSpan().IndexOf('.');
+                            if (idx < 0)
+                            {
+                                YCbCrMatrix.Matrix = v;
+                            }
+                            else
+                            {
+                                YCbCrMatrix.Full = !v.AsSpan(0, idx).SequenceEqual("TV".AsSpan());
+                                YCbCrMatrix.Matrix = v.AsSpan()[(idx + 1)..].ToString();
+                            }
+                        }
+                        else
+                        {
+                            SetProperty(this, k.Contains(' ') ? k.Replace(" ", "") : k, v);
+                        }
+                    }
+                    else
+                    {
+                        Others[k] = v;
+                    }
+
+                    if (!Orders.Add(k))
+                    {
+                        throw new Exception($"Duplicate key in Script Info: {k}");
+                    }
+                }
+                else
+                {
+                    throw new Exception($"Unkown line: {sp.ToString()}");
+                }
+                break;
+        }
+    }
 
     public void Write(StreamWriter sw, char[] newline)
     {

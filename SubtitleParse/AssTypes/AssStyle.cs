@@ -1,4 +1,4 @@
-using System.Text;
+using static Mobsub.Utils.ParseHelper;
 
 namespace Mobsub.AssTypes;
 
@@ -17,6 +17,45 @@ public class AssStyles
     }
     public List<AssStyle> Collection = [];
     public HashSet<string> Names = [];
+
+    public void Read(ReadOnlySpan<char> sp)
+    {
+        if (sp[0] == '/')
+        {
+            return;
+        }
+
+        var sepIndex = sp.IndexOf(':');
+
+        if (sp[..sepIndex].SequenceEqual("Format".AsSpan()))
+        {
+            Formats = sp[(sepIndex + 1)..].ToString().Split(',').Select(s => s.Trim()).ToArray();
+        }
+        else if (sp[..sepIndex].SequenceEqual("Style".AsSpan()))
+        {
+            var syl = new AssStyle();
+            var va = sp[(sepIndex + 1)..].ToString().Split(',').Select(s => s.Trim()).ToArray();
+
+            if (va.Length != Formats.Length)
+            {
+                throw new Exception($"Please check style line: {sp.ToString()}");
+            }
+
+            for (var i = 0; i < va.Length; i++)
+            {
+                SetProperty(syl, Formats[i], va[i]);
+            }
+            Collection.Add(syl);
+            if (!Names.Add(syl.Name))
+            {
+                throw new Exception($"Styles: duplicate style {syl.Name}");
+            }
+        }
+        else
+        {
+            throw new Exception($"Styles: invaild format {sp.ToString()}");
+        }
+    }
 
     public void Write(StreamWriter sw, char[] newline, string scriptType)
     {
@@ -73,31 +112,31 @@ public class AssStyle
         get => fontname is null ? "Arial" : fontname.Length > 31 ? fontname[..31] : fontname;  // GDI max 32, last is null
         set => fontname = value;
     }
-    public float Fontsize;  // ushort; Is negative and float really correct?
-    public AssRGB8? PrimaryColour;
-    public AssRGB8? SecondaryColour;
-    public AssRGB8? OutlineColour;
-    public AssRGB8? BackColour;
-    public bool Bold;     // ? 0 / 400, 1 / 700
-    public bool Italic;
-    public bool Underline;  // 0 = false, -1 = true
-    public bool StrikeOut;
-    public float ScaleX;
-    public float ScaleY;
-    public float Spacing;
-    public float Angle;
-    public short BorderStyle;  // 1, 3?
-    public float Outline;
-    public float Shadow;
-    public short Alignment;  // 1-9
-    public int MarginL;
-    public int MarginR;
-    public int MarginV;
-    public int MarginT;
-    public int MarginB;
-    public int Encoding;
-    public int AlphaLevel;
-    public int RelativeTo;
+    public float Fontsize { get; set; }  // ushort; Is negative and float really correct?
+    public AssRGB8? PrimaryColour { get; set; }
+    public AssRGB8? SecondaryColour { get; set; }
+    public AssRGB8? OutlineColour { get; set; }
+    public AssRGB8? BackColour { get; set; }
+    public bool Bold { get; set; }     // ? 0 / 400, 1 / 700
+    public bool Italic { get; set; }
+    public bool Underline { get; set; }  // 0 = false, -1 = true
+    public bool StrikeOut { get; set; }
+    public float ScaleX { get; set; }
+    public float ScaleY { get; set; }
+    public float Spacing { get; set; }
+    public float Angle { get; set; }
+    public short BorderStyle { get; set; }  // 1, 3?
+    public float Outline { get; set; }
+    public float Shadow { get; set; }
+    public short Alignment { get; set; }  // 1-9
+    public int MarginL { get; set; }
+    public int MarginR { get; set; }
+    public int MarginV { get; set; }
+    public int MarginT { get; set; }
+    public int MarginB { get; set; }
+    public int Encoding { get; set; }
+    public int AlphaLevel { get; set; }
+    public int RelativeTo { get; set; }
 
     // from libass, wait…
     // public int TreatFontNameAsPattern { get; set; }
