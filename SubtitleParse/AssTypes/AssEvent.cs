@@ -110,7 +110,7 @@ public class AssEvent
                 case "Marked":
                     break;
                 default:
-                    SetProperty(this, fmts[segCount], v);
+                    SetProperty(this, typeof(AssEvent), fmts[segCount], v);
                     break;
             }
 

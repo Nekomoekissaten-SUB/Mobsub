@@ -1,12 +1,13 @@
 ﻿using Mobsub.AssTypes;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Mobsub.Utils;
 
 public class ParseHelper
 {
-    internal static void SetProperty(object obj, string propertyName, string value)
+    public static void SetProperty(object obj, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] Type T, string propertyName, string value)
     {
-        var property = obj.GetType().GetProperty(propertyName);
+        var property = T.GetProperty(propertyName);
         if (property == null)
         {
             return;
@@ -50,13 +51,13 @@ public class ParseHelper
         }
     }
 
-    public static bool IsStringInFields(object obj, string searchString)
+    public static bool IsStringInFields(object obj, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] Type T, string searchString)
     {
         if (obj == null || string.IsNullOrEmpty(searchString))
         {
             return false;
         }
-        foreach (var field in obj.GetType().GetFields())
+        foreach (var field in T.GetFields())
         {
             if (field.FieldType == typeof(string))
             {

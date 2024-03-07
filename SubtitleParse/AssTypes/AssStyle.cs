@@ -43,7 +43,7 @@ public class AssStyles
 
             for (var i = 0; i < va.Length; i++)
             {
-                SetProperty(syl, Formats[i], va[i]);
+                SetProperty(syl, typeof(AssStyle), Formats[i], va[i]);
             }
             Collection.Add(syl);
             if (!Names.Add(syl.Name))

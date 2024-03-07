@@ -44,14 +44,13 @@ public class AssYCbCrMatrix
 
 public class AssRGB8
 {
-    public byte R = 0;
-    public byte G = 0;
-    public byte B = 0;
-    public byte A = 0;
+    public byte R { get; set; } = 0;
+    public byte G { get; set; } = 0;
+    public byte B { get; set; } = 0;
+    public byte A { get; set; } = 0;
 
     public static AssRGB8 Parse(ReadOnlySpan<char> sp)
     {
-
         var sign = (sp[^1] == '&') ? 3 : 2;
 
         if ((sp[0] != '&') || (sp[1] != 'H') || ((sp.Length - sign) % 2 != 0))

@@ -83,7 +83,7 @@ public class AssScriptInfo
             default:
                 if (TrySplitKeyValue(sp, out string k, out string v))
                 {
-                    if (IsStringInFields(new AssConstants.ScriptInfo(), k))
+                    if (IsStringInFields(new AssConstants.ScriptInfo(), typeof(AssConstants.ScriptInfo), k))
                     {
                         if (k.AsSpan().SequenceEqual(AssConstants.ScriptInfo.YCbCrMatrix.AsSpan()))
                         {
@@ -100,7 +100,7 @@ public class AssScriptInfo
                         }
                         else
                         {
-                            SetProperty(this, k.Contains(' ') ? k.Replace(" ", "") : k, v);
+                            SetProperty(this, typeof(AssScriptInfo), k.Contains(' ') ? k.Replace(" ", "") : k, v);
                         }
                     }
                     else
