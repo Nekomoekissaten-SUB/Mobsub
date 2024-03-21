@@ -673,7 +673,7 @@ partial class Program
 
         foreach (var et in data.Events.Collection)
         {
-            if (!et.Style.AsSpan().Contains("JP".AsSpan(), StringComparison.OrdinalIgnoreCase))
+            if (!SubtileProcess.NotZhConvert(et))
             {
                 SubtileProcess.ZhConvertEventLineByOpenccsharp(et.Text, sb, converter, out string[]? countChanges);
 

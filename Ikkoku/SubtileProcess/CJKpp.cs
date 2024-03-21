@@ -1,4 +1,5 @@
 using System.Text;
+using Mobsub.AssTypes;
 using Mobsub.SubtitleParse;
 using OpenCCSharp.Conversion;
 
@@ -51,4 +52,8 @@ public partial class SubtileProcess
         }
     }
 
+    public static bool NotZhConvert(AssEvent evt)
+    {
+        return evt.Style.AsSpan().Contains("JP".AsSpan(), StringComparison.OrdinalIgnoreCase);
+    }
 }
