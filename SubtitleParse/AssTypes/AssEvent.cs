@@ -6,13 +6,10 @@ namespace Mobsub.AssTypes;
 
 public class AssEvents
 {
-    private readonly string formatV4P = "Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text";
-    // private readonly string formatV4PP = "Layer, Start, End, Style, Name, MarginL, MarginR, MarginT, MarginB, Effect, Text";
-    // private readonly string formatV4 = "Marked, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text";
     private string[]? formats;
     public string[] Formats
     {
-        get => formats ?? formatV4P.Split(',').Select(s => s.Trim()).ToArray();
+        get => formats ?? AssConstants.FormatV4P.Split(',').Select(s => s.Trim()).ToArray();
         set => formats = value;
     }
     public List<AssEvent> Collection = [];
@@ -20,14 +17,12 @@ public class AssEvents
     public void Read(ReadOnlySpan<char> sp, string scriptType, int lineNumber)
     {
         var sepIndex = sp.IndexOf(':');
-
-        if (sp[0] == ';' || sepIndex < 1)
+        var evt = new AssEvent();
+        if (evt.Read(sp, sepIndex, lineNumber, Formats))
         {
-            Collection.Add(new AssEvent() { StartSemicolon = true, Untouched = sp.ToString(), lineNumber = lineNumber });
-            return;
+            Collection.Add(evt);
         }
-
-        if (sp[..sepIndex].SequenceEqual("Format".AsSpan()))
+        else
         {
             if (scriptType.AsSpan().SequenceEqual("v4.00++".AsSpan()))
             {
@@ -38,17 +33,6 @@ public class AssEvents
             {
                 throw new Exception("Events: Text must be last field.");
             }
-        }
-        else if (sp[..sepIndex].SequenceEqual("Dialogue".AsSpan()) || sp[..sepIndex].SequenceEqual("Comment".AsSpan()))
-        {
-            var evt = new AssEvent() { IsDialogue = sp[..sepIndex].SequenceEqual("Dialogue".AsSpan()), lineNumber = lineNumber };
-            sepIndex += (char.IsWhiteSpace(sp[sepIndex + 1])) ? 2 : 1;
-            evt.ReadWithoutHeader(sp[sepIndex..], Formats);
-            Collection.Add(evt);
-        }
-        else
-        {
-            throw new Exception($"Unknown Events line {sp.ToString()}");
         }
     }
 
@@ -92,6 +76,37 @@ public class AssEvent
     public string? Effect { get; set; }
     public List<char[]> Text { get; set; } = [];  // override tags block, special chars block, normal text block
 
+    public bool Read(ReadOnlySpan<char> sp, int lineNum, string[] formats) => Read(sp, sp.IndexOf(':'), lineNum, formats);
+
+    public bool Read(ReadOnlySpan<char> sp, int sepIndex, int lineNum, string[] formats)
+    {
+        if (sp[0] == ';' || sepIndex < 1)
+        {
+            StartSemicolon = true;
+            Untouched = sp.ToString();
+            lineNumber = lineNum;
+            return true;
+        }
+
+        var header = sp[..sepIndex];
+        if (header.SequenceEqual("Format".AsSpan()))
+        {
+            return false;
+        }
+        else if (header.SequenceEqual("Dialogue".AsSpan()) || header.SequenceEqual("Comment".AsSpan()))
+        {
+            IsDialogue = header.SequenceEqual("Dialogue".AsSpan());
+            lineNumber = lineNum;
+            sepIndex += (char.IsWhiteSpace(sp[sepIndex + 1])) ? 2 : 1;
+            ReadWithoutHeader(sp[sepIndex..], formats);
+            return true;
+        }
+        else
+        {
+            throw new Exception($"Unknown Events line {sp.ToString()}");
+        }
+    }
+
     public void ReadWithoutHeader(ReadOnlySpan<char> sp, string[] fmts)
     {
         var startIndex = 0;
@@ -121,7 +136,7 @@ public class AssEvent
         Text = ParseEventText2(sp[startIndex..]);
     }
 
-    private static List<char[]> ParseEventText2(ReadOnlySpan<char> span)
+    public static List<char[]> ParseEventText2(ReadOnlySpan<char> span)
     {
         var records = new List<char[]>();
         var sb = new StringBuilder();
@@ -190,27 +205,27 @@ public class AssEvent
         _start = end;
     }
 
-    public static void WriteTime(StreamWriter sw, AssTime time, bool ctsRounding)
+    public static void WriteTime(StringBuilder sb, AssTime time, bool ctsRounding)
     {
-        sw.Write(time.Hour);
-        sw.Write(':');
-        WriteChar(sw, time.Minute, 2);
-        sw.Write(':');
-        WriteChar(sw, time.Second, 2);
-        sw.Write('.');
+        sb.Append(time.Hour);
+        sb.Append(':');
+        WriteChar(sb, time.Minute, 2);
+        sb.Append(':');
+        WriteChar(sb, time.Second, 2);
+        sb.Append('.');
 
         if (ctsRounding)
         {
-            WriteChar(sw, DigitRounding(time.Millisecond), 3);
+            WriteChar(sb, DigitRounding(time.Millisecond), 3);
         }
         else
         {
-            WriteChar(sw, time.Millisecond, 3);
+            WriteChar(sb, time.Millisecond, 3);
         }
         
     }
 
-    private static void WriteChar(StreamWriter sw, int val, int length)
+    private static void WriteChar(StringBuilder sb, int val, int length)
     {
         var ca = new char[length];
         
@@ -227,7 +242,7 @@ public class AssEvent
             divisor /= 10;
         }
 
-        sw.Write(ca[0..Math.Min(length, 2)]);
+        sb.Append(ca[0..Math.Min(length, 2)]);
     }
 
     private static int DigitRounding(int i)
@@ -238,13 +253,20 @@ public class AssEvent
 
     public void Write(StreamWriter sw, string[] fmts, bool ctsRounding)
     {
+        var sb = new StringBuilder();
+        Write(sb, fmts, ctsRounding);
+        sw.Write(sb.ToString());
+    }
+
+    public void Write(StringBuilder sb, string[] fmts, bool ctsRounding)
+    {
         if (StartSemicolon)
         {
-            sw.Write($";{Untouched}");
+            sb.Append($";{Untouched}");
         }
         else
         {
-            sw.Write(IsDialogue ? "Dialogue: " : "Comment: ");
+            sb.Append(IsDialogue ? "Dialogue: " : "Comment: ");
             
             for (var i = 0; i < fmts.Length; i++)
             {
@@ -252,52 +274,52 @@ public class AssEvent
                 switch (fmts[i])
                 {
                     case "Marked":
-                        sw.Write(Marked);
+                        sb.Append(Marked);
                         break;
                     case "Layer":
-                        sw.Write(Layer);
+                        sb.Append(Layer);
                         break;
                     case "Start":
-                        WriteTime(sw, Start, ctsRounding);
+                        WriteTime(sb, Start, ctsRounding);
                         break;
                     case "End":
-                        WriteTime(sw, End, ctsRounding);
+                        WriteTime(sb, End, ctsRounding);
                         break;
                     case "Style":
-                        sw.Write(Style);
+                        sb.Append(Style);
                         break;
                     case "Name":
-                        sw.Write(Name);
+                        sb.Append(Name);
                         break;
                     case "MarginL":
-                        sw.Write(MarginL);
+                        sb.Append(MarginL);
                         break;
                     case "MarginR":
-                        sw.Write(MarginR);
+                        sb.Append(MarginR);
                         break;
                     case "MarginV":
-                        sw.Write(MarginV);
+                        sb.Append(MarginV);
                         break;
                     case "MarginT":
-                        sw.Write(MarginT);
+                        sb.Append(MarginT);
                         break;
                     case "MarginB":
-                        sw.Write(MarginB);
+                        sb.Append(MarginB);
                         break;
                     case "Effect":
-                        sw.Write(Effect);
+                        sb.Append(Effect);
                         break;
                     case "Text":
                         foreach (var ca in Text)
                         {
-                            sw.Write(ca);
+                            sb.Append(ca);
                         }
                         break;
                 }
                 
                 if (i < fmts.Length - 1)
                 {
-                    sw.Write(',');
+                    sb.Append(',');
                 }
             }
         }

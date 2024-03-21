@@ -39,7 +39,11 @@ public class AssConstants
 
     }
 
+    public const string FormatV4 = "Marked, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text";
+    public const string FormatV4P = "Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text";
+    public const string FormatV4PP = "Layer, Start, End, Style, Name, MarginL, MarginR, MarginT, MarginB, Effect, Text";
 
+    public static bool IsEventLine(ReadOnlySpan<char> sp) => sp.StartsWith("Comment") || sp.StartsWith("Dialogue");
     public static bool IsEventSpecialCharPair(char[] ca) => ca.Length == 2 && ca[0] == '\\' && (ca[1] is LineBreaker or WordBreaker or NBSP);
     public static bool IsEventSpecialCharPair(Span<char> ca) => ca.Length == 2 && ca[0] == '\\' && (ca[1] is LineBreaker or WordBreaker or NBSP);
 }
