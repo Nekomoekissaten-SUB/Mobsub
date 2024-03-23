@@ -40,18 +40,18 @@ public partial class SubtileProcess
 
         var relativePathProcss = relativePath.Contains('\\') ? relativePath.Replace("\\", "/") : relativePath;
         var diffs = repo.Diff.Compare<Patch>(tree1, tree2, new[] { relativePathProcss });
-        var fullPath = Path.Combine(repoLocalPath, relativePathProcss);
+        var fullPath = new FileInfo(Path.Combine(repoLocalPath, relativePathProcss)).FullName;
         var filterDiffs = Directory.Exists(fullPath) ? diffs.Where(f => f.Path.EndsWith(baseSuffix)) : diffs;
 
         foreach (var diff in diffs)
         {
             var sourceFile = diff.OldPath;
             var targetFile = sourceFile.Replace(baseSuffix, targetSuffix);
-            var sourceFileFull = Path.Combine(repoLocalPath, sourceFile);
-            var targetFileFull = Path.Combine(repoLocalPath, targetFile);
+            var sourceFileFull = new FileInfo(Path.Combine(repoLocalPath, sourceFile)).FullName;
+            var targetFileFull = new FileInfo(Path.Combine(repoLocalPath, targetFile)).FullName;
             var targetFileTemp = targetFileFull + "_tmp";
 
-            if (File.Exists(targetFileFull))
+            if (!File.Exists(targetFileFull))
             {
                 throw new Exception("Please check " + targetSuffix + ", not found " + targetFileFull);
             }
