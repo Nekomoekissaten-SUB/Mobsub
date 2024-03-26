@@ -114,6 +114,7 @@ public partial class SubtileProcess
                 var hadMotionGarbage = false;
                 var hadUnusedChar = false;
                 var hadWeridSpace = false;
+                var hadEndSpace = false;
                 
                 for (var i = 0; i < data.Events.Collection.Count; i++)
                 {
@@ -125,6 +126,8 @@ public partial class SubtileProcess
                     }
 
                     var et = data.Events.Collection[i].Text;
+                    if (RemoveEndSpace(et))
+                        hadEndSpace = true;
 
                     if (IsMotionGarbage(et))
                     {
@@ -150,6 +153,10 @@ public partial class SubtileProcess
                 if (hadWeridSpace)
                 {
                     records.Append(" replace weird space chars;");
+                }
+                if (hadEndSpace)
+                {
+                    records.Append(" remove end space chars;");
                 }
                 RecordRemoveLast(records, 7);
             }
@@ -232,6 +239,23 @@ public partial class SubtileProcess
             }
             sb.Clear();
         }
+    }
+
+    private static bool RemoveEndSpace(List<char[]> et)
+    {
+        if (et.Count == 0)
+            return false;
+
+        var last = et[^1];
+        for (var end = last.Length - 1; end >=0; end--)
+        {
+            if (!char.IsWhiteSpace(last[end]))
+            {
+                et[^1] = last[..(end + 1)];
+                return true;
+            }
+        }
+        return false;
     }
 
     public static void RemoveChar( StringBuilder sb, char[] chars)
