@@ -252,7 +252,10 @@ public partial class SubtileProcess
             if (!char.IsWhiteSpace(last[end]))
             {
                 et[^1] = last[..(end + 1)];
-                return true;
+                if (end != last.Length - 1)
+                    return true;
+                else
+                    break;
             }
         }
         return false;
