@@ -2,6 +2,10 @@ name: publish
 
 on:
   push:
+    branches: [ "master" ]
+    paths:
+    - '**.cs'
+    - '**.csproj'
   pull_request:
     branches: [ "master" ]
     paths:
