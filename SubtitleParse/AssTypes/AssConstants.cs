@@ -1,4 +1,4 @@
-namespace Mobsub.AssTypes;
+namespace Mobsub.SubtitleParse.AssTypes;
 
 public class AssConstants
 {

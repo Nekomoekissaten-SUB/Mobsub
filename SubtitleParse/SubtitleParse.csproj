@@ -10,4 +10,8 @@
     <IsAotCompatible>true</IsAotCompatible>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="ZLogger" Version="2.4.1" />
+  </ItemGroup>
+
 </Project>

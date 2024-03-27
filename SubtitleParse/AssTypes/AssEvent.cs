@@ -1,10 +1,11 @@
+using Microsoft.Extensions.Logging;
+using ZLogger;
 using System.Diagnostics;
 using System.Text;
-using static Mobsub.Utils.ParseHelper;
 
-namespace Mobsub.AssTypes;
+namespace Mobsub.SubtitleParse.AssTypes;
 
-public class AssEvents
+public class AssEvents(ILogger<AssData>? logger = null)
 {
     private string[]? formats;
     public string[] Formats
@@ -13,11 +14,13 @@ public class AssEvents
         set => formats = value;
     }
     public List<AssEvent> Collection = [];
+    private readonly ILogger<AssData>? _logger = logger;
+    internal const string sectionName = "[Events]";
 
     public void Read(ReadOnlySpan<char> sp, string scriptType, int lineNumber)
     {
         var sepIndex = sp.IndexOf(':');
-        var evt = new AssEvent();
+        var evt = new AssEvent(_logger);
         if (evt.Read(sp, sepIndex, lineNumber, Formats))
         {
             Collection.Add(evt);
@@ -33,25 +36,30 @@ public class AssEvents
             {
                 throw new Exception("Events: Text must be last field.");
             }
+            _logger?.ZLogDebug($"Parse format line fine");
         }
     }
 
     public void Write(StreamWriter sw, char[] newline, bool ctsRounding)
     {
-        sw.Write("[Events]");
+        _logger?.ZLogInformation($"Start write section {sectionName}");
+        sw.Write(sectionName);
         sw.Write(newline);
         sw.Write($"Format: {string.Join(", ", Formats)}");
+        _logger?.ZLogDebug($"Write format line fine");
         sw.Write(newline);
 
+        _logger?.ZLogDebug($"Start Write event line");
         for (var i = 0; i < Collection.Count; i++)
         {
             Collection[i].Write(sw, Formats, ctsRounding);
             sw.Write(newline);
         }
+        _logger?.ZLogDebug($"Write event lines fine");
     }
 }
 
-public class AssEvent
+public class AssEvent(ILogger<AssData>? logger = null)
 {
     private int layer = 0;
     public int lineNumber;
@@ -75,6 +83,7 @@ public class AssEvent
     public int MarginB { get; set; } = 0;
     public string? Effect { get; set; }
     public List<char[]> Text { get; set; } = [];  // override tags block, special chars block, normal text block
+    private readonly ILogger<AssData>? _logger = logger;
 
     public bool Read(ReadOnlySpan<char> sp, int lineNum, string[] formats) => Read(sp, sp.IndexOf(':'), lineNum, formats);
 
@@ -85,6 +94,7 @@ public class AssEvent
             StartSemicolon = true;
             Untouched = sp.ToString();
             lineNumber = lineNum;
+            _logger?.ZLogInformation($"Line ${lineNum} is a comment line, will record untouched");
             return true;
         }
 
@@ -125,7 +135,7 @@ public class AssEvent
                 case "Marked":
                     break;
                 default:
-                    SetProperty(this, typeof(AssEvent), fmts[segCount], v);
+                    Utils.SetProperty(this, typeof(AssEvent), fmts[segCount], v);
                     break;
             }
 
@@ -133,10 +143,10 @@ public class AssEvent
             startIndex = nextSep + 1;
         }
 
-        Text = ParseEventText2(sp[startIndex..]);
+        Text = ParseEventText(sp[startIndex..]);
     }
 
-    public static List<char[]> ParseEventText2(ReadOnlySpan<char> span)
+    public static List<char[]> ParseEventText(ReadOnlySpan<char> span)
     {
         var records = new List<char[]>();
         var sb = new StringBuilder();

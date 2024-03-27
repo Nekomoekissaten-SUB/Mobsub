@@ -1,10 +1,74 @@
-﻿using Mobsub.AssTypes;
+﻿using Mobsub.SubtitleParse.AssTypes;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.InteropServices;
+using System.Text;
 
-namespace Mobsub.Utils;
+namespace Mobsub.SubtitleParse;
 
-public class ParseHelper
+public class Utils
 {
+    public static Encoding GuessEncoding(byte[] buffer)
+    {
+        if (buffer.Length >= 2 && buffer[0] == 0xFF && buffer[1] == 0xFE)
+        {
+            // UTF-16 (Little-Endian)
+            return Encoding.Unicode;
+        }
+        else if (buffer.Length >= 2 && buffer[0] == 0xFE && buffer[1] == 0xFF)
+        {
+            // UTF-16 (Big-Endian)
+            return Encoding.BigEndianUnicode;
+        }
+        else if (buffer.Length >= 3 && buffer[0] == 0xEF && buffer[1] == 0xBB && buffer[2] == 0xBF)
+        {
+            // UTF-8
+            return Encoding.UTF8;
+        }
+        else
+        {
+            // Default to UTF-8 without Bom
+            return new UTF8Encoding(false);
+        }
+    }
+
+    public static Encoding EncodingRefOS()
+    {
+        switch (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            case false:
+                return new UTF8Encoding(false);
+            default:
+                return Encoding.UTF8;
+        }
+    }
+
+    public static void GuessEncoding(FileStream fs, out Encoding charEncoding)
+    {
+        var buffer = new byte[4];
+        fs.Read(buffer, 0, 4);
+        charEncoding = GuessEncoding(buffer);
+        fs.Seek(0, SeekOrigin.Begin);
+    }
+
+    public static void GuessEncoding(FileStream fs, out Encoding charEncoding, out bool isCarriageReturn)
+    {
+        var buffer = new byte[1024];
+        var b = fs.Read(buffer, 0, 1024);
+        charEncoding = GuessEncoding(buffer);
+        isCarriageReturn = false;
+        if (b > 0)
+        {
+            for (int i = 0; i < b - 1; i++)
+            {
+                if (buffer[i] == 0x0D && buffer[i + 1] == 0x0A)
+                {
+                    isCarriageReturn = true;
+                }
+            }
+        }
+        fs.Seek(0, SeekOrigin.Begin);
+    }
+
     public static void SetProperty(object obj, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] Type T, string propertyName, string value)
     {
         var property = T.GetProperty(propertyName);
@@ -16,7 +80,9 @@ public class ParseHelper
         object? typedValue = null;
         if (property.PropertyType == typeof(AssRGB8))
         {
-            typedValue = AssRGB8.Parse(value);
+            var abgr = new AssRGB8();
+            abgr.Parse(value);
+            typedValue = abgr;
         }
         else if (property.PropertyType == typeof(bool))
         {
@@ -31,7 +97,7 @@ public class ParseHelper
         }
         else if (property.PropertyType == typeof(AssTime))
         {
-            typedValue = AssParseTime(value.AsSpan());
+            typedValue = AssTime.ParseFromAss(value.AsSpan());
         }
         else
         {
@@ -90,77 +156,6 @@ public class ParseHelper
         key = sp[..sepIndex].ToString();
         value = sp[(sepIndex + 1)..].Trim().ToString();
         return true;
-    }
-
-    internal static AssTime AssParseTime(ReadOnlySpan<char> sp)
-    {
-        // hours:minutes:seconds:centiseconds
-        // 0:00:00.00, number of digits of hours is variable
-        var ms = 0;
-        var sepPosFirst = 1;
-
-        for (int i = 0; i < sp.Length; i++)
-        {
-            if (sp[i] == ':')
-            {
-                sepPosFirst = i;
-                break;
-            }
-        }
-
-        int h = 0;
-        for (var i = sepPosFirst - 1; i > -1; i--)
-        {
-            h += (sp[i] - '0') * (int)Math.Pow(10, i);
-        }
-        ms += h * 1000 * 60 * 60;
-
-        for (int i = sepPosFirst + 1; i < sp.Length; i++)
-        {
-            var c = sp[i];
-            var n = c - '0';
-
-            if (i == sepPosFirst + 1)
-            {
-                ms += n * 1000 * 60 * 10;
-            }
-            else if (i == sepPosFirst + 2)
-            {
-                ms += n * 1000 * 60;
-            }
-            else if (i == sepPosFirst + 4)
-            {
-                ms += n * 1000 * 10;
-            }
-            else if (i == sepPosFirst + 5)
-            {
-                ms += n * 1000;
-            }
-            else if (i == sepPosFirst + 6)
-            {
-                if (c != '.')
-                {
-                    throw new Exception($"Wrong timestamp in ass: {sp.ToString()}");
-                }
-            }
-            else if (i == sepPosFirst + 7)
-            {
-                ms += n * 100;
-            }
-            else if (i == sepPosFirst + 8)
-            {
-                ms += n * 10;
-            }
-            else
-            {
-                if (c != ':')
-                {
-                    throw new Exception($"Wrong timestamp in ass: {sp.ToString()}");
-                }
-            }
-        }
-
-        return new AssTime(ms);
     }
 
 }

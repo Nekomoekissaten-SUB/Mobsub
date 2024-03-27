@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace Mobsub.AssTypes;
+namespace Mobsub.SubtitleParse.AssTypes;
 
 public class AssYCbCrMatrix
 {
@@ -42,14 +42,14 @@ public class AssYCbCrMatrix
     }
 }
 
-public class AssRGB8
+public struct AssRGB8(byte red, byte green, byte blue, byte alpha)
 {
-    public byte R { get; set; } = 0;
-    public byte G { get; set; } = 0;
-    public byte B { get; set; } = 0;
-    public byte A { get; set; } = 0;
+    public byte R = red;
+    public byte G = green;
+    public byte B = blue;
+    public byte A = alpha;
 
-    public static AssRGB8 Parse(ReadOnlySpan<char> sp)
+    public AssRGB8 Parse(ReadOnlySpan<char> sp)
     {
         var sign = (sp[^1] == '&') ? 3 : 2;
 
@@ -58,7 +58,6 @@ public class AssRGB8
             throw new Exception($"Invaild color: {sp}");
         }
 
-        var argb = new AssRGB8(){};
         var loop = 0;
         for (int i = sp.Length - sign + 1; i > 1; i -= 2)
         {
@@ -67,16 +66,16 @@ public class AssRGB8
             switch (loop)
             {
                 case 0:
-                    argb.R = n;
+                    R = n;
                     break;
                 case 1:
-                    argb.G = n;
+                    G = n;
                     break;
                 case 2:
-                    argb.B = n;
+                    B = n;
                     break;
                 case 3:
-                    argb.A = n;
+                    A = n;
                     break;
                 default:
                     throw new Exception($"Invaild color: {sp}");
@@ -85,12 +84,11 @@ public class AssRGB8
             loop += 1;
         }
 
-        return argb;
+        return this;
     }
 
-    public string ConvetToString(bool alpha)
+    public readonly string ConvetToString(bool alpha)
     {
-        var abgr = new StringBuilder("&H");
         var bytel = new List<byte>();
         if (alpha)
         {
