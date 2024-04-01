@@ -79,11 +79,11 @@ public class AssScriptInfo(ILogger<AssData>? logger = null)
         switch (sp[0])
         {
             case '!':
-                CustomData.Add(sp.Trim().ToString());
+                CustomData.Add(sp[1..].Trim().ToString());
                 _logger?.ZLogDebug($"Line {lineNumber} is customized metadata");
                 break;
             case ';':
-                Comment.Add(sp.Trim().ToString());
+                Comment.Add(sp[1..].Trim().ToString());
                 _logger?.ZLogDebug($"Line {lineNumber} is comment");
                 break;
             default:
