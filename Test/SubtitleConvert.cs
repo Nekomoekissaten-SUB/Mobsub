@@ -1,6 +1,8 @@
-﻿namespace Mobsub.Test;
-using Mobsub.SubtitleParse;
+﻿using Mobsub.SubtitleParse;
 using System;
+using Mobsub.SubtitleParse.AssTypes;
+
+namespace Mobsub.Test;
 
 [TestClass]
 public class SubtitleConvert
@@ -11,7 +13,8 @@ public class SubtitleConvert
         var assFile = ".\\test_files\\ass2srt.ass";
         var srtFile = ".\\test_files\\ass2srt.srt";
         var srtConvFile = ".\\test_files\\ass2srt_conv.srt";
-        var ass = AssParse.ReadAssFile(assFile);
+        var ass = new AssData() { };
+        ass.ReadAssFile(assFile);
         var srt = new SubRipText();
         srt.FromAss(ass);
         srt.WriteSrtFile(srtConvFile, false);
