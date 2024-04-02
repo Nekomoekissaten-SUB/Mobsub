@@ -1,10 +1,30 @@
 ﻿using Mobsub.Ikkoku.SubtileProcess;
 using Mobsub.SubtitleParse.AssTypes;
+using System.CommandLine;
 
 namespace Mobsub.Ikkoku.CommandLine;
 
 internal class ConvertCmd
 {
+    internal static Command Build(Argument<FileSystemInfo> path, Option<FileSystemInfo> optPath)
+    {
+        var inputSuffix = new Option<string>(
+            name: "--from-format",
+            description: "Format which will convert from"
+        );
+        var convertSuffix = new Option<string>(
+            name: "--to-format",
+            description: "Format which will convert to"
+        )
+        { IsRequired = true };
+        var convSubtitleCommand = new Command("convert", "Convert subtitle format")
+        {
+            path, optPath, convertSuffix, inputSuffix
+        };
+        convSubtitleCommand.SetHandler(Execute, path, optPath, convertSuffix, inputSuffix);
+        return convSubtitleCommand;
+    }
+
     internal static void Execute(FileSystemInfo path, FileSystemInfo? optPath, string convertSuffix, string inputSuffix)
     {
         switch (path)

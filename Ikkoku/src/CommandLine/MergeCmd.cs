@@ -4,11 +4,98 @@ using System.Diagnostics;
 using YamlDotNet.Serialization.NamingConventions;
 using YamlDotNet.Serialization;
 using Mobsub.Ikkoku.SubtileProcess;
+using System.CommandLine;
 
 namespace Mobsub.Ikkoku.CommandLine;
 
 internal class MergeCmd
 {
+    internal static Command Build(Option<FileSystemInfo> optPath, Option<FileInfo> mergeConf)
+    {
+        var baseFile = new Option<FileInfo>(
+            name: "--base",
+            description: "Basic files in the merge. (Merge mode 1, required).");
+        var mergeFile = new Option<FileInfo[]>(
+            name: "--merge",
+            description: "Files will be merged into the base file by order. (Merge mode 1, required).")
+        { AllowMultipleArgumentsPerToken = true };
+
+        // Shift and Merge Config file. (Merge mode 2 base file, required).
+
+        var confVar = new Option<string[]>(name: "--config-var", description: "Values into configuration file. (Merge mode 2, required).")
+        { AllowMultipleArgumentsPerToken = true };
+        confVar.AddAlias("-var");
+        var mergeSection = new Option<string>(name: "--section", description: "Sections to be merged. Can be style, event, all (default).", getDefaultValue: () => "all").FromAmong("style", "event", "all");
+
+        var mergeCommand = new Command("merge", "Merge subtitles. Output is required.")
+        {
+            baseFile, mergeFile, optPath, mergeConf, confVar, mergeSection
+        };
+        mergeCommand.SetHandler(Execute, baseFile, mergeFile, optPath, mergeConf, confVar, mergeSection);
+        mergeCommand.AddValidator((result) =>
+        {
+            var bf = result.GetValueForOption(baseFile);
+            var mf = result.GetValueForOption(mergeFile);
+            var opt = result.GetValueForOption(optPath);
+
+            var conf = result.GetValueForOption(mergeConf);
+            var confv = result.GetValueForOption(confVar);
+
+            if (opt is null)
+            {
+                result.ErrorMessage = "Must specify output";
+            }
+
+            if (conf is null)
+            {
+                if (bf is null || mf is null)
+                {
+                    result.ErrorMessage = "You should specify base and merge files if no configure file.";
+                }
+                else if (!bf.Exists)
+                {
+                    result.ErrorMessage = result.LocalizationResources.FileDoesNotExist(bf.FullName);
+                }
+                else
+                {
+                    foreach (var f in mf)
+                    {
+                        if (!f.Exists)
+                        {
+                            result.ErrorMessage = result.LocalizationResources.FileDoesNotExist(f.FullName);
+                        }
+                    }
+                }
+            }
+            else
+            {
+                switch (opt)
+                {
+                    case DirectoryInfo:
+                        break;
+                    default:
+                        result.ErrorMessage = "--output must be a directory when specify configure file.";
+                        break;
+                }
+
+                if (confv is null)
+                {
+                    result.ErrorMessage = "You should specify --config-var when specify configure file.";
+                }
+                else if (confv.Length != 2)
+                {
+                    result.ErrorMessage = "You only can input --config-var 2 values, these will replace ep and lang in configure file.";
+                }
+                else if (!conf.Exists)
+                {
+                    result.ErrorMessage = result.LocalizationResources.FileDoesNotExist(conf.FullName);
+                }
+            }
+        }
+        );
+        return mergeCommand;
+    }
+
     internal static void Execute(FileInfo? baseFile, FileInfo[]? mergeFile, FileSystemInfo optPath, FileInfo? mergeConf, string[]? confVar, string mergeSection)
     {
         if (mergeConf is null)

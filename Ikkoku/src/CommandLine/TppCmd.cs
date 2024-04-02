@@ -1,12 +1,78 @@
 ﻿using Mobsub.SubtitleParse.AssTypes;
 using Mobsub.Ikkoku.SubtileProcess;
 using Mobsub.Ikkoku.FormatData;
+using System.CommandLine;
 
 namespace Mobsub.Ikkoku.CommandLine;
 
 // TimingPostProcessor
 internal class TppCmd
 {
+    internal static Command Build(Argument<FileSystemInfo> path, Option<FileSystemInfo> optPath, Option<string> fps)
+    {
+        var shiftSpan = new Option<string>(name: "--shift-by",
+            description: "Shift subtitle time. Support int ends with mls (millisecond), cts (centisecond), sec (second), min (minute), frm (frame); pure int use second; if use frm but not specify fps, fps will be 24000/1001.");
+        var shiftStyles = new Option<string[]>(
+            name: "--shift-styles",
+            description: "Experimental. Shift styles. Default is shift all styles or you select styles, first is ! means you will not shift styles.")
+        { AllowMultipleArgumentsPerToken = true };
+        var tcfile = new Option<FileInfo>(
+            name: "--tcfile",
+            description: "You should specify timecode file (v2) if you want convert vfr subtitles to cfr subtitles.");
+
+        var tppCommand = new Command("tpp", "Subtitle timing post-processor.")
+        {
+            path, optPath, shiftSpan, shiftStyles, fps, tcfile
+        };
+        tppCommand.SetHandler(Execute, path, optPath, shiftSpan, shiftStyles, fps, tcfile);
+        
+        tppCommand.AddValidator((result) =>
+        {
+            switch (result.GetValueForOption(optPath))
+            {
+                case FileInfo:
+                    switch (result.GetValueForArgument(path))
+                    {
+                        case DirectoryInfo:
+                            result.ErrorMessage = "Output path must be directory when input path is a dir!";
+                            break;
+                    }
+                    break;
+            }
+
+            var shift = result.GetValueForOption(shiftSpan);
+            var tcf = result.GetValueForOption(tcfile);
+            if (shift is null)
+            {
+                if (tcf is null)
+                {
+                    result.ErrorMessage = "--shift-by and --tcfile can’t both null,";
+                }
+                else if (!tcf.Exists)
+                {
+                    result.ErrorMessage = result.LocalizationResources.FileDoesNotExist(tcf.FullName);
+                }
+            }
+            else
+            {
+                if (tcf is not null)
+                {
+                    result.ErrorMessage = "You can’t specify --shift-by and --tcfile both.";
+                }
+                else
+                {
+                    string[] a = ["mls", "cts", "sec", "min", "frm"];
+                    if (!(int.TryParse(shift, out _) || a.Contains(shift[^3..]) || shift.AsSpan().IndexOf('-') <= 0))
+                    {
+                        result.ErrorMessage = result.LocalizationResources.ArgumentConversionCannotParseForOption(shift, "--shift-by", typeof(ArgumentException));
+                    }
+                }
+            }
+        }
+        );
+        return tppCommand;
+    }
+
     internal static void Execute(FileSystemInfo path, FileSystemInfo? optPath, string? shiftSpan, string[] styles, string fps, FileInfo? tcfile)
     {
         // select mode

@@ -2,12 +2,67 @@
 using Mobsub.SubtitleParse.AssTypes;
 using Mobsub.ZhConvert;
 using OpenCCSharp.Conversion;
+using System.CommandLine;
 using System.Text;
 
 namespace Mobsub.Ikkoku.CommandLine;
 
 internal class CJKppCmd
 {
+    internal static Command Build(Argument<FileSystemInfo> path, Option<FileSystemInfo> optPath, Option<FileInfo> convConf)
+    {
+        var cjkppCommand = new Command("cjkpp", "CJK post-processor, such as simplified and traditional conversion of Hanzi.")
+        {
+            path, optPath, convConf
+        };
+        cjkppCommand.SetHandler(Execute, path, optPath, convConf);
+        cjkppCommand.AddValidator((result) =>
+        {
+            switch (result.GetValueForOption(optPath))
+            {
+                case FileInfo:
+                    switch (result.GetValueForArgument(path))
+                    {
+                        case DirectoryInfo:
+                            result.ErrorMessage = "Output path must be directory when input path is a dir!";
+                            break;
+                    }
+                    break;
+            }
+        }
+        );
+
+        // subcommand build-dict
+        cjkppCommand.Add(BuildSubDict(path, optPath));
+
+        return cjkppCommand;
+    }
+
+    private static Command BuildSubDict(Argument<FileSystemInfo> path, Option<FileSystemInfo> optPath)
+    {
+        var convDictCommand = new Command("build-dict", "Build tris dictinaries from txt files (txt file same as OpenCC).")
+        {
+            path, optPath
+        };
+        convDictCommand.SetHandler(BuildOpenccsharpDict, path, optPath);
+        convDictCommand.AddValidator((result) =>
+        {
+            switch (result.GetValueForOption(optPath))
+            {
+                case FileInfo:
+                    switch (result.GetValueForArgument(path))
+                    {
+                        case DirectoryInfo:
+                            result.ErrorMessage = "Output path must be directory when input path is a dir!";
+                            break;
+                    }
+                    break;
+            }
+        }
+        );
+        return convDictCommand;
+    }
+
     internal static void Execute(FileSystemInfo path, FileSystemInfo opt, FileInfo config)
     {
         var dicts = OpenCCSharpUtils.LoadJson(config);
