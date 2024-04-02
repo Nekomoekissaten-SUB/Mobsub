@@ -65,7 +65,7 @@ partial class Program
         // tpp
         rootCommand.Add(TppCmd.Build(path, optPath, fps));
         // merge
-        rootCommand.Add(MergeCmd.Build(optPath, conf));
+        rootCommand.Add(MergeCmd.Build(path, optPath, conf));
         // cjkpp (zhconvert)
         // sub: build-dict
         rootCommand.Add(CJKppCmd.Build(path, optPath, conf));
