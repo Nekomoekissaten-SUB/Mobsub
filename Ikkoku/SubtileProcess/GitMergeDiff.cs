@@ -1,12 +1,12 @@
 ﻿using LibGit2Sharp;
-using Mobsub.AssTypes;
+using Mobsub.SubtitleParse.AssTypes;
 using Mobsub.ZhConvert;
 using OpenCCSharp.Conversion;
 using System.Text;
 
-namespace Mobsub.Ikkoku;
+namespace Mobsub.Ikkoku.SubtileProcess;
 
-public partial class SubtileProcess
+public partial class Merge
 {
     private struct GitMergeDiffParams
     {
@@ -144,9 +144,9 @@ public partial class SubtileProcess
     {
         var evt = new AssEvent();
         evt.Read(sp[..^1], lineNum - 1, formats);
-        if (!NotZhConvert(evt))
+        if (!CJKpp.NotZhConvert(evt))
         {
-            ZhConvertEventLineByOpenccsharp(evt.Text, new StringBuilder(), converter, out var changes);
+            CJKpp.ZhConvertEventLineByOpenccsharp(evt.Text, new StringBuilder(), converter, out var changes);
         }  
         var sb = new StringBuilder();
         evt.Write(sb, formats, false);

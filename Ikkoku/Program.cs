@@ -1,6 +1,8 @@
-﻿using System.CommandLine;
+﻿using Mobsub.Ikkoku.CommandLine;
+using Mobsub.Ikkoku.SubtileProcess;
+using System.CommandLine;
 
-namespace Mobsub.Ikkoku.CommandLine;
+namespace Mobsub.Ikkoku;
 
 partial class Program
 {
@@ -74,15 +76,15 @@ partial class Program
         description: "Add LayoutResX/Y in Script Info, default value will same as PlayResX/Y");
         var dropUnusedStyles = new Option<bool>(name: "--drop-unused-styles",
         description: "Remove unused styles not used in Events");
-        var cleanPreset = new Option<CleanPreset>(name: "--preset",
+        var cleanPreset = new Option<CleanCmd.CleanPreset>(name: "--preset",
         description: "CleanAss preset, default is Basic",
-        getDefaultValue: () => CleanPreset.Basic);
+        getDefaultValue: () => CleanCmd.CleanPreset.Basic);
         
         var cleanCommand = new Command("clean", "Clean Your ASS! Remove unused script info and sections, check undefined styles.")
         {
             path, optPath, extractBinaries, keepCommentLines, verbose, addLayoutRes, dropUnusedStyles, cleanPreset
         };
-        cleanCommand.SetHandler(Clean, path, optPath, extractBinaries, keepCommentLines, verbose, addLayoutRes, dropUnusedStyles, cleanPreset);
+        cleanCommand.SetHandler(CleanCmd.Execute, path, optPath, extractBinaries, keepCommentLines, verbose, addLayoutRes, dropUnusedStyles, cleanPreset);
         rootCommand.Add(cleanCommand);
         
         // check
@@ -100,7 +102,7 @@ partial class Program
         {
             path, tagMode, styleCheck, verbose
         };
-        checkCommand.SetHandler(Check, path, tagMode, styleCheck, verbose);
+        checkCommand.SetHandler(CheckCmd.Execute, path, tagMode, styleCheck, verbose);
         rootCommand.Add(checkCommand);
         
         // tpp
@@ -123,7 +125,7 @@ partial class Program
         {
             path, optPath, shiftSpan, shiftStyles, fps, tcfile
         };
-        tppCommand.SetHandler(TimingPostProcessor, path, optPath, shiftSpan, shiftStyles, fps, tcfile);
+        tppCommand.SetHandler(TppCmd.Execute, path, optPath, shiftSpan, shiftStyles, fps, tcfile);
         tppCommand.AddValidator((result) =>
             {
                 switch (result.GetValueForOption(optPath))
@@ -199,7 +201,7 @@ partial class Program
         {
             baseFile, mergeFile, optPath, mergeConf, confVar, mergeSection
         };
-        mergeCommand.SetHandler(Merge, baseFile, mergeFile, optPath, mergeConf, confVar, mergeSection);
+        mergeCommand.SetHandler(MergeCmd.Execute, baseFile, mergeFile, optPath, mergeConf, confVar, mergeSection);
         mergeCommand.AddValidator((result) =>
             {
                 var bf = result.GetValueForOption(baseFile);
@@ -275,14 +277,14 @@ partial class Program
         {
             path, optPath, convConf
         };
-        cjkppCommand.SetHandler(CJKPostProcessor, path, optPath, convConf);
+        cjkppCommand.SetHandler(CJKppCmd.Execute, path, optPath, convConf);
         
         // cjkpp / zhconvert build-dict
         var convDictCommand = new Command("build-dict", "Build tris dictinaries from txt files (txt file same as OpenCC).")
         {
             path, optPath
         };
-        convDictCommand.SetHandler(BuildOpenccsharpDict, path, optPath);
+        convDictCommand.SetHandler(CJKppCmd.BuildOpenccsharpDict, path, optPath);
         convDictCommand.AddValidator((result) =>
             {
                 switch (result.GetValueForOption(optPath))
@@ -330,11 +332,12 @@ partial class Program
         {
             path, optPath, convertSuffix, inputSuffix
         };
-        convSubtitleCommand.SetHandler(ConvertSubtitles, path, optPath, convertSuffix, inputSuffix);
+        convSubtitleCommand.SetHandler(ConvertCmd.Execute, path, optPath, convertSuffix, inputSuffix);
         rootCommand.Add(convSubtitleCommand);
-
 
         return await rootCommand.InvokeAsync(args);
     }
+
+
 
 }

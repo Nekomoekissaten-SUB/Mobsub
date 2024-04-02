@@ -1,11 +1,10 @@
 using System.Diagnostics;
 using System.Text;
-using Mobsub.AssTypes;
-using Mobsub.SubtitleParse;
+using Mobsub.SubtitleParse.AssTypes;
 
-namespace Mobsub.Ikkoku;
+namespace Mobsub.Ikkoku.SubtileProcess;
 
-public partial class SubtileProcess
+public class Clean
 {
     public struct CleanAssArgs
     {
@@ -91,7 +90,7 @@ public partial class SubtileProcess
     
         if (args.processEvents || args.dropUnusedStyles)
         {
-            var usedStyles = GetUsedStyles(data.Events.Collection);
+            var usedStyles = Check.GetUsedStyles(data.Events.Collection);
             // Default style always use
             usedStyles.Add("Default");
 
@@ -118,7 +117,7 @@ public partial class SubtileProcess
                 
                 for (var i = 0; i < data.Events.Collection.Count; i++)
                 {
-                    if (WeridTimeOneLine(data.Events.Collection[i]))
+                    if (Check.WeridTimeOneLine(data.Events.Collection[i]))
                     {
                         data.Events.Collection[i].IsDialogue = false;
                         hadWeridTime = true;
@@ -129,7 +128,7 @@ public partial class SubtileProcess
                     if (RemoveEndSpace(et))
                         hadEndSpace = true;
 
-                    if (IsMotionGarbage(et))
+                    if (Check.HadMotionGarbage(et))
                     {
                         et.RemoveAt(0);
                         hadMotionGarbage = true;
@@ -185,7 +184,41 @@ public partial class SubtileProcess
         msg = records.ToString();
     }
 
-    private static void RecordRemoveLast( StringBuilder sb, int lineLength)
+    public static void ExtractBinaries(AssData data, DirectoryInfo binDir)
+    {
+        if (!binDir.Exists)
+        {
+            binDir.Create();
+        }
+
+        if (data.Sections.Contains(AssSection.Fonts))
+        {
+            foreach (var font in data.Fonts)
+            {
+                var filePath = Path.Combine(binDir.FullName, $"{font.OriginalName}{font.Suffix}");
+
+                if (!new FileInfo(filePath).Exists)
+                {
+                    font.WriteFile(filePath);
+                }
+            }
+        }
+
+        if (data.Sections.Contains(AssSection.Graphics))
+        {
+            foreach (var g in data.Graphics)
+            {
+                var filePath = Path.Combine(binDir.FullName, $"{g.Name}");
+
+                if (!new FileInfo(filePath).Exists)
+                {
+                    g.WriteFile(filePath);
+                }
+            }
+        }
+    }
+
+    private static void RecordRemoveLast(StringBuilder sb, int lineLength)
     {
         Debug.Assert(sb[^1] is ';' or ':');
         switch (sb[^1])
@@ -208,7 +241,7 @@ public partial class SubtileProcess
             var blk = et.ToArray()[j];
             foreach (var c in blk)
             {
-                if (EventUnusedChars.Contains(c))
+                if (Check.EventUnusedChars.Contains(c))
                 {
                     _mod = true;
                     if (!hadUnusedChar)
@@ -216,7 +249,7 @@ public partial class SubtileProcess
                         hadUnusedChar = true;
                     }
                 }
-                else if (EventWeirdSpace.Contains(c))
+                else if (Check.EventWeirdSpace.Contains(c))
                 {
                     _mod = true;
                     sb.Append('\u0020');
@@ -260,32 +293,4 @@ public partial class SubtileProcess
         }
         return false;
     }
-
-    public static void RemoveChar( StringBuilder sb, char[] chars)
-    {
-        for (int i = 0; i < sb.Length; i++)
-        {
-            foreach (var c in chars)
-            {
-                if (sb[i] == c)
-                {
-                    sb.Remove(i, 1);
-                    i--;
-                }
-            }
-        }
-    }
-
-    public static void RemoveChar( StringBuilder sb, char c)
-    {
-        for (int i = 0; i < sb.Length; i++)
-        {
-            if (sb[i] == c)
-            {
-                sb.Remove(i, 1);
-                i--;
-            }
-        }
-    }
-
 }
