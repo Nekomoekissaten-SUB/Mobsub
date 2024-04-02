@@ -8,16 +8,16 @@ namespace Mobsub.Ikkoku.SubtileProcess;
 
 public partial class Merge
 {
-    private struct GitMergeDiffParams
+    private struct MergeGitDiffParams
     {
         internal bool toCht;
         internal bool isAss;
         internal ChainedScriptConverter? converter;
     }
 
-    public static void GitMergeDiffToCht(string repoLocalPath, string startCommitId, string endCommitId, string relativePath, string baseSuffix, string targetSuffix, string? convConfPath)
+    public static void MergeGitDiffToCht(string repoLocalPath, string startCommitId, string endCommitId, string relativePath, string baseSuffix, string targetSuffix, string? convConfPath)
     {
-        var pfParams = new GitMergeDiffParams() { toCht =  true, isAss = true };
+        var pfParams = new MergeGitDiffParams() { toCht =  true, isAss = true };
         if (pfParams.toCht )
         {
             if (convConfPath is null)
@@ -70,7 +70,7 @@ public partial class Merge
             using var fsTmp = new FileStream(targetFileTemp, FileMode.Create, FileAccess.Write);
             using var sw = new StreamWriter(fsTmp, sr.CurrentEncoding);
 
-            foreach (var line in GitMergeDiff(sr, deleteLinesCopy, addLinesCopy, pfParams, evtFormats))
+            foreach (var line in MergeGitDiff(sr, deleteLinesCopy, addLinesCopy, pfParams, evtFormats))
             {
                 sw.WriteLine(line);
             }
@@ -85,7 +85,7 @@ public partial class Merge
         }
     }
 
-    private static IEnumerable<string> GitMergeDiff(StreamReader sr, List<Line> deleteLines, List<Line> addLines, GitMergeDiffParams pfParams, string[]? formats)
+    private static IEnumerable<string> MergeGitDiff(StreamReader sr, List<Line> deleteLines, List<Line> addLines, MergeGitDiffParams pfParams, string[]? formats)
     {
         // now only line by line correspondence
         string? line;
