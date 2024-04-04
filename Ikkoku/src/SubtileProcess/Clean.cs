@@ -75,6 +75,8 @@ public class Clean
                 if (k == "Comment" && v.StartsWith("Processed by 繁化姬"))
                 {
                     data.ScriptInfo.Others.Remove(k);
+                    records.Append(" remove Fanhuaji info;");
+                    break;
                 }
             }
         }
