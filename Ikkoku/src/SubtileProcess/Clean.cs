@@ -12,6 +12,7 @@ public class Clean
         internal bool keepComment;
         internal bool renameTitle;
         internal bool addLayoutRes;
+        internal bool deleteFanhuaji;
 
         // Events
         internal bool dropUnusedStyles;
@@ -65,6 +66,17 @@ public class Clean
         {
             data.ScriptInfo.Comment.Clear();
             records.Append(" remove comments;");
+        }
+        // delete Fanhuaji comment line
+        if (args.deleteFanhuaji && (data.ScriptInfo.Others.Count > 0))
+        {
+            foreach (var (k,v) in data.ScriptInfo.Others)
+            {
+                if (k == "Comment" && v.StartsWith("Processed by 繁化姬"))
+                {
+                    data.ScriptInfo.Others.Remove(k);
+                }
+            }
         }
         // change title to ass filename without suffix
         if (args.renameTitle && assFileName.Length > 0)

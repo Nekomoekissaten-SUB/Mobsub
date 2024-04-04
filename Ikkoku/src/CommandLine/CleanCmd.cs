@@ -62,6 +62,7 @@ internal class CleanCmd
                 args.dropUnusedStyles = false;
                 args.processEvents = true;
                 args.rmMotionGarbage = true;
+                args.deleteFanhuaji = true;
                 break;
             default:
                 break;
