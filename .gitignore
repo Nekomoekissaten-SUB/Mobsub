@@ -4,6 +4,7 @@ test_file/*
 .vs/*
 .idea/*
 *.vscode/*
+*/Properties/*
 
 /Test/files/*
 
