@@ -1,8 +1,9 @@
-using static Mobsub.Utils.ParseHelper;
+using Microsoft.Extensions.Logging;
+using ZLogger;
 
-namespace Mobsub.AssTypes;
+namespace Mobsub.SubtitleParse.AssTypes;
 
-public class AssScriptInfo
+public class AssScriptInfo(ILogger<AssData>? logger = null)
 {
     private readonly string[] scriptTypes = ["v4.00", "v4.00+", "v4.00++"];
     private string scriptType = "v4.00";
@@ -70,20 +71,25 @@ public class AssScriptInfo
     // public int status = 0;
     public HashSet<string> Orders = [];
 
-    public void Read(ReadOnlySpan<char> sp)
+    private readonly ILogger<AssData>? _logger = logger;
+    internal const string sectionName = "[Script Info]";
+
+    public void Read(ReadOnlySpan<char> sp, int lineNumber)
     {
         switch (sp[0])
         {
             case '!':
-                CustomData.Add(sp.Trim().ToString());
+                CustomData.Add(sp[1..].Trim().ToString());
+                _logger?.ZLogDebug($"Line {lineNumber} is customized metadata");
                 break;
             case ';':
-                Comment.Add(sp.Trim().ToString());
+                Comment.Add(sp[1..].Trim().ToString());
+                _logger?.ZLogDebug($"Line {lineNumber} is comment");
                 break;
             default:
-                if (TrySplitKeyValue(sp, out string k, out string v))
+                if (Utils.TrySplitKeyValue(sp, out string k, out string v))
                 {
-                    if (IsStringInFields(new AssConstants.ScriptInfo(), typeof(AssConstants.ScriptInfo), k))
+                    if (Utils.IsStringInFields(new AssConstants.ScriptInfo(), typeof(AssConstants.ScriptInfo), k))
                     {
                         if (k.AsSpan().SequenceEqual(AssConstants.ScriptInfo.YCbCrMatrix.AsSpan()))
                         {
@@ -100,14 +106,14 @@ public class AssScriptInfo
                         }
                         else
                         {
-                            SetProperty(this, typeof(AssScriptInfo), k.Contains(' ') ? k.Replace(" ", "") : k, v);
+                            Utils.SetProperty(this, typeof(AssScriptInfo), k.Contains(' ') ? k.Replace(" ", "") : k, v);
                         }
                     }
                     else
                     {
                         Others[k] = v;
                     }
-
+                    
                     if (!Orders.Add(k))
                     {
                         throw new Exception($"Duplicate key in Script Info: {k}");
@@ -117,13 +123,15 @@ public class AssScriptInfo
                 {
                     throw new Exception($"Unkown line: {sp.ToString()}");
                 }
+                _logger?.ZLogDebug($"Line {lineNumber} is a key-pair, key {k} parse completed");
                 break;
         }
     }
 
     public void Write(StreamWriter sw, char[] newline)
     {
-        sw.Write("[Script Info]");
+        _logger?.ZLogInformation($"Start write section {sectionName}");
+        sw.Write(sectionName);
         sw.Write(newline);
         
         foreach (var s in Comment)
@@ -131,6 +139,7 @@ public class AssScriptInfo
             sw.Write($"; {s}");
             sw.Write(newline);
         }
+        _logger?.ZLogDebug($"Write comment lines fine");
 
         foreach (var k in Orders)
         {
@@ -198,13 +207,16 @@ public class AssScriptInfo
             }
             sw.Write(newline);
         }
+        _logger?.ZLogDebug($"Write key-pair lines fine");
 
         foreach (var s in CustomData)
         {
             sw.Write($"!: {s}");
             sw.Write(newline);
         }
+        _logger?.ZLogDebug($"Write customized metadata lines fine");
 
         sw.Write(newline);
+        _logger?.ZLogInformation($"Section write completed");
     }
 }

@@ -1,5 +1,7 @@
 using System.Text;
-using Mobsub.AssTypes;
+using Microsoft.Extensions.Logging;
+using ZLogger;
+using Mobsub.SubtitleParse.AssTypes;
 
 namespace Mobsub.SubtitleParse;
 
@@ -12,7 +14,7 @@ public class AssTagParse
     /// <param name="modTags">not defined in spec, maybe VSFilterMod tags</param>
     /// <param name="weirdTags">normal tag but no value, should be pay attention</param>
     /// <param name="normalTags">normal tags which defined in spec or mainstream subtitle render</param>
-    public static void ClassifyTagsFromLine(List<char[]> et, out StringBuilder modTags, out StringBuilder weirdTags, out StringBuilder normalTags)
+    public static void ClassifyTagsFromLine(List<char[]> et, out StringBuilder modTags, out StringBuilder weirdTags, out StringBuilder normalTags, ILogger<AssTagParse>? logger = null)
     {
         modTags = new StringBuilder();
         weirdTags = new StringBuilder();
@@ -26,29 +28,22 @@ public class AssTagParse
             var slice = text[i].AsSpan();
             if (IsOvrrideBlock(slice) && slice.Length > 2)
             {
-                var a = GetTagsFromOvrBlock(slice);
                 foreach (var ca in GetTagsFromOvrBlock(slice))
                 {
-                    try
-                    {
-                        ClassifyTagsFromBlock(ca.AsSpan(), modTags, weirdTags, normalTags);
-                    }
-                    catch (InvalidDataException)
-                    {
-                        Console.WriteLine(slice.ToString());
-                    }
+                    ClassifyTagsFromBlock(ca.AsSpan(), modTags, weirdTags, normalTags, logger);
                 }
             }
         }
     }
 
-    private static void ClassifyTagsFromBlock(Span<char> tag, StringBuilder modTags, StringBuilder weirdTags, StringBuilder normalTags)
+    private static void ClassifyTagsFromBlock(Span<char> tag, StringBuilder modTags, StringBuilder weirdTags, StringBuilder normalTags, ILogger<AssTagParse>? logger = null)
     {
         var len = tag.Length;
 
         if (len == 0)
         {
-            throw new InvalidDataException("Tag is empty because consecutive backslash or bracket.");
+            logger?.ZLogError($"Tag is empty because consecutive backslash or bracket");
+            return;
         }
 
         switch (tag[0])
@@ -544,14 +539,7 @@ public class AssTagParse
                 {
                     foreach (var ca in GetTagsFromTransFunction(tag))
                     {
-                        try
-                        {
-                            ClassifyTagsFromBlock(ca, modTags, weirdTags, normalTags);
-                        }
-                        catch (InvalidDataException)
-                        {
-                            Console.WriteLine(tag.ToString());
-                        }
+                        ClassifyTagsFromBlock(ca, modTags, weirdTags, normalTags, logger);
                     }
                 }
                 else

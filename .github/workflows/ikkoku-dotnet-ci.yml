@@ -58,7 +58,8 @@ jobs:
       run: |
         cd ./Ikkoku
         dotnet restore
-        dotnet publish -c Release -r "${{ matrix.env.identifier }}-${{ matrix.arch }}"
+        dotnet publish -c Release -r "${{ matrix.env.identifier }}-${{ matrix.arch }}" /p:PublishAot=true /p:PublishSingleFile=false
+        # /p:DefineConstants=NotAot
 
     - name: Set short version
       shell: bash

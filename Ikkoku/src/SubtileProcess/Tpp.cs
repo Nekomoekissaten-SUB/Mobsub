@@ -1,10 +1,10 @@
-using Mobsub.AssTypes;
+using Mobsub.SubtitleParse.AssTypes;
 using Mobsub.Ikkoku.FormatData;
 using System.Diagnostics;
 
-namespace Mobsub.Ikkoku;
+namespace Mobsub.Ikkoku.SubtileProcess;
 
-public partial class SubtileProcess
+public class Tpp
 {
     public static void ShiftAss(List<AssEvent> ets, TimeSpan time)
     {

@@ -1,11 +1,8 @@
-using System.Diagnostics;
-using System.Text;
-using Mobsub.AssTypes;
-using Mobsub.SubtitleParse;
+using Mobsub.SubtitleParse.AssTypes;
 
-namespace Mobsub.Ikkoku;
+namespace Mobsub.Ikkoku.SubtileProcess;
 
-public partial class SubtileProcess
+public class ConvertSub
 {
     public static void ConvertAssToTxt(StreamWriter sw, AssData ass)
     {

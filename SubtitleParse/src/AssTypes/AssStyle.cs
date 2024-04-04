@@ -1,13 +1,17 @@
-using static Mobsub.Utils.ParseHelper;
+using Microsoft.Extensions.Logging;
+using ZLogger;
 
-namespace Mobsub.AssTypes;
+namespace Mobsub.SubtitleParse.AssTypes;
 
-public class AssStyles
+public class AssStyles(ILogger<AssData>? logger = null)
 {
     private readonly string formatV4 = "Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, TertiaryColour, BackColour, Bold, Italic, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, AlphaLevel, Encoding";
     private readonly string formatV4P = "Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding";
     private readonly string formatV4PP = "Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginT, MarginB, Encoding, RelativeTo";
-    
+    internal const string sectionNameV4 = "[V4 Styles]";
+    internal const string sectionNameV4P = "[V4+ Styles]";
+    internal const string sectionNameV4PP = "[V4++ Styles]";
+
     private string[]? formats;
     // public string Version;
     public string[] Formats
@@ -18,10 +22,13 @@ public class AssStyles
     public List<AssStyle> Collection = [];
     public HashSet<string> Names = [];
 
-    public void Read(ReadOnlySpan<char> sp)
+    private readonly ILogger<AssData>? _logger = logger;
+
+    public void Read(ReadOnlySpan<char> sp, int lineNumber)
     {
         if (sp[0] == '/')
         {
+            _logger?.ZLogDebug($"Line {lineNumber} is comment, will not parse");
             return;
         }
 
@@ -30,10 +37,11 @@ public class AssStyles
         if (sp[..sepIndex].SequenceEqual("Format".AsSpan()))
         {
             Formats = sp[(sepIndex + 1)..].ToString().Split(',').Select(s => s.Trim()).ToArray();
+            _logger?.ZLogDebug($"Line {lineNumber} is a format line, parse completed");
         }
         else if (sp[..sepIndex].SequenceEqual("Style".AsSpan()))
         {
-            var syl = new AssStyle();
+            var syl = new AssStyle(_logger);
             var va = sp[(sepIndex + 1)..].ToString().Split(',').Select(s => s.Trim()).ToArray();
 
             if (va.Length != Formats.Length)
@@ -43,13 +51,14 @@ public class AssStyles
 
             for (var i = 0; i < va.Length; i++)
             {
-                SetProperty(syl, typeof(AssStyle), Formats[i], va[i]);
+                Utils.SetProperty(syl, typeof(AssStyle), Formats[i], va[i]);
             }
             Collection.Add(syl);
             if (!Names.Add(syl.Name))
             {
                 throw new Exception($"Styles: duplicate style {syl.Name}");
             }
+            _logger?.ZLogDebug($"Line {lineNumber} is a style line, parse completed, style name is {syl.Name}");
         }
         else
         {
@@ -67,41 +76,48 @@ public class AssStyles
                 {
                     throw new Exception("Invalid style format for v4.00 script. Expected: " + formatV4 + ", got: " + fmtStr);
                 }
-                sw.Write("[V4 Styles]");
+                _logger?.ZLogInformation($"Start write section {sectionNameV4}");
+                sw.Write(sectionNameV4);
                 break;
             case "v4.00+":
                 if (fmtStr != formatV4P)
                 {
                     throw new Exception("Invalid style format for v4.00 script. Expected: " + formatV4P + ", got: " + fmtStr);
                 }
-                sw.Write("[V4+ Styles]");
+                _logger?.ZLogInformation($"Start write section {sectionNameV4P}");
+                sw.Write(sectionNameV4P);
                 break;
             case "v4.00++":
                 if (fmtStr != formatV4PP)
                 {
                     Formats = formatV4PP.Split(',').Select(s => s.Trim()).ToArray();
                 }
-                sw.Write("[V4++ Styles]");
+                _logger?.ZLogInformation($"Start write section {sectionNameV4PP}");
+                sw.Write(sectionNameV4PP);
             break;
         }
         sw.Write(newline);
         sw.Write($"Format: {fmtStr}");
         sw.Write(newline);
+        _logger?.ZLogInformation($"Write format line fine");
 
         for (var i = 0; i < Collection.Count; i++)
         {
             Collection[i].Write(sw, Formats);
             sw.Write(newline);
         }
+        _logger?.ZLogInformation($"Write style lines fine");
         sw.Write(newline);
+        _logger?.ZLogInformation($"Section write completed");
     }
 
 }
 
-public class AssStyle
+public class AssStyle(ILogger<AssData>? logger = null)
 {
     private string? name;
     private string? fontname;
+    private readonly ILogger<AssData>? _logger = logger;
     public string Name
     {
         get => name is null ? "Default" : name;
@@ -113,10 +129,10 @@ public class AssStyle
         set => fontname = value;
     }
     public float Fontsize { get; set; }  // ushort; Is negative and float really correct?
-    public AssRGB8? PrimaryColour { get; set; }
-    public AssRGB8? SecondaryColour { get; set; }
-    public AssRGB8? OutlineColour { get; set; }
-    public AssRGB8? BackColour { get; set; }
+    public AssRGB8 PrimaryColour { get; set; }
+    public AssRGB8 SecondaryColour { get; set; }
+    public AssRGB8 OutlineColour { get; set; }
+    public AssRGB8 BackColour { get; set; }
     public bool Bold { get; set; }     // ? 0 / 400, 1 / 700
     public bool Italic { get; set; }
     public bool Underline { get; set; }  // 0 = false, -1 = true
@@ -143,16 +159,26 @@ public class AssStyle
     // public double Blur { get; set; }
     // public int Justify { get; set; }
 
-    public static AssStyle Fallback()
+    public AssStyle GetDefault()
     {
-        return new AssStyle
-        {
-            Name = "Default",
-            Fontname = "Arial",
-            Bold = false,
-            Italic = false,
-            Encoding = 0,
-        };
+        Name = "Default";
+        Fontname = "Arial";
+        Fontsize = 18;
+        PrimaryColour = new AssRGB8(255, 255, 255, 0);
+        SecondaryColour = new AssRGB8(255, 0, 0, 0);
+        OutlineColour = new AssRGB8(0, 0, 0, 0);
+        BackColour = new AssRGB8(0, 0, 0, 0);
+        Bold = Italic = Underline = StrikeOut = false;
+        ScaleX = ScaleY = 100;
+        Spacing = 0;
+        Angle = 0;
+        BorderStyle = 1;
+        Outline = 2;
+        Shadow = 3;
+        Alignment = 2;
+        MarginL = MarginR = MarginV = 20;
+        Encoding = 1;
+        return this;
     }
 
     public void Write(StreamWriter sw, string[] formats)
@@ -173,19 +199,19 @@ public class AssStyle
                     break;
                 case "PrimaryColour":
                     sw.Write("&H");
-                    sw.Write(PrimaryColour?.ConvetToString(true));
+                    sw.Write(PrimaryColour.ConvetToString(true));
                     break;
                 case "SecondaryColour":
                     sw.Write("&H");
-                    sw.Write(SecondaryColour?.ConvetToString(true));
+                    sw.Write(SecondaryColour.ConvetToString(true));
                     break;
                 case "OutlineColour":
                     sw.Write("&H");
-                    sw.Write(OutlineColour?.ConvetToString(true));
+                    sw.Write(OutlineColour.ConvetToString(true));
                     break;
                 case "BackColour":
                     sw.Write("&H");
-                    sw.Write(BackColour?.ConvetToString(true));
+                    sw.Write(BackColour.ConvetToString(true));
                     break;
                 case "Bold":
                     sw.Write(Bold ? -1 : 0);
@@ -254,6 +280,7 @@ public class AssStyle
                 sw.Write(',');
             }
         }
+        _logger?.ZLogDebug($"Write {Name} style line fine");
     }
 
 }

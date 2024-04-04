@@ -1,10 +1,11 @@
 using System.Text;
+using Mobsub.SubtitleParse.AssTypes;
 using Mobsub.SubtitleParse;
 using OpenCCSharp.Conversion;
 
-namespace Mobsub.Ikkoku;
+namespace Mobsub.Ikkoku.SubtileProcess;
 
-public partial class SubtileProcess
+public class CJKpp
 {
     public static void ZhConvertEventLineByOpenccsharp(List<char[]> etText, StringBuilder sb, ChainedScriptConverter converter, out string[]? charsCountChange)
     {
@@ -51,4 +52,8 @@ public partial class SubtileProcess
         }
     }
 
+    public static bool NotZhConvert(AssEvent evt)
+    {
+        return evt.Style.AsSpan().Contains("JP".AsSpan(), StringComparison.OrdinalIgnoreCase);
+    }
 }

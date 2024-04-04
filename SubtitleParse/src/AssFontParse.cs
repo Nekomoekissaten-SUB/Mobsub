@@ -1,5 +1,5 @@
 using System.Text;
-using Mobsub.AssTypes;
+using Mobsub.SubtitleParse.AssTypes;
 
 namespace Mobsub.SubtitleParse;
 
@@ -98,7 +98,9 @@ public class AssFontParse
             }
             else
             {
-                return AssStyle.Fallback();
+                var style = new AssStyle();
+                style.GetDefault();
+                return style;
             }
         }
     }

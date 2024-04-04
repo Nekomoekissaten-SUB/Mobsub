@@ -1,27 +1,26 @@
 using System.Text;
-using Mobsub.Utils;
-using Mobsub.AssTypes;
+using Mobsub.SubtitleParse.AssTypes;
 
 namespace Mobsub.SubtitleParse;
-
-public struct SrtFrame
-{
-    public int Index { get; set; }
-    public AssTime StartTime { get; set; }
-    public AssTime EndTime { get; set; }
-    public string[] Text { get; set; }
-}
 
 public class SubRipText
 {
     public bool CarriageReturn = false;
-    public Encoding CharEncoding = DetectEncoding.EncodingRefOS();
+    public Encoding CharEncoding = Utils.EncodingRefOS();
     public SrtFrame[] SrtFrames = [];
+
+    public struct SrtFrame
+    {
+        public int Index { get; set; }
+        public AssTime StartTime { get; set; }
+        public AssTime EndTime { get; set; }
+        public string[] Text { get; set; }
+    }
 
     public SubRipText ReadSrtFile(FileStream fs)
     {
         using var sr = new StreamReader(fs);
-        DetectEncoding.GuessEncoding(fs, out CharEncoding, out CarriageReturn);
+        Utils.GuessEncoding(fs, out CharEncoding, out CarriageReturn);
         SrtFrames = Parse(sr).ToArray();
         return this;
     }
@@ -73,7 +72,7 @@ public class SubRipText
 
     public void WriteSrtFile(string filePath, bool forceEnv)
     {
-        var charEncoding = forceEnv ? DetectEncoding.EncodingRefOS() : CharEncoding;
+        var charEncoding = forceEnv ? Utils.EncodingRefOS() : CharEncoding;
 
         using FileStream fileStream = new(filePath, FileMode.Create, FileAccess.Write);
         using var memStream = new MemoryStream();

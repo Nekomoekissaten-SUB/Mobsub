@@ -1,4 +1,5 @@
 using Mobsub.SubtitleParse;
+using Mobsub.SubtitleParse.AssTypes;
 
 namespace Mobsub.Test;
 
@@ -30,9 +31,9 @@ public class ParseTest
     {
         var assFile = ".\\test_files\\ass2srt.ass";
         var assWriteFile = ".\\test_files\\ass2srt_write.ass";
-        var ass = AssParse.ReadAssFile(assFile);
-        AssParse.WriteAssFile(ass, assWriteFile);
-
+        var ass = new AssData() { };
+        ass.ReadAssFile(assFile);
+        ass.WriteAssFile(assWriteFile);
         var refAss = File.ReadAllText(assFile).AsSpan();
         var writeAss = File.ReadAllText(assWriteFile).AsSpan();
 

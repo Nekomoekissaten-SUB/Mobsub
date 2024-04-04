@@ -1,8 +1,8 @@
-using Mobsub.AssTypes;
+using Mobsub.SubtitleParse.AssTypes;
 
-namespace Mobsub.Ikkoku;
+namespace Mobsub.Ikkoku.SubtileProcess;
 
-public partial class SubtileProcess
+public partial class Merge
 {
     public static void MergeAss(AssData baseData, AssData[] mergeData, string mergeType)
     {
