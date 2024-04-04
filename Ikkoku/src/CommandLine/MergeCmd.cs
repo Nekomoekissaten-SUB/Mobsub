@@ -95,9 +95,10 @@ internal class MergeCmd
         }
         );
 
+# if NotAot
         // subcommand base-diff
         mergeCommand.Add(BuildSubGitDiff(path, conf));
-
+# endif
         return mergeCommand;
     }
 
