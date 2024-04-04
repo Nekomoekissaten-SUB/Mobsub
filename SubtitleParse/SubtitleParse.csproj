@@ -10,12 +10,14 @@
     <Authors>MIR</Authors>
     <Description>Parse common subtitles</Description>
     <PackageProjectUrl>https://github.com/Nekomoekissaten-SUB/Mobsub</PackageProjectUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>ass;srt;subtitle</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="ZLogger" Version="2.4.1" />
+    <None Include="README.md" Pack="true" PackagePath="\"/>
   </ItemGroup>
 
 </Project>
