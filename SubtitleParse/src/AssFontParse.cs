@@ -172,7 +172,7 @@ public class AssFontParse
                 fe.Clear().Append(eventStyle.Encoding);
             }
         }
-        else if (tag.StartsWith("b") && !(tag[1] is 'o' or 'l' or 'e'))
+        else if (tag.StartsWith("b") && (len == 1 || (len > 1 && !(tag[1] is 'o' or 'l' or 'e'))))
         {
             weight.Clear();
             if (len > 1)
