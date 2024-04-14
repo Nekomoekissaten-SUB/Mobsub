@@ -133,9 +133,10 @@ internal class MergeCmd
             {
                 if (int.TryParse(confVar[0].AsSpan()[.._sepIndex], out int _epStart) && int.TryParse(confVar[0].AsSpan()[(_sepIndex + 1)..], out int _epEnd))
                 {
+                    var minLength = confVar[0].Length - _sepIndex - 1;
                     for (var i = _epStart; i <= _epEnd; i++)
                     {
-                        MergeByConfigBase(i.ToString().PadLeft(CountDigits(_epEnd), '0'), confVar[1], conf, baseDir, optPath, mergeSection);
+                        MergeByConfigBase(i.ToString().PadLeft(CountDigits(_epEnd, minLength), '0'), confVar[1], conf, baseDir, optPath, mergeSection);
                     }
                 }
                 else
@@ -250,11 +251,11 @@ internal class MergeCmd
         }
     }
 
-    private static int CountDigits(int number)
+    private static int CountDigits(int number, int minLength)
     {
         if (number == 0)
         {
-            return 1;
+            return Math.Max(1, minLength);
         }
 
         int digitCount = 0;
@@ -264,7 +265,7 @@ internal class MergeCmd
             digitCount++;
         }
 
-        return digitCount;
+        return Math.Max(digitCount, minLength);
     }
 
     private static bool FindGitRootDirectory(string startPath, out string rootPath, out string relativePath)
