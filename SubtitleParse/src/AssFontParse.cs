@@ -76,6 +76,30 @@ public class AssFontParse
         return usedFontGlyphs;
     }
 
+    public static Dictionary<AssFontInfo, List<Rune>> GetUsedFontInfos(List<AssEvent> events, List<AssStyle> styles)
+    {
+        var maps = GetUsedFonts(events, styles);
+        return maps.ToDictionary(map => ParseAssFontInfo(map.Key), map => map.Value);
+    }
+    private static AssFontInfo ParseAssFontInfo(string fontInfoString)
+    {
+        var span = fontInfoString.AsSpan();
+        var info = new AssFontInfo();
+
+        var index = span.IndexOf(',');
+        info.Name = span.Slice(0, index).ToString();
+
+        span = span.Slice(index + 1);
+        index = span.IndexOf(',');
+        info.Weight = int.Parse(span.Slice(0, index));
+
+        span = span.Slice(index + 1);
+        index = span.IndexOf(',');
+        info.Italic = int.Parse(span.Slice(0, index)) != 0;
+
+        return info;
+    }
+
     /// <summary>
     /// Get AssStyle by styleName
     /// </summary>
