@@ -158,4 +158,33 @@ public class Utils
         return true;
     }
 
+    public static bool ReplaceFirst(ref Span<char> span, string oldValue, string newValue)
+    {
+        var oldSpan = oldValue.AsSpan();
+        var idx = span.IndexOf(oldSpan);
+
+        if (idx != -1)
+        {
+            var newSpan = newValue.AsSpan();
+            var replacement = span.Slice(idx, oldSpan.Length);
+
+            if (newSpan.Length != oldSpan.Length)
+            {
+                var newLength = span.Length - oldSpan.Length + newSpan.Length;
+                var newBuffer = new char[newLength].AsSpan();
+
+                span.Slice(0, idx).CopyTo(newBuffer);
+                newSpan.CopyTo(newBuffer.Slice(idx));
+                span.Slice(idx + oldSpan.Length).CopyTo(newBuffer.Slice(idx + newSpan.Length));
+
+                span = newBuffer;
+            }
+            else
+            {
+                newSpan.CopyTo(replacement);
+            }
+            return true;
+        }
+        return false;
+    }
 }
