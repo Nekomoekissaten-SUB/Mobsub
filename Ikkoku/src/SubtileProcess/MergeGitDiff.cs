@@ -90,11 +90,12 @@ public partial class Merge
         // now only line by line correspondence
         string? line;
         var currentLineNumber = 1;
+        var offset = 0;
 
         while ((line = sr.ReadLine()) != null)
         {
             var deleteLine = deleteLines.FirstOrDefault(l => l.LineNumber == currentLineNumber).Content;
-            var addLine = addLines.FirstOrDefault(l => l.LineNumber == currentLineNumber);
+            var addLine = addLines.FirstOrDefault(l => l.LineNumber == currentLineNumber + offset);
             
             var add = addLine.Content != null;
             var addContent = string.Empty;
@@ -118,12 +119,18 @@ public partial class Merge
                     yield return addContent;
                     addLines.Remove(addLine);
                 }
+                else
+                {
+                    offset--;
+                }
             }
             else
             {
                 if (add)
                 {
                     yield return addContent;
+                    yield return line;
+                    offset++;
                     addLines.Remove(addLine);
                 }
                 else

@@ -104,7 +104,7 @@ internal class MergeCmd
 
     private static Command BuildSubGitDiff(Argument<FileSystemInfo> path, Option<FileInfo> conf)
     {
-        var startCommitId = new Option<string>(name: "--start", description: "Start git commit id of subtitle modification history.") { IsRequired = true };
+        var startCommitId = new Option<string>(name: "--start", description: "The commit before the first commit in subtitle modification history.") { IsRequired = true };
         var endCommitId = new Option<string>(name: "--end", description: "End git commit id of subtitle modification history.") { IsRequired = true};
         var subtitleSuffixes = new Option<string[]>(name: "--suffixes", description: "Choose chs and cht subtitles suffix (usually not used unless the preset cannot recognize it).")
         { AllowMultipleArgumentsPerToken = true };
