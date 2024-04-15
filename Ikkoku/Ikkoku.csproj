@@ -29,4 +29,8 @@
     <PackageReference Include="YamlDotNet" Version="13.7.1" />
   </ItemGroup>
 
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DefineConstants>NotAot</DefineConstants>
+  </PropertyGroup>
+
 </Project>
