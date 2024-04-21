@@ -253,9 +253,11 @@ public class Clean
         var _mod = false;
         for (var j = 0; j < et.Count; j++)
         {
-            var blk = et.ToArray()[j];
-            foreach (var c in blk)
+            var blk = et[j];
+            
+            for (var k = 0; k < blk.Length; k++)
             {
+                var c = blk[k];
                 if (Check.EventUnusedChars.Contains(c))
                 {
                     _mod = true;
@@ -271,6 +273,32 @@ public class Clean
                     if (!hadWeridSpace)
                     {
                         hadWeridSpace = true;
+                    }
+                }
+                else if (c == '\uFE0F')
+                {
+                    // Now libass not support color emoji (https://github.com/libass/libass/issues/381), the char is meaningless
+                    _mod = true;
+                    if (!hadUnusedChar)
+                    {
+                        hadUnusedChar = true;
+                    }
+                }
+                else if (char.IsHighSurrogate(c))
+                {
+                    if (k + 1 < blk.Length && char.IsLowSurrogate(blk[k + 1]))
+                    {
+                        sb.Append(c);
+                        sb.Append(blk[k + 1]);
+                        k++;
+                    }
+                    else
+                    {
+                        _mod = true;
+                        if (!hadUnusedChar)
+                        {
+                            hadUnusedChar = true;
+                        }
                     }
                 }
                 else
