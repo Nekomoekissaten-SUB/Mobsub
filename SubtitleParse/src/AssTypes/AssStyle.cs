@@ -283,4 +283,68 @@ public class AssStyle(ILogger<AssData>? logger = null)
         _logger?.ZLogDebug($"Write {Name} style line fine");
     }
 
+    public override bool Equals(object? obj)
+    {
+        return obj is AssStyle style &&
+               Name == style.Name &&
+               Fontname == style.Fontname &&
+               Fontsize == style.Fontsize &&
+               EqualityComparer<AssRGB8>.Default.Equals(PrimaryColour, style.PrimaryColour) &&
+               EqualityComparer<AssRGB8>.Default.Equals(SecondaryColour, style.SecondaryColour) &&
+               EqualityComparer<AssRGB8>.Default.Equals(OutlineColour, style.OutlineColour) &&
+               EqualityComparer<AssRGB8>.Default.Equals(BackColour, style.BackColour) &&
+               Bold == style.Bold &&
+               Italic == style.Italic &&
+               Underline == style.Underline &&
+               StrikeOut == style.StrikeOut &&
+               ScaleX == style.ScaleX &&
+               ScaleY == style.ScaleY &&
+               Spacing == style.Spacing &&
+               Angle == style.Angle &&
+               BorderStyle == style.BorderStyle &&
+               Outline == style.Outline &&
+               Shadow == style.Shadow &&
+               Alignment == style.Alignment &&
+               MarginL == style.MarginL &&
+               MarginR == style.MarginR &&
+               MarginV == style.MarginV &&
+               MarginT == style.MarginT &&
+               MarginB == style.MarginB &&
+               Encoding == style.Encoding &&
+               AlphaLevel == style.AlphaLevel &&
+               RelativeTo == style.RelativeTo;
+    }
+
+    public override int GetHashCode()
+    {
+        HashCode hash = new HashCode();
+        hash.Add(Name);
+        hash.Add(Fontname);
+        hash.Add(Fontsize);
+        hash.Add(PrimaryColour);
+        hash.Add(SecondaryColour);
+        hash.Add(OutlineColour);
+        hash.Add(BackColour);
+        hash.Add(Bold);
+        hash.Add(Italic);
+        hash.Add(Underline);
+        hash.Add(StrikeOut);
+        hash.Add(ScaleX);
+        hash.Add(ScaleY);
+        hash.Add(Spacing);
+        hash.Add(Angle);
+        hash.Add(BorderStyle);
+        hash.Add(Outline);
+        hash.Add(Shadow);
+        hash.Add(Alignment);
+        hash.Add(MarginL);
+        hash.Add(MarginR);
+        hash.Add(MarginV);
+        hash.Add(MarginT);
+        hash.Add(MarginB);
+        hash.Add(Encoding);
+        hash.Add(AlphaLevel);
+        hash.Add(RelativeTo);
+        return hash.ToHashCode();
+    }
 }
