@@ -175,6 +175,7 @@ internal class MergeCmd
             throw new FormatException("Configuration file is empty.");
         }
         var _deserializer = new StaticDeserializerBuilder(new YamlStaticContext()).WithNodeDeserializer(tmpValues).WithNamingConvention(UnderscoredNamingConvention.Instance).Build();
+        if (!ymlString.AsSpan().StartsWith("version")) { Debug.Assert(ShiftMergeYaml.ConvertToV2File(conf.FullName)); }
         var ymlData = ymlString.AsSpan().StartsWith("version") ? _deserializer.Deserialize<ShiftMergeYamlV2>(ymlString) : _deserializer.Deserialize<ShiftMergeYaml>(ymlString).CovertToV2();
         Debug.Assert(ymlData is not null);
 
@@ -195,6 +196,7 @@ internal class MergeCmd
                 throw new ArgumentException("Output must be a directory.");
         }
 
+        string[]? mergePartName = null;
         foreach (var kvp in ymlData.ShiftFr.Where(kvp => kvp.Key == episode))
         {
             TimeSpan tsp;
@@ -221,6 +223,7 @@ internal class MergeCmd
 
                 mergeDataList.Add(dataFrom);
             }
+            if (!ymlData.ConvertFromV1) { mergePartName = kvp.Value.Keys.ToArray(); }
         }
 
         var baseData = new AssData();
@@ -233,7 +236,7 @@ internal class MergeCmd
         }
         else
         {
-            Merge.MergeAss(baseData, [.. mergeDataList], mergeSection);
+            Merge.MergeAss(baseData, [.. mergeDataList], mergeSection, mergePartName);
             baseData.WriteAssFile(optFileName);
         }
     }

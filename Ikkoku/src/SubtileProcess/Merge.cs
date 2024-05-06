@@ -4,8 +4,29 @@ namespace Mobsub.Ikkoku.SubtileProcess;
 
 public partial class Merge
 {
-    public static void MergeAss(AssData baseData, AssData[] mergeData, string mergeType)
+    public static void MergeAss(AssData baseData, AssData[] mergeData, string mergeType, string[]? commentEventLineStyleHeader = null)
     {
+        if (commentEventLineStyleHeader != null)
+        {
+            foreach (var evt in baseData.Events.Collection)
+            {
+                if (!evt.IsDialogue) { continue; }
+
+                foreach (var header in commentEventLineStyleHeader)
+                {
+                    var _syl = evt.Style.AsSpan();
+                    if (_syl.Length > header.Length)
+                    {
+                        var _charNextHeader = evt.Style.AsSpan(header.Length, 1)[0];
+                        if (_syl.StartsWith(header.AsSpan(), StringComparison.OrdinalIgnoreCase) && (_charNextHeader == '-' || _charNextHeader == '_'))
+                        {
+                            evt.IsDialogue = false;
+                        }
+                    }
+                }
+            }
+        }
+
         foreach (var md in mergeData)
         {
             if (mergeType == "style" || mergeType == "all")
@@ -17,10 +38,22 @@ public partial class Merge
 
                 foreach (var st in md.Styles.Names)
                 {
-                    if (baseData.Styles.Names.Add(st))
+                    var _add = true;
+                    var mSyl = md.Styles.Collection.Where(x => x.Name == st).First();
+                    // should override when duplicate style name
+                    if (!baseData.Styles.Names.Add(st))
                     {
-                        baseData.Styles.Collection.Add(md.Styles.Collection.Where(x => x.Name == st).First());
+                        foreach (var bSyl in baseData.Styles.Collection)
+                        {
+                            if (bSyl.Name == st)
+                            {
+                                if (!bSyl.Equals(mSyl)) { baseData.Styles.Collection.Remove(bSyl); }
+                                else { _add = false; }
+                                break;
+                            }
+                        }
                     }
+                    if (_add) { baseData.Styles.Collection.Add(mSyl); }
                 }
             }
 
