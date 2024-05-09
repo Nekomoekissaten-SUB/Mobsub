@@ -50,6 +50,7 @@ public class AssData(ILogger<AssData>? logger = null)
 
             if (sp[0] == '[')
             {
+                _logger?.ZLogInformation($"Start parse section {line}");
                 parseFunc = line switch
                 {
                     AssScriptInfo.sectionName => AssSection.ScriptInfo,
@@ -70,7 +71,7 @@ public class AssData(ILogger<AssData>? logger = null)
                 }
                 continue;
             }
-            _logger?.ZLogInformation($"Start parse section {line}");
+            
             switch (parseFunc)
             {
                 case AssSection.ScriptInfo:
@@ -101,9 +102,8 @@ public class AssData(ILogger<AssData>? logger = null)
                 default:
                     break;
             }
-            _logger?.ZLogInformation($"Section parsing completed");
         }
-
+        _logger?.ZLogInformation($"Ass parsing completed");
         return this;
     }
     public AssData ReadAssFile(string filePath)
