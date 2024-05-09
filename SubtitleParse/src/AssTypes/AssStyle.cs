@@ -54,6 +54,10 @@ public class AssStyles(ILogger<AssData>? logger = null)
                 Utils.SetProperty(syl, typeof(AssStyle), Formats[i], va[i]);
             }
             Collection.Add(syl);
+            if (syl.Fontname.Length > 31)
+            {
+                _logger?.ZLogWarning($"Length ({syl.Fontname.Length}) of style {syl.Name}’s fontname “{syl.Fontname}” exceeds 31 characters, may affect the correct rendering of VSFilter");
+            }
             if (!Names.Add(syl.Name))
             {
                 throw new Exception($"Styles: duplicate style {syl.Name}");
@@ -125,7 +129,7 @@ public class AssStyle(ILogger<AssData>? logger = null)
     }
     public string Fontname
     {
-        get => fontname is null ? "Arial" : fontname.Length > 31 ? fontname[..31] : fontname;  // GDI max 32, last is null
+        get => fontname is null ? "Arial" : fontname;  // GDI max 32, last is null
         set => fontname = value;
     }
     public float Fontsize { get; set; }  // ushort; Is negative and float really correct?
