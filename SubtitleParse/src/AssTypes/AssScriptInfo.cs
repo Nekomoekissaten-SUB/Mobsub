@@ -217,6 +217,6 @@ public class AssScriptInfo(ILogger? logger = null)
         _logger?.ZLogDebug($"Write customized metadata lines fine");
 
         sw.Write(newline);
-        _logger?.ZLogInformation($"Section write completed");
+        _logger?.ZLogDebug($"Section write completed");
     }
 }

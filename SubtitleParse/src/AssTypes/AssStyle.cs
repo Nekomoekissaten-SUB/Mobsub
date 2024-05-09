@@ -103,16 +103,16 @@ public class AssStyles(ILogger? logger = null)
         sw.Write(newline);
         sw.Write($"Format: {fmtStr}");
         sw.Write(newline);
-        _logger?.ZLogInformation($"Write format line fine");
+        _logger?.ZLogDebug($"Write format line fine");
 
         for (var i = 0; i < Collection.Count; i++)
         {
             Collection[i].Write(sw, Formats);
             sw.Write(newline);
         }
-        _logger?.ZLogInformation($"Write style lines fine");
+        _logger?.ZLogDebug($"Write style lines fine");
         sw.Write(newline);
-        _logger?.ZLogInformation($"Section write completed");
+        _logger?.ZLogDebug($"Section write completed");
     }
 
 }

@@ -11,7 +11,7 @@ public class AssData(ILogger? logger = null)
     public HashSet<AssSection> Sections = [];
     public AssScriptInfo ScriptInfo {get; set;} = new AssScriptInfo(logger){};
     public AssStyles Styles { get; set; } = new AssStyles(logger) {};
-    public AssEvents Events {get; set;} = new AssEvents(){};
+    public AssEvents Events {get; set;} = new AssEvents(logger) {};
     public Dictionary<string, string?> AegisubProjectGarbage =  [];
     public List<string> AegiusbExtradata = [];
     public List<AssEmbedded.Font> Fonts = [];
@@ -175,12 +175,12 @@ public class AssData(ILogger? logger = null)
             }
         }
         sw.Flush();
-        _logger?.ZLogInformation($"Sections writing completed");
+        _logger?.ZLogInformation($"Sections write completed");
 
         memStream.Seek(0, SeekOrigin.Begin);
         memStream.CopyTo(fileStream);
         fileStream.Close();
-        _logger?.ZLogInformation($"File writing completed");
+        _logger?.ZLogInformation($"File write completed");
     }
     public void WriteAssFile(string filePath) => WriteAssFile(filePath, false, false);
 
