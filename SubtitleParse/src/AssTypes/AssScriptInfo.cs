@@ -3,7 +3,7 @@ using ZLogger;
 
 namespace Mobsub.SubtitleParse.AssTypes;
 
-public class AssScriptInfo(ILogger<AssData>? logger = null)
+public class AssScriptInfo(ILogger? logger = null)
 {
     private readonly string[] scriptTypes = ["v4.00", "v4.00+", "v4.00++"];
     private string scriptType = "v4.00";
@@ -71,7 +71,7 @@ public class AssScriptInfo(ILogger<AssData>? logger = null)
     // public int status = 0;
     public HashSet<string> Orders = [];
 
-    private readonly ILogger<AssData>? _logger = logger;
+    private readonly ILogger? _logger = logger;
     internal const string sectionName = "[Script Info]";
 
     public void Read(ReadOnlySpan<char> sp, int lineNumber)

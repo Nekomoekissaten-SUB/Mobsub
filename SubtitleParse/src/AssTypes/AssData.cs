@@ -4,7 +4,7 @@ using ZLogger;
 
 namespace Mobsub.SubtitleParse.AssTypes;
 
-public class AssData(ILogger<AssData>? logger = null)
+public class AssData(ILogger? logger = null)
 {
     public bool CarriageReturn = false;
     public Encoding CharEncoding = Utils.EncodingRefOS();
@@ -17,7 +17,7 @@ public class AssData(ILogger<AssData>? logger = null)
     public List<AssEmbedded.Font> Fonts = [];
     public List<AssEmbedded.Graphic> Graphics = [];
 
-    private readonly ILogger<AssData>? _logger = logger;
+    private readonly ILogger? _logger = logger;
     private const string sectionNameFonts = "[Fonts]";
     private const string sectionNameGraphics = "[Graphics]";
     private const string sectionNameAegisubProjectGarbage = "[Aegisub Project Garbage]";

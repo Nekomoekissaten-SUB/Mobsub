@@ -6,7 +6,7 @@ namespace Mobsub.SubtitleParse.AssTypes;
 
 public class AssEmbedded
 {
-    public class Font(ILogger<AssData>? logger = null)
+    public class Font(ILogger? logger = null)
     {
         public string OriginalName = string.Empty;  // lowercase
         public bool Bold = false;
@@ -16,7 +16,7 @@ public class AssEmbedded
         public List<string> Data = [];
         public int DataLength = 0;
 
-        private readonly ILogger<AssData>? _logger = logger;
+        private readonly ILogger? _logger = logger;
 
         // public void EncodeFont(FileInfo file)
         // {
@@ -66,13 +66,13 @@ public class AssEmbedded
         }
     }
 
-    public class Graphic(ILogger<AssData>? logger = null)
+    public class Graphic(ILogger? logger = null)
     {
         public string Name = string.Empty;  // lowercase
         public List<string> Data = [];
         public int DataLength = 0;
 
-        private readonly ILogger<AssData>? _logger = logger;
+        private readonly ILogger? _logger = logger;
 
         public void EncodeGraphic(FileInfo file)
         {
@@ -108,7 +108,7 @@ public class AssEmbedded
 
     }
 
-    internal static List<Font> ParseFontsFromAss(ReadOnlySpan<char> sp, int lineNumber, ILogger<AssData>? _logger = null)
+    internal static List<Font> ParseFontsFromAss(ReadOnlySpan<char> sp, int lineNumber, ILogger? _logger = null)
     {
         var fonts = new List<Font>();
         if (sp.StartsWith("fontname:"))
@@ -182,7 +182,7 @@ public class AssEmbedded
         return fonts;
     }
 
-    internal static List<Graphic> ParseGraphicsFromAss(ReadOnlySpan<char> sp, int lineNumber, ILogger<AssData>? _logger = null)
+    internal static List<Graphic> ParseGraphicsFromAss(ReadOnlySpan<char> sp, int lineNumber, ILogger? _logger = null)
     {
         var graphics = new List<Graphic>();
         if (sp.StartsWith("filename:"))

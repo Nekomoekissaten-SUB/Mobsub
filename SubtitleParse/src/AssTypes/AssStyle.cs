@@ -3,7 +3,7 @@ using ZLogger;
 
 namespace Mobsub.SubtitleParse.AssTypes;
 
-public class AssStyles(ILogger<AssData>? logger = null)
+public class AssStyles(ILogger? logger = null)
 {
     private readonly string formatV4 = "Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, TertiaryColour, BackColour, Bold, Italic, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, AlphaLevel, Encoding";
     private readonly string formatV4P = "Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding";
@@ -22,7 +22,7 @@ public class AssStyles(ILogger<AssData>? logger = null)
     public List<AssStyle> Collection = [];
     public HashSet<string> Names = [];
 
-    private readonly ILogger<AssData>? _logger = logger;
+    private readonly ILogger? _logger = logger;
 
     public void Read(ReadOnlySpan<char> sp, int lineNumber)
     {
@@ -117,11 +117,11 @@ public class AssStyles(ILogger<AssData>? logger = null)
 
 }
 
-public class AssStyle(ILogger<AssData>? logger = null)
+public class AssStyle(ILogger? logger = null)
 {
     private string? name;
     private string? fontname;
-    private readonly ILogger<AssData>? _logger = logger;
+    private readonly ILogger? _logger = logger;
     public string Name
     {
         get => name is null ? "Default" : name;

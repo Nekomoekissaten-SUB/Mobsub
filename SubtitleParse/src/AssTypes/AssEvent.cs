@@ -5,7 +5,7 @@ using System.Text;
 
 namespace Mobsub.SubtitleParse.AssTypes;
 
-public class AssEvents(ILogger<AssData>? logger = null)
+public class AssEvents(ILogger? logger = null)
 {
     private string[]? formats;
     public string[] Formats
@@ -14,7 +14,7 @@ public class AssEvents(ILogger<AssData>? logger = null)
         set => formats = value;
     }
     public List<AssEvent> Collection = [];
-    private readonly ILogger<AssData>? _logger = logger;
+    private readonly ILogger? _logger = logger;
     internal const string sectionName = "[Events]";
 
     public void Read(ReadOnlySpan<char> sp, string scriptType, int lineNumber)
@@ -59,7 +59,7 @@ public class AssEvents(ILogger<AssData>? logger = null)
     }
 }
 
-public class AssEvent(ILogger<AssData>? logger = null)
+public class AssEvent(ILogger? logger = null)
 {
     private int layer = 0;
     public int lineNumber;
@@ -83,7 +83,7 @@ public class AssEvent(ILogger<AssData>? logger = null)
     public int MarginB { get; set; } = 0;
     public string? Effect { get; set; }
     public List<char[]> Text { get; set; } = [];  // override tags block, special chars block, normal text block
-    private readonly ILogger<AssData>? _logger = logger;
+    private readonly ILogger? _logger = logger;
 
     public bool Read(ReadOnlySpan<char> sp, int lineNum, string[] formats) => Read(sp, sp.IndexOf(':'), lineNum, formats);
 
