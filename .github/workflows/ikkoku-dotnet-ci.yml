@@ -70,7 +70,7 @@ jobs:
     - name: Upload exe files
       uses: actions/upload-artifact@v4
       with:
-        name: Ikkoku-${{ matrix.env.identifier }}-${{ matrix.arch }}-${{ env.VERSION }}
+        name: Ikkoku_g${{ env.VERSION }}_${{ matrix.env.identifier }}-${{ matrix.arch }}
         path: |
           Ikkoku/bin/Release/net8.0/${{ matrix.env.identifier }}-${{ matrix.arch }}/publish/
           !Ikkoku/bin/Release/net8.0/${{ matrix.env.identifier }}-${{ matrix.arch }}/publish/*.pdb
