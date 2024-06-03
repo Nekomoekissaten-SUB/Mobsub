@@ -9,7 +9,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SubtitleParse", "SubtitlePa
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ZhConvert", "ZhConvert\ZhConvert.csproj", "{0132C9CD-614F-44F2-B452-65D77CA62659}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test", "Test\Test.csproj", "{19D63DF2-AEBC-48C5-870C-16DE8D24082D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Test", "Test\Test.csproj", "{19D63DF2-AEBC-48C5-870C-16DE8D24082D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Helper", "Helper\Helper.csproj", "{E59921E2-FD7C-44AB-9A38-14DFE8BCA32A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -33,6 +35,10 @@ Global
 		{19D63DF2-AEBC-48C5-870C-16DE8D24082D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{19D63DF2-AEBC-48C5-870C-16DE8D24082D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{19D63DF2-AEBC-48C5-870C-16DE8D24082D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E59921E2-FD7C-44AB-9A38-14DFE8BCA32A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E59921E2-FD7C-44AB-9A38-14DFE8BCA32A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E59921E2-FD7C-44AB-9A38-14DFE8BCA32A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E59921E2-FD7C-44AB-9A38-14DFE8BCA32A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
