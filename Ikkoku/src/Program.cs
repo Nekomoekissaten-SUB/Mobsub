@@ -21,7 +21,7 @@ partial class Program
                     switch (p)
                     {
                         case FileInfo f:
-                            if (!(f.Name.EndsWith(".ass") || f.Name.EndsWith(".txt")))
+                            if (!(f.Name.EndsWith(".ass") || f.Name.EndsWith(".txt") || f.Name.EndsWith(".sup")))
                             {
                                 result.ErrorMessage = "You should input .ass or txt file or a directory.";
                             }

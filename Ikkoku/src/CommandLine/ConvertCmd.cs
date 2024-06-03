@@ -1,5 +1,6 @@
 ﻿using Mobsub.Ikkoku.SubtileProcess;
 using Mobsub.SubtitleParse.AssTypes;
+using Mobsub.SubtitleParse.PGS;
 using System.CommandLine;
 
 namespace Mobsub.Ikkoku.CommandLine;
@@ -62,11 +63,6 @@ internal class ConvertCmd
                 break;
         }
 
-        var optFile = Utils.ChangeSuffix(fromFile, optDir, convertSuffix);
-        var fs = new FileStream(optFile.FullName, FileMode.Create, FileAccess.Write);
-        using var memStream = new MemoryStream();
-        using var sw = new StreamWriter(memStream, SubtitleParse.Utils.EncodingRefOS());
-
         switch (fromFile.Extension)
         {
             case ".ass":
@@ -76,23 +72,33 @@ internal class ConvertCmd
                 switch (convertSuffix)
                 {
                     case ".txt":
-                        ConvertSub.ConvertAssToTxt(sw, ass);
+                        var optFile = Utils.ChangeSuffix(fromFile, optDir, convertSuffix);
+                        var fs = new FileStream(optFile.FullName, FileMode.Create, FileAccess.Write);
+                        using (var memStream = new MemoryStream())
+                        {
+                            using var sw = new StreamWriter(memStream, SubtitleParse.Utils.EncodingRefOS());
+                            ConvertSub.ConvertAssToTxt(sw, ass);
+                            sw.Flush();
+                            memStream.Seek(0, SeekOrigin.Begin);
+                            memStream.CopyTo(fs);
+                        }
                         break;
                     default:
-                        // fs.Close();
                         throw new NotImplementedException($"Unsupport: {fromFile.Extension} convert to {convertSuffix}.");
                 }
-
+                break;
+            case ".sup":
+                switch (convertSuffix)
+                {
+                    case ".bmp":
+                        PGSData.DecodeImages(fromFile.FullName, optDir.FullName);
+                        break;
+                    default:
+                        throw new NotImplementedException($"Unsupport: {fromFile.Extension} convert to {convertSuffix}.");
+                }
                 break;
             default:
-                // fs.Close();
                 throw new NotImplementedException($"Unsupport: {fromFile.Extension}.");
         }
-
-        sw.Flush();
-
-        memStream.Seek(0, SeekOrigin.Begin);
-        memStream.CopyTo(fs);
-        // fs.Close();
     }
 }
