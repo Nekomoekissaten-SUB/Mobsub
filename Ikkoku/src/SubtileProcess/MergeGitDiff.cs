@@ -95,43 +95,22 @@ public partial class Merge
         while ((line = sr.ReadLine()) != null)
         {
             var deleteLine = deleteLines.FirstOrDefault(l => l.LineNumber == currentLineNumber).Content;
-            var addLine = addLines.FirstOrDefault(l => l.LineNumber == currentLineNumber + offset);
-            
-            var add = addLine.Content != null;
-            var addContent = string.Empty;
-            if (add)
-            {
-                var span = addLine.Content!.AsSpan();
-                if (pfParams.isAss && pfParams.toCht && AssConstants.IsEventLine(span))
-                {
-                    addContent = GitEventLineConvertToCht(span, pfParams.converter!, currentLineNumber, formats!);
-                }
-                else
-                {
-                    addContent = addLine.Content!.TrimEnd('\n');
-                }
-            }
+            var addLine = GetAddLine(addLines, currentLineNumber, ref offset, pfParams, formats, out var add);
 
             if (deleteLine != null)
             {
                 if (add)
                 {
-                    yield return addContent;
-                    addLines.Remove(addLine);
+                    yield return addLine;
                 }
-                else
-                {
-                    offset--;
-                }
+                offset--;
             }
             else
             {
                 if (add)
                 {
-                    yield return addContent;
+                    yield return addLine;
                     yield return line;
-                    offset++;
-                    addLines.Remove(addLine);
                 }
                 else
                 {
@@ -165,5 +144,43 @@ public partial class Merge
         var fl1 = File.ReadLines(file1).Count();
         var fl2 = File.ReadLines(file2).Count();
         return fl2 - fl1;
+    }
+    private static string GetAddLine(List<Line> addLines, int currentLineNumber, ref int offset, MergeGitDiffParams pfParams, string[]? formats, out bool add)
+    {
+        var sb = new StringBuilder();
+        add = false;
+
+        var startIndex = 0;
+        var offsetCount = 0;
+        for (var i = 0; i < addLines.Count; i++)
+        {
+            var line = addLines[i];
+            var lineNum = currentLineNumber + offset;
+            if (line.LineNumber == lineNum)
+            {
+                if (offsetCount == 0) { startIndex = i; }
+                add = line.Content != null;
+
+                if (add)
+                {
+                    if (sb.Length > 0) { sb.Append(Environment.NewLine); }
+                    var span = line.Content!.AsSpan();
+                    if (pfParams.isAss && pfParams.toCht && AssConstants.IsEventLine(span))
+                    {
+                        sb.Append(GitEventLineConvertToCht(span, pfParams.converter!, currentLineNumber, formats!));
+                    }
+                    else
+                    {
+                        sb.Append(line.Content!.TrimEnd('\n'));
+                    }
+
+                    offset++;
+                    offsetCount++;
+                }
+            }
+        }
+        if (add) { addLines.RemoveRange(startIndex, offsetCount); }
+        
+        return sb.ToString();
     }
 }
