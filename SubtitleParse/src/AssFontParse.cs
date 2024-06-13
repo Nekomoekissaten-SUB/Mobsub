@@ -176,10 +176,18 @@ public class AssFontParse
         }
         else if (tag.StartsWith("i".AsSpan()))
         {
+            if (tag.StartsWith("iclip".AsSpan()))
+            {
+                return;
+            }
             italic.Clear().Append(len > 1 ? tag[1] : '0');
         }
         else if (tag.StartsWith("r".AsSpan()))
         {
+            if (tag.StartsWith("rnd".AsSpan()))
+            {
+                // only vsfmod support
+            }
             if (len > 1)
             {
                 var af = GetStyleByName(styles, new string(tag[1..len]));
