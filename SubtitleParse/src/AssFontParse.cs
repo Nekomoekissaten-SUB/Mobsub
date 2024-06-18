@@ -79,7 +79,24 @@ public class AssFontParse
     public static Dictionary<AssFontInfo, List<Rune>> GetUsedFontInfos(List<AssEvent> events, List<AssStyle> styles)
     {
         var maps = GetUsedFonts(events, styles);
-        return maps.ToDictionary(map => ParseAssFontInfo(map.Key), map => map.Value);
+        //return maps.ToDictionary(map => ParseAssFontInfo(map.Key), map => map.Value);
+        Dictionary<AssFontInfo, List<Rune>> result = [];
+        foreach (var map in maps)
+        {
+            var k = ParseAssFontInfo(map.Key);
+            var v = map.Value;
+            if (!result.TryAdd(k, v))
+            {
+                foreach (var c in v)
+                {
+                    if (!result[k].Contains(c))
+                    {
+                        result[k].Add(c);
+                    }
+                }
+            }
+        }
+        return result;
     }
     private static AssFontInfo ParseAssFontInfo(string fontInfoString)
     {
