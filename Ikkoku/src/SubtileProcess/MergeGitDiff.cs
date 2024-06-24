@@ -136,6 +136,7 @@ public partial class Merge
         evt.Read(sp[..^1], lineNum - 1, formats);
         if (!CJKpp.NotZhConvert(evt))
         {
+            CJKpp.StyleZhConvert(evt);
             CJKpp.ZhConvertEventLineByOpenccsharp(evt.Text, new StringBuilder(), converter, out var changes);
         }  
         var sb = new StringBuilder();

@@ -170,6 +170,7 @@ internal class CJKppCmd
         {
             if (!CJKpp.NotZhConvert(et))
             {
+                CJKpp.StyleZhConvert(et);
                 CJKpp.ZhConvertEventLineByOpenccsharp(et.Text, sb, converter, out string[]? countChanges);
 
                 if (countChanges is not null)

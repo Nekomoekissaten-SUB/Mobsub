@@ -56,4 +56,45 @@ public class CJKpp
     {
         return evt.Style.AsSpan().Contains("JP".AsSpan(), StringComparison.OrdinalIgnoreCase);
     }
+
+    internal static bool StyleZhConvert(AssEvent evt)
+    {
+        var span = evt.Style.AsSpan();
+        var len = span.Length;
+
+        if (len < 3) { return false; }
+
+        var posChs = span.IndexOf("CHS".AsSpan(), StringComparison.OrdinalIgnoreCase);
+        var posSc = span.IndexOf("SC".AsSpan(), StringComparison.OrdinalIgnoreCase);
+
+        if (posChs == -1 && posSc == -1) { return false; }
+        var sb = new StringBuilder(len);
+
+        if (posChs > -1)
+        {
+            sb.Append(span.Slice(0, posChs + 2));
+            sb.Append(span[posChs + 2] == 'S' ? 'T' : 't');
+
+            if (len != posChs + 3)
+            {
+                sb.Append(span[(posChs + 3)..]);
+            }
+
+            evt.Style = sb.ToString();
+            return true;
+        }
+        else if (posSc > -1)
+        {
+            sb.Append(span.Slice(0, posSc));
+            sb.Append(span[posChs] == 'S' ? 'T' : 't');
+            sb.Append(span[(posSc + 1)..]);
+
+            evt.Style = sb.ToString();
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
 }
