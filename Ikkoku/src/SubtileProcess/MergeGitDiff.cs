@@ -57,7 +57,9 @@ public partial class Merge
 
             if (!File.Exists(targetFileFull))
             {
-                throw new Exception("Please check " + targetSuffix + ", not found " + targetFileFull);
+                Console.WriteLine("Warning: not found " + targetFile);
+                //throw new Exception("Please check " + targetSuffix + ", not found " + targetFileFull);
+                continue;
             }
 
             if (CompareLinesNumber(sourceFileFull, targetFileFull) != 0)
