@@ -45,6 +45,10 @@ public partial class Merge
 
         foreach (var diff in diffs)
         {
+            if (diff.Status != ChangeKind.Modified)
+            {
+                continue;
+            }
             var sourceFile = diff.OldPath;
             var targetFile = sourceFile.Replace(baseSuffix, targetSuffix);
             var sourceFileFull = new FileInfo(Path.Combine(repoLocalPath, sourceFile)).FullName;
