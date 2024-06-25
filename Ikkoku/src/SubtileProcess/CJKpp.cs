@@ -85,8 +85,11 @@ public class CJKpp
         }
         else if (posSc > -1)
         {
+            // screen, scr
+            if (posSc == 0) { return false; }
+
             sb.Append(span.Slice(0, posSc));
-            sb.Append(span[posChs] == 'S' ? 'T' : 't');
+            sb.Append(span[posSc] == 'S' ? 'T' : 't');
             sb.Append(span[(posSc + 1)..]);
 
             evt.Style = sb.ToString();
