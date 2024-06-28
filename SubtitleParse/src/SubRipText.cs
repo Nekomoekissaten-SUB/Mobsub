@@ -102,60 +102,53 @@ public class SubRipText
         List<string> text = [];
         StringBuilder sb = new();
         var index = 1;
-        for (var i = 0; i < ass.Events.Collection.Count; i++)
+        foreach (var evt in ass.Events.Collection)
         {
-            var evt = ass.Events.Collection[i];
-
-            // skip commment and empty event lines
+            // skip comment and empty event lines
             // Now not support tag convert
-            if (!evt.StartSemicolon && evt.IsDialogue && evt.Text.Count > 0)
+            if (evt is not { StartSemicolon: false, IsDialogue: true, Text.Count: > 0 }) continue;
+            foreach (var s in evt.Text)
             {
-                foreach (var s in evt.Text)
-                {
-                    var sp = s.AsSpan();
+                var sp = s.AsSpan();
 
-                    if (AssTagParse.IsOvrrideBlock(sp))
+                if (AssTagParse.IsOverrideBlock(sp))
+                {
+                    //if (!ignoreTags)
+                    //{
+                    //    TagConvertToSrt(sp, sb);
+                    //}
+                }
+                else if (sp.Length == 2 && sp[0] == AssConstants.BackSlash)
+                {
+                    switch (sp[1])
                     {
-                        //if (!ignoreTags)
-                        //{
-                        //    TagConvertToSrt(sp, sb);
-                        //}
-                    }
-                    else if (sp.Length == 2 && sp[0] == AssConstants.BackSlash)
-                    {
-                        switch (sp[1])
-                        {
-                            case AssConstants.LineBreaker:
-                            case AssConstants.WordBreaker:
-                                if (sb.Length > 0)
-                                    text.Add(sb.ToString().Trim());
-                                    sb.Clear();
-                                break;
-                            default: break;
-                        }
-                    }
-                    else
-                    {
-                        sb.Append(sp);
+                        case AssConstants.LineBreaker:
+                        case AssConstants.WordBreaker:
+                            if (sb.Length > 0)
+                                text.Add(sb.ToString().Trim()); sb.Clear();
+                            break;
+                        default: break;
                     }
                 }
-                
-                if (sb.Length > 0)
-                    text.Add(sb.ToString().Trim());
-                    sb.Clear();
-
-                sf.Add(new SrtFrame()
+                else
                 {
-                    Index = index,
-                    StartTime = evt.Start,
-                    EndTime = evt.End,
-                    Text = text.ToArray(),
-                });
-                
-                index++;
-                text.Clear();
+                    sb.Append(sp);
+                }
             }
+                
+            if (sb.Length > 0)
+                text.Add(sb.ToString().Trim()); sb.Clear();
 
+            sf.Add(new SrtFrame()
+            {
+                Index = index,
+                StartTime = evt.Start,
+                EndTime = evt.End,
+                Text = text.ToArray(),
+            });
+                
+            index++;
+            text.Clear();
         }
 
         CarriageReturn = ass.CarriageReturn;

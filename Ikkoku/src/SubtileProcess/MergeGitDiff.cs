@@ -33,14 +33,14 @@ public partial class Merge
         var evtFormats = AssConstants.FormatV4P.Split(',').Select(s => s.Trim()).ToArray();
 
         using var repo = new Repository(repoLocalPath);
-        Commit commit1 = repo.Lookup<Commit>(startCommitId);
-        Commit commit2 = repo.Lookup<Commit>(endCommitId);
-        Tree tree1 = commit1.Tree;
-        Tree tree2 = commit2.Tree;
+        var commit1 = repo.Lookup<Commit>(startCommitId);
+        var commit2 = repo.Lookup<Commit>(endCommitId);
+        var tree1 = commit1.Tree;
+        var tree2 = commit2.Tree;
 
-        var relativePathProcss = relativePath.Contains('\\') ? relativePath.Replace("\\", "/") : relativePath;
-        var diffs = repo.Diff.Compare<Patch>(tree1, tree2, new[] { relativePathProcss });
-        var fullPath = new FileInfo(Path.Combine(repoLocalPath, relativePathProcss)).FullName;
+        var relativePathProcess = relativePath.Contains('\\') ? relativePath.Replace("\\", "/") : relativePath;
+        var diffs = repo.Diff.Compare<Patch>(tree1, tree2, new[] { relativePathProcess });
+        var fullPath = new FileInfo(Path.Combine(repoLocalPath, relativePathProcess)).FullName;
         var filterDiffs = Directory.Exists(fullPath) ? diffs.Where(f => f.Path.EndsWith(baseSuffix)) : diffs;
 
         foreach (var diff in diffs)
@@ -172,7 +172,7 @@ public partial class Merge
                 {
                     if (sb.Length > 0) { sb.Append(Environment.NewLine); }
                     var span = line.Content!.AsSpan();
-                    if (pfParams.isAss && pfParams.toCht && AssConstants.IsEventLine(span))
+                    if (pfParams is { isAss: true, toCht: true } && AssConstants.IsEventLine(span))
                     {
                         sb.Append(GitEventLineConvertToCht(span, pfParams.converter!, currentLineNumber, formats!));
                     }

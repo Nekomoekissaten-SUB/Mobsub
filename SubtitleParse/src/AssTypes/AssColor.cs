@@ -5,13 +5,13 @@ namespace Mobsub.SubtitleParse.AssTypes;
 public class AssYCbCrMatrix
 {
     private string matrix = "601";
-    private readonly string[] matrixVaild = ["None", "601", "709", "2020", "240M", "FCC"];
+    private readonly string[] matrixValid = ["None", "601", "709", "2020", "240M", "FCC"];
     public string Matrix
     {
         get => matrix;
         set
         {
-            if (!matrixVaild.Contains(value))
+            if (!matrixValid.Contains(value))
             {
                 throw new ArgumentException($"YCbCr Matrix: {value} should be valid");
             }
@@ -55,7 +55,7 @@ public struct AssRGB8(byte red, byte green, byte blue, byte alpha)
 
         if ((sp[0] != '&') || (sp[1] != 'H') || ((sp.Length - sign) % 2 != 0))
         {
-            throw new Exception($"Invaild color: {sp}");
+            throw new Exception($"Invalid color: {sp}");
         }
 
         var loop = 0;
@@ -78,7 +78,7 @@ public struct AssRGB8(byte red, byte green, byte blue, byte alpha)
                     A = n;
                     break;
                 default:
-                    throw new Exception($"Invaild color: {sp}");
+                    throw new Exception($"Invalid color: {sp}");
             }
 
             loop += 1;
@@ -87,7 +87,7 @@ public struct AssRGB8(byte red, byte green, byte blue, byte alpha)
         return this;
     }
 
-    public readonly string ConvetToString(bool alpha)
+    public readonly string ConvertToString(bool alpha)
     {
         var bytel = new List<byte>();
         if (alpha)
@@ -118,7 +118,7 @@ public struct AssRGB8(byte red, byte green, byte blue, byte alpha)
         }
         else
         {
-            throw new Exception($"Invaild char: {c}");
+            throw new Exception($"Invalid char: {c}");
         }
     }
 

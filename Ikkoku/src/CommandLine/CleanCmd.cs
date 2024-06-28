@@ -64,8 +64,6 @@ internal class CleanCmd
                 args.rmMotionGarbage = true;
                 args.deleteFanhuaji = true;
                 break;
-            default:
-                break;
         }
 
         // override

@@ -35,13 +35,13 @@ public partial class OpenCCSharpUtils
                     if (dict)
                     {
                         reader.Read();
-                        dictFile.Add(ToAbsolutepath(reader.GetString(), dir));
+                        dictFile.Add(ToAbsolutePath(reader.GetString(), dir));
                     }
                     break;
                 case JsonTokenType.String:
                     if (dict)
                     {
-                        dictFile.Add(ToAbsolutepath(reader.GetString(), dir));
+                        dictFile.Add(ToAbsolutePath(reader.GetString(), dir));
                     }
                     break;
                 case JsonTokenType.EndArray:
@@ -51,7 +51,7 @@ public partial class OpenCCSharpUtils
                         dictionaries.Add(dictFile.ToArray());
                         dictFile.Clear();
                     }
-                    dict = !dict && dict;
+                    //dict = !dict && dict;
                     break;
             }
         }
@@ -59,21 +59,14 @@ public partial class OpenCCSharpUtils
         return dictionaries;
     }
 
-    private static string? ToAbsolutepath(string? p, DirectoryInfo jsonDir)
+    private static string? ToAbsolutePath(string? p, DirectoryInfo jsonDir)
     {
         if (p is null)
         {
             return null;
         }
 
-        if (Path.IsPathRooted(p))
-        {
-            return p;
-        }
-        else
-        {
-            return Path.Combine(jsonDir.FullName, p);
-        }
+        return Path.IsPathRooted(p) ? p : Path.Combine(jsonDir.FullName, p);
     }
 
 }

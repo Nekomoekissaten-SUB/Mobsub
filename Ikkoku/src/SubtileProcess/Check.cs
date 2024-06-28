@@ -196,19 +196,19 @@ public class Check
         }
     }
 
-    public static bool WeridTimeOneLine(AssEvent evt) => evt.IsDialogue && (evt.Start.CompareTo(evt.End) > 0);
+    public static bool WeirdTimeOneLine(AssEvent evt) => evt.IsDialogue && (evt.Start.CompareTo(evt.End) > 0);
 
     /// <summary>
     /// such like {=} {=0} {=99}
     /// </summary>
     /// <param name="et">Event.Text</param>
     /// <returns></returns>
-    public static bool HadMotionGarbage(List<char[]> et) => et.Count > 0 && AssTagParse.IsOvrrideBlock(et[0].AsSpan()) && et[0][1] == '=' && ((et[0].Length > 3 && char.IsDigit(et[0][2])) || et[0].Length == 3);
+    public static bool HadMotionGarbage(List<char[]> et) => et.Count > 0 && AssTagParse.IsOverrideBlock(et[0].AsSpan()) && et[0][1] == '=' && ((et[0].Length > 3 && char.IsDigit(et[0][2])) || et[0].Length == 3);
 
     public static readonly char[] EventUnusedChars = ['\u200E', '\u200F', '\u200B'];
     public static readonly char[] EventWeirdSpace = ['\u00A0', '\ufeff'];
 
-    public static void CheckWeridChars(List<char[]> et, out bool hadUnusedChar, out bool hadWeridSpace)
+    public static void CheckWeirdChars(List<char[]> et, out bool hadUnusedChar, out bool hadWeridSpace)
     {
         hadUnusedChar = false;
         hadWeridSpace = false;

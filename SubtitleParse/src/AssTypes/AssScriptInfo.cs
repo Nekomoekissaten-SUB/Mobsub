@@ -28,12 +28,12 @@ public class AssScriptInfo(ILogger? logger = null)
     public int PlayResY {get; set;} = 480;
     public int LayoutResX
     {
-        get => layoutResX == null ? PlayResX : (int)layoutResX;
+        get => layoutResX ?? PlayResX;
         set => layoutResX = value;
     }
     public int LayoutResY
     {
-        get => layoutResY == null ? PlayResY : (int)layoutResY;
+        get => layoutResY ?? PlayResY;
         set => layoutResY = value;
     }
     public float Timer
@@ -43,7 +43,7 @@ public class AssScriptInfo(ILogger? logger = null)
     }
     public int WrapStyle
     {
-        get => wrapStyle == null ? 0 : (int)wrapStyle;
+        get => wrapStyle ?? 0;
         set
         {
             if (scriptType == "v4.00")
@@ -87,7 +87,7 @@ public class AssScriptInfo(ILogger? logger = null)
                 _logger?.ZLogDebug($"Line {lineNumber} is comment");
                 break;
             default:
-                if (Utils.TrySplitKeyValue(sp, out string k, out string v))
+                if (Utils.TrySplitKeyValue(sp, out var k, out var v))
                 {
                     if (Utils.IsStringInFields(new AssConstants.ScriptInfo(), typeof(AssConstants.ScriptInfo), k))
                     {
@@ -121,7 +121,7 @@ public class AssScriptInfo(ILogger? logger = null)
                 }
                 else
                 {
-                    throw new Exception($"Unkown line: {sp.ToString()}");
+                    throw new Exception($"Unknown line: {sp.ToString()}");
                 }
                 _logger?.ZLogDebug($"Line {lineNumber} is a key-pair, key {k} parse completed");
                 break;
@@ -167,10 +167,10 @@ public class AssScriptInfo(ILogger? logger = null)
                     sw.Write($"{k}: {WrapStyle}");
                     break;
                 case AssConstants.ScriptInfo.ScaledBorderAndShadow:
-                    sw.Write(string.Format("{0}: {1}", k, ScaledBorderAndShadow ? "yes" : "no"));
+                    sw.Write($"{k}: {(ScaledBorderAndShadow ? "yes" : "no")}");
                     break;
                 case AssConstants.ScriptInfo.Kerning:
-                    sw.Write(string.Format("{0}: {1}", k, Kerning ? "yes" : "no"));
+                    sw.Write($"{k}: {(Kerning ? "yes" : "no")}");
                     break;
                 case AssConstants.ScriptInfo.YCbCrMatrix:
                     sw.Write($"{k}: {YCbCrMatrix.ToStringBuilder()}");

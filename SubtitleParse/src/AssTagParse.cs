@@ -26,7 +26,7 @@ public class AssTagParse
         {
             step = 1;
             var slice = text[i].AsSpan();
-            if (IsOvrrideBlock(slice) && slice.Length > 2)
+            if (IsOverrideBlock(slice) && slice.Length > 2)
             {
                 foreach (var ca in GetTagsFromOvrBlock(slice))
                 {
@@ -65,14 +65,7 @@ public class AssTagParse
                             }
                             else
                             {
-                                if (char.IsDigit(tag[4]))
-                                {
-                                    RecordTag(tag, normalTags);
-                                }
-                                else
-                                {
-                                    RecordTag(tag, modTags);
-                                }
+                                RecordTag(tag, char.IsDigit(tag[4]) ? normalTags : modTags);
                             }
                         }
                         else
@@ -524,7 +517,7 @@ public class AssTagParse
             case 'r':   // r, rStyle
                 if (len > 2 && tag[1] == 'n' && tag[2] == 'd')
                 {
-                    if ((len == 3) || (len > 3 && tag[3] is 'x' or 'y' or 'z' or 's'))
+                    if ((len == 3) || (tag[3] is 'x' or 'y' or 'z' or 's'))
                     {
                         RecordTag(tag, modTags);
                     }
@@ -554,7 +547,7 @@ public class AssTagParse
                     {
                         RecordTag(tag, weirdTags);
                     }
-                    else if (len > 4 && tag[4] == '(')
+                    else if (tag[4] == '(')
                     {
                         RecordTag(tag, normalTags);
                     }
@@ -618,7 +611,7 @@ public class AssTagParse
                     {
                         RecordTag(tag, weirdTags);
                     }
-                    else if (len > 3 && tag[3] == '(')
+                    else if (tag[3] == '(')
                     {
                         RecordTag(tag, normalTags);
                     }
@@ -640,7 +633,7 @@ public class AssTagParse
                     {
                         RecordTag(tag, weirdTags);
                     }
-                    else if (len > 5 && (char.IsDigit(tag[5]) || tag[5] == '-'))
+                    else if (char.IsDigit(tag[5]) || tag[5] == '-')
                     {
                         RecordTag(tag, normalTags);
                     }
@@ -688,7 +681,7 @@ public class AssTagParse
     {
         List<char[]> cal = [];
 
-        if (IsOvrrideBlock(block) && block.Length > 2)
+        if (IsOverrideBlock(block) && block.Length > 2)
         {
             block = block[1..^1];
         }
@@ -708,7 +701,7 @@ public class AssTagParse
             var preOvr = block[..valueStartIndex].LastIndexOf(AssConstants.BackSlash);
             if (preOvr == -1)
             {
-                throw new InvalidDataException($"Invaild override block: {block.ToString()}");
+                throw new InvalidDataException($"Invalid override block: {block.ToString()}");
             }
             
             if (preOvr != 0)
@@ -811,12 +804,12 @@ public class AssTagParse
         GetTagsFromFunction(block, cal, out Span<char> function);
         if (function.Length != 1 && function[0] != 't')
         {
-            throw new Exception($"Invaild transformation function: {block.ToString()}");
+            throw new Exception($"Invalid transformation function: {block.ToString()}");
         }
         return cal;
     }
 
-    public static bool IsOvrrideBlock(Span<char> block)
+    public static bool IsOverrideBlock(Span<char> block)
     {
         if (block.Length < 2)
         {
@@ -825,6 +818,6 @@ public class AssTagParse
         return block[0] == AssConstants.StartOvrBlock && block[^1] == AssConstants.EndOvrBlock;
     }
 
-    public static bool IsTextBlock(Span<char> block) => !(IsOvrrideBlock(block) || AssConstants.IsEventSpecialCharPair(block));
+    public static bool IsTextBlock(Span<char> block) => !(IsOverrideBlock(block) || AssConstants.IsEventSpecialCharPair(block));
 
 }

@@ -84,7 +84,7 @@ internal class ConvertCmd
                         }
                         break;
                     default:
-                        throw new NotImplementedException($"Unsupport: {fromFile.Extension} convert to {convertSuffix}.");
+                        throw new NotImplementedException($"Unsupported: {fromFile.Extension} convert to {convertSuffix}.");
                 }
                 break;
             case ".sup":
@@ -94,11 +94,11 @@ internal class ConvertCmd
                         PGSData.DecodeImages(fromFile.FullName, optDir.FullName);
                         break;
                     default:
-                        throw new NotImplementedException($"Unsupport: {fromFile.Extension} convert to {convertSuffix}.");
+                        throw new NotImplementedException($"Unsupported: {fromFile.Extension} convert to {convertSuffix}.");
                 }
                 break;
             default:
-                throw new NotImplementedException($"Unsupport: {fromFile.Extension}.");
+                throw new NotImplementedException($"Unsupported: {fromFile.Extension}.");
         }
     }
 }

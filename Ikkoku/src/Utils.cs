@@ -55,7 +55,7 @@ internal class Utils
                     }
                     else
                     {
-                        throw new ArgumentException("Invaild --by value");
+                        throw new ArgumentException("Invalid --by value");
                     }
 
                 }
@@ -73,7 +73,7 @@ internal class Utils
                 "sec" => TimeSpan.FromSeconds(v),
                 "min" => TimeSpan.FromMinutes(v),
                 "frm" => TimeSpan.FromMilliseconds(FrameToMillisecond(v, UnifiedFps(fps))),
-                _ => throw new ArgumentException("Invaild suffixes"),
+                _ => throw new ArgumentException("Invalid suffixes"),
             };
         }
         else

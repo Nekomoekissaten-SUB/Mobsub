@@ -1,7 +1,6 @@
 ﻿using Mobsub.SubtitleParse.AssTypes;
 using Mobsub.Ikkoku.SubtileProcess;
 using System.CommandLine;
-using System.IO;
 
 namespace Mobsub.Ikkoku.CommandLine;
 
@@ -69,30 +68,30 @@ internal class CheckCmd
         }
 
         // var evtStartLine = data.Events.Collection.First().lineNumber;
-        List<int> weridTimeLines = [];
+        List<int> weirdTimeLines = [];
         List<int> unusedCharLines = [];
-        List<int> weridSpaceLines = [];
+        List<int> weirdSpaceLines = [];
         foreach (var evt in data.Events.Collection)
         {
-            if (Check.WeridTimeOneLine(evt))
+            if (Check.WeirdTimeOneLine(evt))
             {
-                weridTimeLines.Add(evt.lineNumber);
+                weirdTimeLines.Add(evt.lineNumber);
             }
 
-            Check.CheckWeridChars(evt.Text, out bool hadUnusedChar, out bool hadWeridSpace);
+            Check.CheckWeirdChars(evt.Text, out bool hadUnusedChar, out bool hadWeirdSpace);
             if (hadUnusedChar)
             {
                 unusedCharLines.Add(evt.lineNumber);
             }
-            if (hadWeridSpace)
+            if (hadWeirdSpace)
             {
-                weridSpaceLines.Add(evt.lineNumber);
+                weirdSpaceLines.Add(evt.lineNumber);
             }
         }
 
-        if (weridTimeLines.Count > 0)
+        if (weirdTimeLines.Count > 0)
         {
-            Console.WriteLine($"Dialogue end time less than start time: {string.Join(", ", weridTimeLines)}");
+            Console.WriteLine($"Dialogue end time less than start time: {string.Join(", ", weirdTimeLines)}");
         }
 
         if (unusedCharLines.Count > 0)
@@ -100,9 +99,9 @@ internal class CheckCmd
             Console.WriteLine($"Maybe use unused chars: {string.Join(", ", unusedCharLines)}");
         }
 
-        if (weridSpaceLines.Count > 0)
+        if (weirdSpaceLines.Count > 0)
         {
-            Console.WriteLine($"Maybe use wrong space char: {string.Join(", ", weridSpaceLines)}");
+            Console.WriteLine($"Maybe use wrong space char: {string.Join(", ", weirdSpaceLines)}");
         }
 
         Console.WriteLine("Check completed.");

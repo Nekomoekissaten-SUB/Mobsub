@@ -27,5 +27,5 @@ public struct AssFontInfo
     public override readonly int GetHashCode() => HashCode.Combine(Name, Weight, Italic);
     public static bool operator ==(AssFontInfo lhs, AssFontInfo rhs) => lhs.Equals(rhs);
     public static bool operator !=(AssFontInfo lhs, AssFontInfo rhs) => !lhs.Equals(rhs);
-    public override readonly string ToString() => string.Format("{0},{1},{2}", Name, Weight, Italic ? 1 : 0);
+    public override readonly string ToString() => $"{Name},{Weight},{(Italic ? 1 : 0)}";
 }

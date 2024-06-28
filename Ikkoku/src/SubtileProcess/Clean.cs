@@ -132,7 +132,7 @@ public class Clean
                 
                 for (var i = 0; i < data.Events.Collection.Count; i++)
                 {
-                    if (Check.WeridTimeOneLine(data.Events.Collection[i]))
+                    if (Check.WeirdTimeOneLine(data.Events.Collection[i]))
                     {
                         data.Events.Collection[i].IsDialogue = false;
                         hadWeridTime = true;

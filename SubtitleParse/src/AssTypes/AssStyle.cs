@@ -66,7 +66,7 @@ public class AssStyles(ILogger? logger = null)
         }
         else
         {
-            throw new Exception($"Styles: invaild format {sp.ToString()}");
+            throw new Exception($"Styles: invalid format {sp.ToString()}");
         }
     }
 
@@ -124,12 +124,12 @@ public class AssStyle(ILogger? logger = null)
     private readonly ILogger? _logger = logger;
     public string Name
     {
-        get => name is null ? "Default" : name;
+        get => name ?? "Default";
         set => name = value;
     }
     public string Fontname
     {
-        get => fontname is null ? "Arial" : fontname;  // GDI max 32, last is null
+        get => fontname ?? "Arial";  // GDI max 32, last is null
         set => fontname = value;
     }
     public float Fontsize { get; set; }  // ushort; Is negative and float really correct?
@@ -203,19 +203,19 @@ public class AssStyle(ILogger? logger = null)
                     break;
                 case "PrimaryColour":
                     sw.Write("&H");
-                    sw.Write(PrimaryColour.ConvetToString(true));
+                    sw.Write(PrimaryColour.ConvertToString(true));
                     break;
                 case "SecondaryColour":
                     sw.Write("&H");
-                    sw.Write(SecondaryColour.ConvetToString(true));
+                    sw.Write(SecondaryColour.ConvertToString(true));
                     break;
                 case "OutlineColour":
                     sw.Write("&H");
-                    sw.Write(OutlineColour.ConvetToString(true));
+                    sw.Write(OutlineColour.ConvertToString(true));
                     break;
                 case "BackColour":
                     sw.Write("&H");
-                    sw.Write(BackColour.ConvetToString(true));
+                    sw.Write(BackColour.ConvertToString(true));
                     break;
                 case "Bold":
                     sw.Write(Bold ? -1 : 0);

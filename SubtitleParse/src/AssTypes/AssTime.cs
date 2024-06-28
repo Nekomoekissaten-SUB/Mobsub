@@ -29,7 +29,7 @@ public readonly struct AssTime
     public int CompareTo(AssTime value) => _ticks.CompareTo(value._ticks);
 
     /// <summary>
-    /// Parse from ass file, format is hours:minutes:seconds:centiseconds
+    /// Parse from ass file, format is hours:minutes:seconds:centi-seconds
     /// e.g. 0:00:00.00, number of digits of hours is variable
     /// </summary>
     /// <param name="sp"></param>

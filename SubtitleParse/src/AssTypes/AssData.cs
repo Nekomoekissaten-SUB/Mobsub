@@ -172,6 +172,10 @@ public class AssData(ILogger? logger = null)
                     }
                     sw.Write(newline);
                     break;
+                case AssSection.StylesV4PP:
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
             }
         }
         sw.Flush();

@@ -19,56 +19,52 @@ public class AssFontParse
         
         foreach (var eventLine in events)
         {
-            if (eventLine.IsDialogue)
-            {
-                var eventStyle = GetStyleByName(styles, eventLine.Style);
-                var text = eventLine.Text.ToArray();
-                var lineNumber = eventLine.lineNumber;
+            if (!eventLine.IsDialogue) continue;
+            var eventStyle = GetStyleByName(styles, eventLine.Style);
+            var text = eventLine.Text.ToArray();
+            var lineNumber = eventLine.lineNumber;
 
-                var fn = new StringBuilder().Append(eventStyle.Fontname);
-                var fe = new StringBuilder().Append(eventStyle.Encoding);
-                var italic = new StringBuilder().Append(eventStyle.Italic ? '1' : '0');
-                var weight = new StringBuilder().Append(eventStyle.Bold ? '1' : '0');
-                List<Rune> runes = [];
+            var fn = new StringBuilder().Append(eventStyle.Fontname);
+            var fe = new StringBuilder().Append(eventStyle.Encoding);
+            var italic = new StringBuilder().Append(eventStyle.Italic ? '1' : '0');
+            var weight = new StringBuilder().Append(eventStyle.Bold ? '1' : '0');
+            List<Rune> runes = [];
                 
-                int step;
-                for (var i = 0; i < text.Length; i += step)
-                {
-                    step = 1;
-                    var slice = text[i].AsSpan();
+            int step;
+            for (var i = 0; i < text.Length; i += step)
+            {
+                step = 1;
+                var slice = text[i].AsSpan();
 
-                    if (slice.Length > 0 && slice[0] == '{' && slice[^1] == '}')
+                if (slice.Length > 0 && slice[0] == '{' && slice[^1] == '}')
+                {
+                    if (slice.Length > 2)
                     {
-                        if (slice.Length > 2)
-                        {
-                            GetOverrideBlockFont(slice, eventStyle, styles, fn, fe, italic, weight, lineNumber, lineNumberFirst);
-                        }
-                        
-                        if (i != text.Length - 1)
-                        {
-                            var sliceNext = text[i + 1].AsSpan();
-                            DecodeCharsToRunes(sliceNext, runes);
+                        GetOverrideBlockFont(slice, eventStyle, styles, fn, fe, italic, weight, lineNumber, lineNumberFirst);
+                    }
+
+                    if (i == text.Length - 1) continue;
+                    var sliceNext = text[i + 1].AsSpan();
+                    DecodeCharsToRunes(sliceNext, runes);
+                    RecordFontGlyphs(fn, fe, italic, weight, runes, usedFontGlyphs);
+                    step += 1;
+                }
+                else if (slice.Length == 2 && AssConstants.IsEventSpecialCharPair(slice))
+                {
+                    switch (slice[1])
+                    {
+                        case 'h':
+                            runes.Add(new Rune(AssConstants.NBSP_Utf16));
                             RecordFontGlyphs(fn, fe, italic, weight, runes, usedFontGlyphs);
-                            step += 1;
-                        }
+                            break;
+                        default:
+                            break;
                     }
-                    else if (slice.Length == 2 && AssConstants.IsEventSpecialCharPair(slice))
-                    {
-                        switch (slice[1])
-                        {
-                            case 'h':
-                                runes.Add(new Rune(AssConstants.NBSP_Utf16));
-                                RecordFontGlyphs(fn, fe, italic, weight, runes, usedFontGlyphs);
-                                break;
-                            default:
-                                break;
-                        }
-                    }
-                    else
-                    {
-                        DecodeCharsToRunes(slice, runes);
-                        RecordFontGlyphs(fn, fe, italic, weight, runes, usedFontGlyphs);
-                    }
+                }
+                else
+                {
+                    DecodeCharsToRunes(slice, runes);
+                    RecordFontGlyphs(fn, fe, italic, weight, runes, usedFontGlyphs);
                 }
             }
         }
@@ -85,14 +81,12 @@ public class AssFontParse
         {
             var k = ParseAssFontInfo(map.Key);
             var v = map.Value;
-            if (!result.TryAdd(k, v))
+            if (result.TryAdd(k, v)) continue;
+            foreach (var c in v)
             {
-                foreach (var c in v)
+                if (!result[k].Contains(c))
                 {
-                    if (!result[k].Contains(c))
-                    {
-                        result[k].Add(c);
-                    }
+                    result[k].Add(c);
                 }
             }
         }
