@@ -9,3 +9,4 @@ test_file/*
 /Test/files/*
 
 debug.log
+*.user
