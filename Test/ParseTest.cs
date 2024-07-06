@@ -7,13 +7,24 @@ namespace Mobsub.Test;
 public class ParseTest
 {
     [TestMethod]
-    public void GetTagsFromOvrBlock()
+    public void GetTagsFromOvrBlock_StartFunction()
     {
-        var s = @"{\t(0,100,\fsvp15\fshp15)\p1\fad(0,100)}";
-        var block = new char[s.Length].AsSpan();
-        s.AsSpan().CopyTo(block);
-        var r = AssTagParse.GetTagsFromOvrBlock(block);
+        var r = GetTagsFromOvrBlock(@"{\t(0,100,\fsvp15\fshp15)\p1\fad(0,100)}");
         Assert.IsTrue(r.Count == 4);
+    }
+    
+    [TestMethod]
+    public void GetTagsFromOvrBlock_StartValueBlock()
+    {
+        var r = GetTagsFromOvrBlock(@"{\pos(960,620)\fs80\fn方正兰亭圆_GBK_中粗\fsp6\c&H349BEF&\3c&H0165FD&}");
+        Assert.IsTrue(r.Count == 6);
+    }
+
+    private static List<char[]> GetTagsFromOvrBlock(string str)
+    {
+        var block = str.AsSpan().ToArray();
+        var r = AssTagParse.GetTagsFromOvrBlock(block);
+        return r;
     }
     
     [TestMethod]

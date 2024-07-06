@@ -715,7 +715,7 @@ public class AssTagParse
             if (valueEndIndex != -1)
             {
                 // get function value block
-                GetTagsFromFunction(block.Slice(preOvr + 1, valueStartIndex + valueEndIndex - preOvr), cal, out Span<char> function);
+                GetTagsFromFunction(block.Slice(preOvr + 1, valueStartIndex + valueEndIndex - preOvr), cal, out var function);
 
                 preEndIndex = valueStartIndex + valueEndIndex;
                 valueStartIndex = block[preEndIndex..].IndexOf(AssConstants.StartValueBlock);
@@ -723,8 +723,13 @@ public class AssTagParse
                 {
                     valueStartIndex += preEndIndex;
                 }
+                else
+                {
+                    preOvr = preEndIndex;
+                }
             }
-            else
+            
+            if (valueStartIndex == -1)
             {
                 SplitOnlyOvrTags(block[(preOvr + 1)..], cal);
                 valueStartIndex = -1;
