@@ -4,6 +4,13 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Diagnostics" Version="8.2.2" />
+    <PackageReference Include="OTFontFile" Version="1.0.1-beta" />
+    <PackageReference Include="Vortice.Win32.Graphics.DirectWrite" Version="2.2.1" />
+  </ItemGroup>
 
 </Project>

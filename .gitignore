@@ -10,3 +10,4 @@ test_file/*
 
 debug.log
 *.user
+/Test/test_result
