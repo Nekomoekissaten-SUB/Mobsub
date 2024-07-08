@@ -66,6 +66,7 @@ public class CJKpp
 
         var posChs = span.IndexOf("CHS".AsSpan(), StringComparison.OrdinalIgnoreCase);
         var posSc = span.IndexOf("SC".AsSpan(), StringComparison.OrdinalIgnoreCase);
+        var posScr = span.IndexOf("SCR".AsSpan(), StringComparison.OrdinalIgnoreCase);
 
         if (posChs == -1 && posSc == -1) { return false; }
         var sb = new StringBuilder(len);
@@ -83,11 +84,8 @@ public class CJKpp
             evt.Style = sb.ToString();
             return true;
         }
-        else if (posSc > -1)
+        else if (posSc > -1 && posScr == -1)
         {
-            // screen, scr
-            if (posSc == 0) { return false; }
-
             sb.Append(span.Slice(0, posSc));
             sb.Append(span[posSc] == 'S' ? 'T' : 't');
             sb.Append(span[(posSc + 1)..]);
@@ -97,6 +95,7 @@ public class CJKpp
         }
         else
         {
+            // screen, scr
             return false;
         }
     }
