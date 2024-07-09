@@ -1,13 +1,13 @@
 using System.Text;
 using Mobsub.SubtitleParse.AssTypes;
 
-namespace Mobsub.SubtitleParse;
+namespace Mobsub.SubtitleParse.AssUtils;
 
 public class AssFontParse
 {
     /// <summary>
     /// Get ass font info as string and used glyphs from ass data.
-    /// Need to parse info string based on font file. Ass font encoding shoule be ingore.
+    /// Need to parse info string based on font file. Ass font encoding should be ignore.
     /// </summary>
     /// <param name="events">event line collection</param>
     /// <param name="styles">style collection</param>
@@ -16,7 +16,7 @@ public class AssFontParse
     {
         Dictionary<string, List<Rune>> usedFontGlyphs = [];
         var lineNumberFirst = events.First().lineNumber;
-        
+
         foreach (var eventLine in events)
         {
             if (!eventLine.IsDialogue) continue;
@@ -29,7 +29,7 @@ public class AssFontParse
             var italic = new StringBuilder().Append(eventStyle.Italic ? '1' : '0');
             var weight = new StringBuilder().Append(eventStyle.Bold ? '1' : '0');
             List<Rune> runes = [];
-                
+
             int step;
             for (var i = 0; i < text.Length; i += step)
             {
@@ -68,7 +68,7 @@ public class AssFontParse
                 }
             }
         }
-    
+
         return usedFontGlyphs;
     }
 
@@ -215,7 +215,7 @@ public class AssFontParse
                 fe.Clear().Append(eventStyle.Encoding);
             }
         }
-        else if (tag.StartsWith("b") && (len == 1 || (len > 1 && !(tag[1] is 'o' or 'l' or 'e'))))
+        else if (tag.StartsWith("b") && (len == 1 || len > 1 && !(tag[1] is 'o' or 'l' or 'e')))
         {
             weight.Clear();
             if (len > 1)
@@ -264,7 +264,7 @@ public class AssFontParse
         {
             usedFontGlyphs.Add(fontStr, []);
         }
-    
+
         foreach (var r in runes)
         {
             if (!usedFontGlyphs[fontStr].Contains(r))

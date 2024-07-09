@@ -40,4 +40,11 @@ public class AssCheck
         }
         return styles;
     }
+    public static HashSet<string> GetUndefinedStyles(List<AssEvent> events, AssStyles assStyles)
+    {
+        var usedStyles = GetUsedStyles(events);
+        var undefinedStyles = new HashSet<string>(usedStyles);
+        undefinedStyles.ExceptWith(assStyles.Names);
+        return undefinedStyles;
+    }
 }
