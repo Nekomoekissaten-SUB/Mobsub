@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text;
 using Mobsub.SubtitleParse.AssTypes;
+using Mobsub.SubtitleParse.AssUtils;
 
 namespace Mobsub.Ikkoku.SubtileProcess;
 
@@ -105,7 +106,7 @@ public class Clean
     
         if (args.processEvents || args.dropUnusedStyles)
         {
-            var usedStyles = Check.GetUsedStyles(data.Events.Collection);
+            var usedStyles = AssCheck.GetUsedStyles(data.Events.Collection);
             // Default style always use
             usedStyles.Add("Default");
 

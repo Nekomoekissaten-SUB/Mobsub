@@ -4,9 +4,9 @@ using Mobsub.SubtitleParse;
 
 namespace Mobsub.Ikkoku.SubtileProcess;
 
-public class Check
+internal class Check
 {
-    public static void PrintUnnormalAssTags(List<AssEvent> events, bool verbose, string checkType)
+    internal static void PrintUnnormalAssTags(List<AssEvent> events, bool verbose, string checkType)
     {
         var eventFirstLineNumber = events[0].lineNumber;
 
@@ -135,38 +135,6 @@ public class Check
         }
     }
 
-    public static HashSet<string> GetUsedStyles(List<AssEvent> events)
-    {
-        var styles = new HashSet<string>();
-        var str = new StringBuilder();
-        foreach (var et in events)
-        {
-            if (et.IsDialogue)
-            {
-                var text = et.Text.ToArray();
-
-                styles.Add(et.Style);
-
-                char[] block = [];
-                for (var i = 0; i < text.Length; i++)
-                {
-                    block = text[i];
-                    if (block[0] == '{' && block[^1] == '}' && block.Length > 2 && i != text.Length - 1)
-                    {
-                        foreach (var ca in AssTagParse.GetTagsFromOvrBlock(block))
-                        {
-                            if (ca[0] == 'r' && ca.Length > 1 && ca.Length >= 3 && !ca.AsSpan()[..3].SequenceEqual("rnd".AsSpan()))
-                            {
-                                styles.Add(new string(ca[1..]));
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        return styles;
-    }
-
     private static void DistinctRecordTags(StringBuilder tags, HashSet<string> records)
     {
         var tag = new StringBuilder();
@@ -196,19 +164,19 @@ public class Check
         }
     }
 
-    public static bool WeirdTimeOneLine(AssEvent evt) => evt.IsDialogue && (evt.Start.CompareTo(evt.End) > 0);
+    internal static bool WeirdTimeOneLine(AssEvent evt) => evt.IsDialogue && (evt.Start.CompareTo(evt.End) > 0);
 
     /// <summary>
     /// such like {=} {=0} {=99}
     /// </summary>
     /// <param name="et">Event.Text</param>
     /// <returns></returns>
-    public static bool HadMotionGarbage(List<char[]> et) => et.Count > 0 && AssTagParse.IsOverrideBlock(et[0].AsSpan()) && et[0][1] == '=' && ((et[0].Length > 3 && char.IsDigit(et[0][2])) || et[0].Length == 3);
+    internal static bool HadMotionGarbage(List<char[]> et) => et.Count > 0 && AssTagParse.IsOverrideBlock(et[0].AsSpan()) && et[0][1] == '=' && ((et[0].Length > 3 && char.IsDigit(et[0][2])) || et[0].Length == 3);
 
-    public static readonly char[] EventUnusedChars = ['\u200E', '\u200F', '\u200B'];
-    public static readonly char[] EventWeirdSpace = ['\u00A0', '\ufeff'];
+    private static readonly char[] EventUnusedChars = ['\u200E', '\u200F', '\u200B'];
+    private static readonly char[] EventWeirdSpace = ['\u00A0', '\ufeff'];
 
-    public static void CheckWeirdChars(List<char[]> et, out bool hadUnusedChar, out bool hadWeridSpace)
+    internal static void CheckWeirdChars(List<char[]> et, out bool hadUnusedChar, out bool hadWeridSpace)
     {
         hadUnusedChar = false;
         hadWeridSpace = false;

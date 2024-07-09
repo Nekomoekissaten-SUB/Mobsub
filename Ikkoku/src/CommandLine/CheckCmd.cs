@@ -1,4 +1,5 @@
 ﻿using Mobsub.SubtitleParse.AssTypes;
+using Mobsub.SubtitleParse.AssUtils;
 using Mobsub.Ikkoku.SubtileProcess;
 using System.CommandLine;
 
@@ -57,7 +58,7 @@ internal class CheckCmd
 
         if (styleCheck)
         {
-            var usedStyles = Check.GetUsedStyles(data.Events.Collection);
+            var usedStyles = AssCheck.GetUsedStyles(data.Events.Collection);
             var undefinedStyles = new HashSet<string>(usedStyles);
             undefinedStyles.ExceptWith(data.Styles.Names);
 
