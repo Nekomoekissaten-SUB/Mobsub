@@ -173,8 +173,8 @@ internal class Check
     /// <returns></returns>
     internal static bool HadMotionGarbage(List<char[]> et) => et.Count > 0 && AssTagParse.IsOverrideBlock(et[0].AsSpan()) && et[0][1] == '=' && ((et[0].Length > 3 && char.IsDigit(et[0][2])) || et[0].Length == 3);
 
-    private static readonly char[] EventUnusedChars = ['\u200E', '\u200F', '\u200B'];
-    private static readonly char[] EventWeirdSpace = ['\u00A0', '\ufeff'];
+    internal static readonly char[] EventUnusedChars = ['\u200E', '\u200F', '\u200B'];
+    internal static readonly char[] EventWeirdSpace = ['\u00A0', '\ufeff'];
 
     internal static void CheckWeirdChars(List<char[]> et, out bool hadUnusedChar, out bool hadWeridSpace)
     {
