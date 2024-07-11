@@ -1,6 +1,6 @@
 namespace Mobsub.Helper.Font;
 
-public enum DirectWriteEnum : int
+public enum FontStretch : int
 {
     Undefined = 0,
     UltraCondensed = 1,
