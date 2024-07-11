@@ -30,4 +30,6 @@ public interface IParseFonts
         sw.Flush();
         sw.Close();
     }
+    private static readonly string[] supportFonts = [".ttf", ".otf", ".ttc", "otc"];
+    internal static bool IsSupportFonts(FileInfo fileInfo) => supportFonts.Contains(fileInfo.Extension, StringComparer.OrdinalIgnoreCase);
 }

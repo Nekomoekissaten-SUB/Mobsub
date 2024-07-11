@@ -7,7 +7,6 @@ namespace Mobsub.Helper.Font;
 public class OpenType : IParseFonts
 {
     private static readonly LanguageIDWindows curLanguageId = GetCurrentLanguageId();
-    private static readonly string[] supportFonts = [".ttf", ".otf", ".ttc", "otc"];
     
     public static IEnumerable<FontFaceInfoBase> GetInstalledFontsInfo()
     {
@@ -38,7 +37,7 @@ public class OpenType : IParseFonts
     {
         foreach (var fileInfo in fileInfos)
         {
-            if (!supportFonts.Contains(fileInfo.Extension, StringComparer.OrdinalIgnoreCase)){ continue; }
+            if (!IParseFonts.IsSupportFonts(fileInfo)){ continue; }
                 
             var fp = new OpenTypeFileParse(fileInfo.FullName);
             if (!fp.Open()) { continue; }

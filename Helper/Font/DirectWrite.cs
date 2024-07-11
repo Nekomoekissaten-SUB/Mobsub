@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Globalization;
+using System.IO;
 using System.Runtime.InteropServices;
 using CommunityToolkit.Diagnostics;
 using Win32;
@@ -170,6 +171,7 @@ public unsafe class DirectWrite : IParseFonts
             foreach (var fontFile in localFonts)
             {
                 if (!fontFile.Exists) { continue; }
+                if (!IParseFonts.IsSupportFonts(fontFile)) { continue; }
                 var pStr = Marshal.StringToHGlobalUni(fontFile.FullName);
 
                 IDWriteFontFile* pFontFile;
@@ -190,6 +192,7 @@ public unsafe class DirectWrite : IParseFonts
             foreach (var fontFile in localFonts)
             {
                 if (!fontFile.Exists) { continue; }
+                if (!IParseFonts.IsSupportFonts(fontFile)) { continue; }
                 var pStr = Marshal.StringToHGlobalUni(fontFile.FullName);
                 
                 IDWriteFontFile* pFontFile;
