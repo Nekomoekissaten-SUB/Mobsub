@@ -165,10 +165,7 @@ public partial class YamlStaticContext : StaticContext
 /// https://github.com/aaubry/YamlDotNet/issues/321
 internal class ShiftMergeYamlValue(string ep, string lang) : INodeDeserializer
 {
-    private readonly string ep = ep;
-    private readonly string lang = lang;
-
-    bool INodeDeserializer.Deserialize(IParser parser, Type expectedType, Func<IParser, Type, object?> nestedObjectDeserializer, out object? value)
+    bool INodeDeserializer.Deserialize(IParser parser, Type expectedType, Func<IParser, Type, object?> nestedObjectDeserializer, out object? value, ObjectDeserializer rootDeserializer)
     {
         if (expectedType != typeof(string))
         {
