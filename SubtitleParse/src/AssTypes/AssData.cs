@@ -91,7 +91,7 @@ public class AssData(ILogger? logger = null)
                     break;
                 case AssSection.AegisubExtradata:
                     Utils.TrySplitKeyValue(sp, out var k1, out var v1);
-                    AegiusbExtradata.Add(v1);
+                    AegiusbExtradata.Add(k1 == string.Empty ? line : v1);
                     break;
                 case AssSection.Fonts:
                     Fonts = AssEmbedded.ParseFontsFromAss(sp, lineNumber, _logger);
@@ -167,6 +167,7 @@ public class AssData(ILogger? logger = null)
                     sw.Write(newline);
                     for (var i = 0; i < AegiusbExtradata.Count; i++)
                     {
+                        sw.Write("Data: ");
                         sw.Write(AegiusbExtradata.ToArray()[i]);
                         sw.Write(newline);
                     }
