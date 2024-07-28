@@ -55,6 +55,7 @@ public class AssEvents(ILogger? logger = null)
             Collection[i].Write(sw, Formats, ctsRounding);
             sw.Write(newline);
         }
+        sw.Write(newline);
         _logger?.ZLogDebug($"Write event lines fine");
     }
 }
