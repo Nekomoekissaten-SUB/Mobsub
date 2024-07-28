@@ -30,10 +30,8 @@ public class AssFontParse
             var weight = new StringBuilder().Append(eventStyle.Bold ? '1' : '0');
             List<Rune> runes = [];
 
-            int step;
-            for (var i = 0; i < text.Length; i += step)
+            for (var i = 0; i < text.Length; i += 1)
             {
-                step = 1;
                 var slice = text[i].AsSpan();
 
                 if (slice.Length > 0 && slice[0] == '{' && slice[^1] == '}')
@@ -42,12 +40,6 @@ public class AssFontParse
                     {
                         GetOverrideBlockFont(slice, eventStyle, styles, fn, fe, italic, weight, lineNumber, lineNumberFirst);
                     }
-
-                    if (i == text.Length - 1) continue;
-                    var sliceNext = text[i + 1].AsSpan();
-                    DecodeCharsToRunes(sliceNext, runes);
-                    RecordFontGlyphs(fn, fe, italic, weight, runes, usedFontGlyphs);
-                    step += 1;
                 }
                 else if (slice.Length == 2 && AssConstants.IsEventSpecialCharPair(slice))
                 {
