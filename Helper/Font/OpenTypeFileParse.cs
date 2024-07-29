@@ -24,39 +24,18 @@ public class OpenTypeFileParse(string fontFile)
         var os2Table = (Table_OS2)font.GetTable("OS/2")!;
         var fsSel = os2Table.fsSelection;
 
+        faceInfo.FamilyNamesGdi = GetNameRecordStrings(nameTable, NameID.familyName);
+        
         var psNameParams = new GetStringParams
             { EncID = 0xffff, LangID = (ushort)LanguageIDWindows.en_US, NameID = (ushort)NameID.postScriptName };
         var fullNameParams = new GetStringParams
             { EncID = 0xffff, LangID = (ushort)LanguageIDWindows.en_US, NameID = (ushort)NameID.fullName };
-        var famNameParams = new GetStringParams
-            { EncID = 0xffff, LangID = (ushort)LanguageIDWindows.en_US, NameID = (ushort)NameID.familyName };
         var subFamNameParams = new GetStringParams()
             { EncID = 0xffff, LangID = (ushort)LanguageIDWindows.en_US, NameID = (ushort)NameID.subfamilyName };
         
         var psName = GetNameRecordString(nameTable, psNameParams);
         var fullName = GetNameRecordString(nameTable, fullNameParams);
-        var famName = GetNameRecordString(nameTable, famNameParams);
         var subFamName = GetNameRecordString(nameTable, subFamNameParams);
-
-        famNameParams.LangID = (ushort)curLanguageId;
-        var famNameL10N = GetNameRecordString(nameTable, famNameParams);
-
-        if (famName == null && famNameL10N == null)
-        {
-            famNameParams.LangID = null;
-            famName = GetNameRecordString(nameTable, famNameParams);
-        }
-        faceInfo.FamilyNameGdi = famName ?? famNameL10N;
-        faceInfo.FamilyNameGdiLocalized = famNameL10N ?? famName;
-        if (curLanguageId == LanguageIDWindows.zh_Hans_CN)
-        {
-            faceInfo.FamilyNameGdiChs = faceInfo.FamilyNameGdiLocalized;
-        }
-        else
-        {
-            famNameParams.LangID = (ushort)LanguageIDWindows.zh_Hans_CN;
-            faceInfo.FamilyNameGdiChs = GetNameRecordString(nameTable, famNameParams) ?? famName;
-        }
 
         if (subFamName == null)
         {
@@ -118,6 +97,34 @@ public class OpenTypeFileParse(string fontFile)
     {
         var result = GetBufferMod(nameTable, ids);
         return result.buf == null ? null : DecodeString(result.curPlatID, result.curEncID, result.curLangID, result.buf);
+    }
+
+    private static Dictionary<int, string> GetNameRecordStrings(Table_name nameTable, NameID nameId)
+    {
+        Dictionary<int, string> strs = [];
+        for (uint i = 0; i < nameTable.NumberNameRecords; i++)
+        {
+            var nr = nameTable.GetNameRecord(i);
+            if (nr == null) { continue; }
+            
+            if (nr.PlatformID == (ushort)Table_name.PlatformID.Windows &&
+                nr.EncodingID != (ushort)EncodingIDWindows.Unicode_full_repertoire &&
+                nr.NameID == (ushort)nameId)
+            {
+                var buf = nameTable.GetEncodedString(nr);
+                if (buf == null)
+                {
+                    strs.Add(nr.LanguageID, string.Empty);
+                }
+                else
+                {
+                    var str = DecodeString(nr.PlatformID, nr.EncodingID, nr.LanguageID, buf);
+                    strs.TryAdd(nr.LanguageID, str ?? string.Empty);
+                }
+            }
+        }
+
+        return strs;
     }
     private static GetBufResult GetBufferMod(Table_name nameTable, GetStringParams ids)
     {

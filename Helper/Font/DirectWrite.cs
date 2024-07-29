@@ -12,8 +12,6 @@ namespace Mobsub.Helper.Font;
 public unsafe class DirectWrite : IParseFonts
 {
     static readonly nint localNameEng = Marshal.StringToHGlobalUni("en-us");
-    static readonly nint localNameCur = Marshal.StringToHGlobalUni(CultureInfo.CurrentCulture.Name);
-    static readonly nint localNameChs = Marshal.StringToHGlobalUni("zh-CN");
 
     public static IEnumerable<FontFaceInfoBase> GetInstalledFontsInfo()
     {
@@ -62,13 +60,11 @@ public unsafe class DirectWrite : IParseFonts
             var style = GetLocalizedString(pStr, localNameEng);
 
             Marshal.ThrowExceptionForHR(fontSet->GetPropertyValues(i, FontPropertyId.FamilyName, existsPtr, &pStr));
-            var famName = GetLocalizedString(pStr, localNameEng);
-            var famNameL10N = CultureInfo.CurrentCulture.Name == "en-US" ? famName : GetLocalizedString(pStr, localNameCur);
+            var famNames = GetLocalizedStrings(pStr);
 
             Marshal.ThrowExceptionForHR(fontSet->GetPropertyValues(i, FontPropertyId.Win32FamilyName, existsPtr, &pStr));
-            var famNameWws = GetLocalizedString(pStr, localNameEng);
-            var famNameWwsL10N = CultureInfo.CurrentCulture.Name == "en-US" ? famNameWws : GetLocalizedString(pStr, localNameCur);
-
+            var famNamesWws = GetLocalizedStrings(pStr);
+            
             Marshal.ThrowExceptionForHR(fontSet->GetFontFaceReference(i, &fontFaceRef));
             var path = GetFilePath(fontFaceRef);
             var fileSize = fontFaceRef->GetLocalFileSize();
@@ -82,7 +78,7 @@ public unsafe class DirectWrite : IParseFonts
             var dateTime = DateTime.FromFileTime((long)lastWriteTime);
 
             Debug.WriteLine($"psname: {psname}, fullname: {fullname}, weight: {weight}, stretch: {stretch}, style: {style}, " +
-                            $"faceIndex: {faceIndex}, famName: {famName}, famNameL10N: {famNameL10N}, famNameWws: {famNameWws}, famNameWwsL10N: {famNameWwsL10N}, " +
+                            $"faceIndex: {faceIndex}, famName: {string.Join("|", famNames!.Values.Distinct())}, famNameWws: {string.Join("|", famNamesWws!.Values.Distinct())}, " +
                             $"glyphCount: {glyphCount}");
             
             infos.Add(new FontFaceInfoDWrite
@@ -90,10 +86,8 @@ public unsafe class DirectWrite : IParseFonts
                 FaceIndex = faceIndex,
                 PostScriptName = psname,
                 FullName = fullname,
-                FamilyName = famName,
-                FamilyNameLocalized = famNameL10N,
-                FamilyNameGdi = famNameWws,
-                FamilyNameGdiLocalized = famNameWwsL10N,
+                FamilyNames = famNames,
+                FamilyNamesGdi = famNamesWws,
                 Weight = Convert.ToInt32(weight),
                 Stretch = Convert.ToInt32(stretch),
                 Style = Convert.ToInt32(style),
@@ -261,6 +255,36 @@ public unsafe class DirectWrite : IParseFonts
         Marshal.FreeHGlobal(buffer);
         return str;
     }
+
+    private static Dictionary<int, string>? GetLocalizedStrings(IDWriteLocalizedStrings* ss)
+    {
+        var count = ss->GetCount();
+        if (count == 0)
+        {
+            return null;
+        }
+
+        Dictionary<int, string> localStrings = [];
+        uint strLength = 0;
+        for (uint j = 0; j < count; j++)
+        {
+            Marshal.ThrowExceptionForHR(ss->GetLocaleNameLength(j, &strLength));
+            var buffer = Marshal.AllocHGlobal(2 * ((int)strLength + 1));
+            Marshal.ThrowExceptionForHR(ss->GetLocaleName(j, (char*)buffer, strLength + 1));
+            var locName = Marshal.PtrToStringUni(buffer);
+            var locId = new CultureInfo(locName!).LCID;
+                    
+            Marshal.ThrowExceptionForHR(ss->GetStringLength(j, &strLength));
+            buffer = Marshal.AllocHGlobal(2 * ((int)strLength + 1));
+            Marshal.ThrowExceptionForHR(ss->GetString(j, (char*)buffer, strLength + 1));
+            var locStr = Marshal.PtrToStringUni(buffer);
+            
+            localStrings.Add(locId, locStr ?? string.Empty);
+        }
+
+        return localStrings;
+    }
+    
     private static int GetLocalFileLoaderAndKey(IDWriteFontFaceReference* fontFaceRef, out void* fontFileReferenceKey, out uint fontFileReferenceKeySize, out IDWriteLocalFontFileLoader* localFontFileLoader)
     {
         fontFileReferenceKey = null;
