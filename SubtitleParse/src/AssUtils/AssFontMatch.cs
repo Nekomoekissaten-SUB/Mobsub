@@ -15,13 +15,13 @@ public class AssFontMatch(IEnumerable<FontFaceInfoBase> fontFaceInfos)
     public FontFaceInfoBase? GetFontFace(AssFontInfo assFontInfo)
     {
         var faceInfosArr = faceInfos.ToArray();
-        var sameFamilyNameFaces = faceInfosArr.Where(face => face.FamilyNameGdi == assFontInfo.Name || face.FamilyNameGdiLocalized == assFontInfo.Name);
-
+        var sameFamilyNameFaces = faceInfosArr.Where(face => face.FamilyNames.ContainsValue(assFontInfo.Name));
+    
         if (!sameFamilyNameFaces.Any()) { return null; }
-
-
-
-
+    
+    
+    
+    
         return null;
     }
 }
