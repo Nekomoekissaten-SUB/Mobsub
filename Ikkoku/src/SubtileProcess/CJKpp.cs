@@ -84,7 +84,8 @@ public class CJKpp
             evt.Style = sb.ToString();
             return true;
         }
-        else if (posSc > -1 && posScr == -1)
+        
+        if (posSc > -1 && posScr == -1)
         {
             sb.Append(span.Slice(0, posSc));
             sb.Append(span[posSc] == 'S' ? 'T' : 't');
@@ -93,10 +94,8 @@ public class CJKpp
             evt.Style = sb.ToString();
             return true;
         }
-        else
-        {
-            // screen, scr
-            return false;
-        }
+        
+        // screen, scr
+        return false;
     }
 }
