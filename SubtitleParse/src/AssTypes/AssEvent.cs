@@ -46,8 +46,8 @@ public class AssEvents(ILogger? logger = null)
         sw.Write(sectionName);
         sw.Write(newline);
         sw.Write($"Format: {string.Join(", ", Formats)}");
-        _logger?.ZLogDebug($"Write format line fine");
         sw.Write(newline);
+        _logger?.ZLogDebug($"Write format line fine");
 
         _logger?.ZLogDebug($"Start Write event line");
         for (var i = 0; i < Collection.Count; i++)
@@ -55,7 +55,7 @@ public class AssEvents(ILogger? logger = null)
             Collection[i].Write(sw, Formats, ctsRounding);
             sw.Write(newline);
         }
-        sw.Write(newline);
+        //sw.Write(newline);
         _logger?.ZLogDebug($"Write event lines fine");
     }
 }

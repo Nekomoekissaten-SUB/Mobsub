@@ -131,20 +131,25 @@ public class AssData(ILogger? logger = null)
                     break;
                 case AssSection.StylesV4P:
                 case AssSection.StylesV4:
+                    sw.Write(newline);
                     Styles.Write(sw, newline, ScriptInfo.ScriptType);
                     break;
                 case AssSection.Events:
+                    sw.Write(newline);
                     Events.Write(sw, newline, ctsRounding);
                     break;
                 case AssSection.Fonts:
+                    sw.Write(newline);
                     sw.Write(sectionNameFonts);
                     sw.Write(newline);
                     foreach (var o in Fonts)
                     {
                         o.Write(sw, newline);
                     }
+                    //sw.Write(newline);
                     break;
                 case AssSection.Graphics:
+                    sw.Write(newline);
                     sw.Write(sectionNameGraphics);
                     sw.Write(newline);
                     foreach (var o in Fonts)
@@ -153,6 +158,7 @@ public class AssData(ILogger? logger = null)
                     }
                     break;
                 case AssSection.AegisubProjectGarbage:
+                    sw.Write(newline);
                     sw.Write(sectionNameAegisubProjectGarbage);
                     sw.Write(newline);
                     foreach (var kvp in AegisubProjectGarbage)
@@ -160,9 +166,10 @@ public class AssData(ILogger? logger = null)
                         sw.Write($"{kvp.Key}: {kvp.Value}");
                         sw.Write(newline);
                     }
-                    sw.Write(newline);
+                    //sw.Write(newline);
                     break;
                 case AssSection.AegisubExtradata:
+                    sw.Write(newline);
                     sw.Write(sectionNameAegisubExtradata);
                     sw.Write(newline);
                     for (var i = 0; i < AegiusbExtradata.Count; i++)
@@ -171,7 +178,7 @@ public class AssData(ILogger? logger = null)
                         sw.Write(AegiusbExtradata.ToArray()[i]);
                         sw.Write(newline);
                     }
-                    sw.Write(newline);
+                    //sw.Write(newline);
                     break;
                 case AssSection.StylesV4PP:
                     break;

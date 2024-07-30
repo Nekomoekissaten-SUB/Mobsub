@@ -111,7 +111,7 @@ public class AssStyles(ILogger? logger = null)
             sw.Write(newline);
         }
         _logger?.ZLogDebug($"Write style lines fine");
-        sw.Write(newline);
+        //sw.Write(newline);
         _logger?.ZLogDebug($"Section write completed");
     }
 
