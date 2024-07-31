@@ -1,5 +1,8 @@
+using System.Diagnostics;
 using System.Text;
 using Mobsub.SubtitleParse.AssTypes;
+using Microsoft.Extensions.Logging;
+using ZLogger;
 
 namespace Mobsub.SubtitleParse.AssUtils;
 
@@ -11,14 +14,16 @@ public class AssFontParse
     /// </summary>
     /// <param name="events">event line collection</param>
     /// <param name="styles">style collection</param>
+    /// <param name="logger"></param>
     /// <returns>key is a string order by "font_used_name,font_weight,font_italic,font_encoding" (1 = true, 0 = false), value is rune collection</returns>
-    public static Dictionary<string, List<Rune>> GetUsedFonts(List<AssEvent> events, List<AssStyle> styles)
+    public static Dictionary<string, List<Rune>> GetUsedFonts(List<AssEvent> events, List<AssStyle> styles, ILogger<AssTagParse>? logger = null)
     {
         Dictionary<string, List<Rune>> usedFontGlyphs = [];
         var lineNumberFirst = events.First().lineNumber;
 
         foreach (var eventLine in events)
         {
+            Debug.WriteLine(eventLine.lineNumber);
             if (!eventLine.IsDialogue) continue;
             var eventStyle = GetStyleByName(styles, eventLine.Style);
             var text = eventLine.Text.ToArray();
@@ -38,7 +43,7 @@ public class AssFontParse
                 {
                     if (slice.Length > 2)
                     {
-                        GetOverrideBlockFont(slice, eventStyle, styles, fn, fe, italic, weight, lineNumber, lineNumberFirst);
+                        GetOverrideBlockFont(slice, eventStyle, styles, fn, fe, italic, weight, lineNumber, lineNumberFirst, logger);
                     }
                 }
                 else if (slice.Length == 2 && AssConstants.IsEventSpecialCharPair(slice))
@@ -64,9 +69,9 @@ public class AssFontParse
         return usedFontGlyphs;
     }
 
-    public static Dictionary<AssFontInfo, List<Rune>> GetUsedFontInfos(List<AssEvent> events, List<AssStyle> styles)
+    public static Dictionary<AssFontInfo, List<Rune>> GetUsedFontInfos(List<AssEvent> events, List<AssStyle> styles, ILogger<AssTagParse>? logger = null)
     {
-        var maps = GetUsedFonts(events, styles);
+        var maps = GetUsedFonts(events, styles, logger);
         //return maps.ToDictionary(map => ParseAssFontInfo(map.Key), map => map.Value);
         Dictionary<AssFontInfo, List<Rune>> result = [];
         foreach (var map in maps)
@@ -144,9 +149,17 @@ public class AssFontParse
     /// <param name="weight"></param>
     /// <param name="lineNumber"></param>
     /// <param name="lineNumberFirst"></param>
-    private static void GetOverrideBlockFont(Span<char> tag, AssStyle eventStyle, List<AssStyle> styles, StringBuilder fn, StringBuilder fe, StringBuilder italic, StringBuilder weight, int lineNumber, int lineNumberFirst)
+    /// <param name="logger"></param>
+    private static void GetOverrideBlockFont(Span<char> tag, AssStyle eventStyle, List<AssStyle> styles, StringBuilder fn, StringBuilder fe, StringBuilder italic, StringBuilder weight, int lineNumber, int lineNumberFirst, ILogger<AssTagParse>? logger = null)
     {
-        foreach (var ca in AssTagParse.GetTagsFromOvrBlock(tag))
+        var tags = AssTagParse.GetTagsFromOvrBlock(tag, out var warningTags);
+
+        if (warningTags is not null)
+        {
+            logger?.ZLogWarning($"Event line {lineNumber} ({lineNumber - lineNumberFirst}): {warningTags}");
+        }
+
+        foreach (var ca in tags)
         {
             GetOverrideFont(ca.AsSpan(), eventStyle, styles, fn, fe, italic, weight, lineNumber, lineNumberFirst);
         }

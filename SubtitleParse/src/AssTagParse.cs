@@ -677,9 +677,11 @@ public class AssTagParse
     /// </summary>
     /// <param name="block">override tags block</param>
     /// <returns></returns>
-    public static List<char[]> GetTagsFromOvrBlock(Span<char> block)
+    public static List<char[]> GetTagsFromOvrBlock(Span<char> block) => GetTagsFromOvrBlock(block, out _);
+    public static List<char[]> GetTagsFromOvrBlock(Span<char> block, out string? warningTags)
     {
         List<char[]> cal = [];
+        warningTags = null;
 
         if (IsOverrideBlock(block) && block.Length > 2)
         {
@@ -727,6 +729,12 @@ public class AssTagParse
                 {
                     preOvr = preEndIndex;
                 }
+            }
+            else
+            {
+                SplitOnlyOvrTags(block[(preOvr + 1)..], cal);
+                valueStartIndex = -1;
+                warningTags = block[(preOvr + 1)..].ToString();
             }
             
             if (valueStartIndex == -1)
