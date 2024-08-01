@@ -16,7 +16,7 @@ public class AssFontParse
     /// <param name="styles">style collection</param>
     /// <param name="logger"></param>
     /// <returns>key is a string order by "font_used_name,font_weight,font_italic,font_encoding" (1 = true, 0 = false), value is rune collection</returns>
-    public static Dictionary<string, List<Rune>> GetUsedFonts(List<AssEvent> events, List<AssStyle> styles, ILogger<AssTagParse>? logger = null)
+    public static Dictionary<string, List<Rune>> GetUsedFonts(List<AssEvent> events, List<AssStyle> styles, ILogger? logger = null)
     {
         Dictionary<string, List<Rune>> usedFontGlyphs = [];
         var lineNumberFirst = events.First().lineNumber;
@@ -69,7 +69,7 @@ public class AssFontParse
         return usedFontGlyphs;
     }
 
-    public static Dictionary<AssFontInfo, List<Rune>> GetUsedFontInfos(List<AssEvent> events, List<AssStyle> styles, ILogger<AssTagParse>? logger = null)
+    public static Dictionary<AssFontInfo, List<Rune>> GetUsedFontInfos(List<AssEvent> events, List<AssStyle> styles, ILogger? logger = null)
     {
         var maps = GetUsedFonts(events, styles, logger);
         //return maps.ToDictionary(map => ParseAssFontInfo(map.Key), map => map.Value);
@@ -150,7 +150,7 @@ public class AssFontParse
     /// <param name="lineNumber"></param>
     /// <param name="lineNumberFirst"></param>
     /// <param name="logger"></param>
-    private static void GetOverrideBlockFont(Span<char> tag, AssStyle eventStyle, List<AssStyle> styles, StringBuilder fn, StringBuilder fe, StringBuilder italic, StringBuilder weight, int lineNumber, int lineNumberFirst, ILogger<AssTagParse>? logger = null)
+    private static void GetOverrideBlockFont(Span<char> tag, AssStyle eventStyle, List<AssStyle> styles, StringBuilder fn, StringBuilder fe, StringBuilder italic, StringBuilder weight, int lineNumber, int lineNumberFirst, ILogger? logger = null)
     {
         var tags = AssTagParse.GetTagsFromOvrBlock(tag, out var warningTags);
 
