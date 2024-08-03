@@ -8,7 +8,7 @@ namespace Mobsub.SubtitleParse.AssUtils;
 
 public class AssFontParse(List<AssEvent> events, List<AssStyle> styles, ILogger? logger = null)
 {
-    private Dictionary<string, List<Rune>> usedFontGlyphs = [];
+    private Dictionary<AssFontInfo, List<Rune>> usedFontsAndGlyphs = [];
     private readonly Dictionary<string, AssStyle> stylesDict = styles.GroupBy(item => item.Name).ToDictionary(group => group.Key, group => group.Last());
     private AssStyle? defaultStyle;
     
@@ -21,14 +21,13 @@ public class AssFontParse(List<AssEvent> events, List<AssStyle> styles, ILogger?
     private int? curWeight;
     private int? curEncoding;
     private bool curInDrawing = false;
+    private List<Rune> curRunes = [];
+
     
-    /// <summary>
-    /// Get ass font info as string and used glyphs from ass data.
-    /// Need to parse info string based on font file. Ass font encoding should be ignore.
-    /// </summary>
-    /// <returns>key is a string order by "font_used_name,font_weight,font_italic,font_encoding" (1 = true, 0 = false), value is rune collection</returns>
-    public Dictionary<string, List<Rune>> GetUsedFonts()
+    public Dictionary<AssFontInfo, List<Rune>> GetUsedFontInfosWithEncoding()
     {
+        if (usedFontsAndGlyphs.Count > 0) return usedFontsAndGlyphs;
+        
         if (!stylesDict.TryGetValue("Default", out defaultStyle))
         {
             defaultStyle = new AssStyle().GetDefault();
@@ -41,7 +40,6 @@ public class AssFontParse(List<AssEvent> events, List<AssStyle> styles, ILogger?
             curLineNumber = eventLine.lineNumber;
             curInDrawing = false;
             var text = eventLine.Text.ToArray().AsSpan();
-            List<Rune> runes = [];
 
             if (curStyle is null || eventLine.Style != curStyle.Name)
             {
@@ -67,57 +65,49 @@ public class AssFontParse(List<AssEvent> events, List<AssStyle> styles, ILogger?
                     switch (slice[1])
                     {
                         case 'h':
-                            runes.Add(new Rune(AssConstants.NBSP_Utf16));
-                            RecordFontGlyphs(runes);
+                            curRunes.Add(new Rune(AssConstants.NBSP_Utf16));
+                            RecordFontGlyphs();
                             break;
                     }
                 }
                 else
                 {
-                    DecodeCharsToRunes(slice, runes);
-                    RecordFontGlyphs(runes);
+                    DecodeCharsToRunes(slice);
+                    RecordFontGlyphs();
                 }
             }
         }
-        return usedFontGlyphs;
+        return usedFontsAndGlyphs;
     }
     public Dictionary<AssFontInfo, List<Rune>> GetUsedFontInfos()
     {
-        GetUsedFonts();
-        //return maps.ToDictionary(map => ParseAssFontInfo(map.Key), map => map.Value);
-        Dictionary<AssFontInfo, List<Rune>> result = [];
-        foreach (var map in usedFontGlyphs)
+        if (usedFontsAndGlyphs.Count == 0)
         {
-            var k = ParseAssFontInfo(map.Key);
-            var v = map.Value;
-            if (result.TryAdd(k, v)) continue;
-            foreach (var c in v)
+            GetUsedFontInfosWithEncoding();
+        }
+        Dictionary<AssFontInfo, List<Rune>> result = [];
+        foreach (var map in usedFontsAndGlyphs)
+        {
+            AssFontInfo newAFI;
+            if (map.Key.Encoding == 1)
             {
-                if (!result[k].Contains(c))
-                {
-                    result[k].Add(c);
-                }
+                newAFI = map.Key;
+            }
+            else
+            {
+                newAFI = map.Key with { Encoding = 1 };
+            }
+            
+            if (result.TryGetValue(newAFI, out var existingValue))
+            {
+                existingValue.AddRange(map.Value);
+            }
+            else
+            {
+                result[newAFI] = [..map.Value];
             }
         }
         return result;
-    }
-    private static AssFontInfo ParseAssFontInfo(string fontInfoString)
-    {
-        var span = fontInfoString.AsSpan();
-        var info = new AssFontInfo();
-
-        var index = span.IndexOf(',');
-        info.Name = span.Slice(0, index).ToString();
-
-        span = span.Slice(index + 1);
-        index = span.IndexOf(',');
-        info.Weight = int.Parse(span.Slice(0, index));
-
-        span = span.Slice(index + 1);
-        index = span.IndexOf(',');
-        info.Italic = int.Parse(span.Slice(0, index)) != 0;
-
-        return info;
     }
 
     /// <summary>
@@ -191,31 +181,37 @@ public class AssFontParse(List<AssEvent> events, List<AssStyle> styles, ILogger?
         }
     }
     
-    private void RecordFontGlyphs(List<Rune> runes)
+    private void RecordFontGlyphs()
     {
         if (curInDrawing){ return; }
-        var fontStr = new string($"{curFontname},{curWeight},{((bool)curItalic! ? 1 : 0)},{curEncoding}");
+        var assFontInfo = new AssFontInfo()
+        {
+            Name = curFontname!,
+            Weight = (int)curWeight!,
+            Italic = (bool)curItalic!,
+            Encoding = (int)curEncoding!,
+        };
         
-        if (!usedFontGlyphs.TryGetValue(fontStr, out var _))
+        if (!usedFontsAndGlyphs.TryGetValue(assFontInfo, out var _))
         {
-            usedFontGlyphs.Add(fontStr, []);
+            usedFontsAndGlyphs.Add(assFontInfo, []);
         }
 
-        foreach (var r in runes.Where(r => !usedFontGlyphs[fontStr].Contains(r)))
+        foreach (var r in curRunes.Where(r => !usedFontsAndGlyphs[assFontInfo].Contains(r)))
         {
-            usedFontGlyphs[fontStr].Add(r);
+            usedFontsAndGlyphs[assFontInfo].Add(r);
         }
 
-        runes.Clear();
+        curRunes.Clear();
     }
 
-    private static void DecodeCharsToRunes(Span<char> span, List<Rune> runes)
+    private void DecodeCharsToRunes(Span<char> span)
     {
         int charsConsumed;
         for (var i = 0; i < span.Length; i += charsConsumed)
         {
             Rune.DecodeFromUtf16(span[i..], out var rune, out charsConsumed);
-            runes.Add(rune);
+            curRunes.Add(rune);
         }
     }
 
