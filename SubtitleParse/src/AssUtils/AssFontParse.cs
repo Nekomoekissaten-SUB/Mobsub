@@ -119,7 +119,7 @@ public class AssFontParse(List<AssEvent> events, List<AssStyle> styles, ILogger?
 
         if (warningTags is not null)
         {
-            logger?.ZLogWarning($"Event line {curLineNumber} ({curLineNumber - firstLineNumber}): {warningTags}");
+            logger?.ZLogWarning($"Event line {curLineNumber} ({curLineNumber - firstLineNumber + 1}): {warningTags}");
         }
         foreach (var tag in tags)
         {
