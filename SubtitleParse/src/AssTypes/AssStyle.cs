@@ -22,13 +22,11 @@ public class AssStyles(ILogger? logger = null)
     public List<AssStyle> Collection = [];
     public HashSet<string> Names = [];
 
-    private readonly ILogger? _logger = logger;
-
     public void Read(ReadOnlySpan<char> sp, int lineNumber)
     {
         if (sp[0] == '/')
         {
-            _logger?.ZLogDebug($"Line {lineNumber} is comment, will not parse");
+            logger?.ZLogDebug($"Line {lineNumber} is comment, will not parse");
             return;
         }
 
@@ -37,11 +35,11 @@ public class AssStyles(ILogger? logger = null)
         if (sp[..sepIndex].SequenceEqual("Format".AsSpan()))
         {
             Formats = sp[(sepIndex + 1)..].ToString().Split(',').Select(s => s.Trim()).ToArray();
-            _logger?.ZLogDebug($"Line {lineNumber} is a format line, parse completed");
+            logger?.ZLogDebug($"Line {lineNumber} is a format line, parse completed");
         }
         else if (sp[..sepIndex].SequenceEqual("Style".AsSpan()))
         {
-            var syl = new AssStyle(_logger);
+            var syl = new AssStyle(logger);
             var va = sp[(sepIndex + 1)..].ToString().Split(',').Select(s => s.Trim()).ToArray();
 
             if (va.Length != Formats.Length)
@@ -56,13 +54,13 @@ public class AssStyles(ILogger? logger = null)
             Collection.Add(syl);
             if (syl.Fontname.Length > 31)
             {
-                _logger?.ZLogWarning($"Length ({syl.Fontname.Length}) of style {syl.Name}’s fontname “{syl.Fontname}” exceeds 31 characters, may affect the correct rendering of VSFilter");
+                logger?.ZLogWarning($"Length ({syl.Fontname.Length}) of style {syl.Name}’s fontname “{syl.Fontname}” exceeds 31 characters, may affect the correct rendering of VSFilter");
             }
             if (!Names.Add(syl.Name))
             {
                 throw new Exception($"Styles: duplicate style {syl.Name}");
             }
-            _logger?.ZLogDebug($"Line {lineNumber} is a style line, parse completed, style name is {syl.Name}");
+            logger?.ZLogDebug($"Line {lineNumber} is a style line, parse completed, style name is {syl.Name}");
         }
         else
         {
@@ -80,7 +78,7 @@ public class AssStyles(ILogger? logger = null)
                 {
                     throw new Exception("Invalid style format for v4.00 script. Expected: " + formatV4 + ", got: " + fmtStr);
                 }
-                _logger?.ZLogInformation($"Start write section {sectionNameV4}");
+                logger?.ZLogInformation($"Start write section {sectionNameV4}");
                 sw.Write(sectionNameV4);
                 break;
             case "v4.00+":
@@ -88,7 +86,7 @@ public class AssStyles(ILogger? logger = null)
                 {
                     throw new Exception("Invalid style format for v4.00 script. Expected: " + formatV4P + ", got: " + fmtStr);
                 }
-                _logger?.ZLogInformation($"Start write section {sectionNameV4P}");
+                logger?.ZLogInformation($"Start write section {sectionNameV4P}");
                 sw.Write(sectionNameV4P);
                 break;
             case "v4.00++":
@@ -96,23 +94,23 @@ public class AssStyles(ILogger? logger = null)
                 {
                     Formats = formatV4PP.Split(',').Select(s => s.Trim()).ToArray();
                 }
-                _logger?.ZLogInformation($"Start write section {sectionNameV4PP}");
+                logger?.ZLogInformation($"Start write section {sectionNameV4PP}");
                 sw.Write(sectionNameV4PP);
             break;
         }
         sw.Write(newline);
         sw.Write($"Format: {fmtStr}");
         sw.Write(newline);
-        _logger?.ZLogDebug($"Write format line fine");
+        logger?.ZLogDebug($"Write format line fine");
 
         for (var i = 0; i < Collection.Count; i++)
         {
             Collection[i].Write(sw, Formats);
             sw.Write(newline);
         }
-        _logger?.ZLogDebug($"Write style lines fine");
+        logger?.ZLogDebug($"Write style lines fine");
         //sw.Write(newline);
-        _logger?.ZLogDebug($"Section write completed");
+        logger?.ZLogDebug($"Section write completed");
     }
 
 }
@@ -121,7 +119,7 @@ public class AssStyle(ILogger? logger = null)
 {
     private string? name;
     private string? fontname;
-    private readonly ILogger? _logger = logger;
+
     public string Name
     {
         get => name ?? "Default";
@@ -132,7 +130,7 @@ public class AssStyle(ILogger? logger = null)
         get => fontname ?? "Arial";  // GDI max 32, last is null
         set => fontname = value;
     }
-    public float Fontsize { get; set; }  // ushort; Is negative and float really correct?
+    public double Fontsize { get; set; }  // ushort; Is negative and float really correct?
     public AssRGB8 PrimaryColour { get; set; }
     public AssRGB8 SecondaryColour { get; set; }
     public AssRGB8 OutlineColour { get; set; }
@@ -141,13 +139,13 @@ public class AssStyle(ILogger? logger = null)
     public bool Italic { get; set; }
     public bool Underline { get; set; }  // 0 = false, -1 = true
     public bool StrikeOut { get; set; }
-    public float ScaleX { get; set; }
-    public float ScaleY { get; set; }
-    public float Spacing { get; set; }
-    public float Angle { get; set; }
+    public double ScaleX { get; set; }
+    public double ScaleY { get; set; }
+    public double Spacing { get; set; }
+    public double Angle { get; set; }
     public short BorderStyle { get; set; }  // 1, 3?
-    public float Outline { get; set; }
-    public float Shadow { get; set; }
+    public double Outline { get; set; }
+    public double Shadow { get; set; }
     public short Alignment { get; set; }  // 1-9
     public int MarginL { get; set; }
     public int MarginR { get; set; }
@@ -284,7 +282,7 @@ public class AssStyle(ILogger? logger = null)
                 sw.Write(',');
             }
         }
-        _logger?.ZLogDebug($"Write {Name} style line fine");
+        logger?.ZLogDebug($"Write {Name} style line fine");
     }
 
     public override bool Equals(object? obj)
