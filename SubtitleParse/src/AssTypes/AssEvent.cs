@@ -14,13 +14,13 @@ public class AssEvents(ILogger? logger = null)
         set => formats = value;
     }
     public List<AssEvent> Collection = [];
-    private readonly ILogger? _logger = logger;
+    private readonly ILogger? logger = logger;
     internal const string sectionName = "[Events]";
 
     public void Read(ReadOnlySpan<char> sp, string scriptType, int lineNumber)
     {
         var sepIndex = sp.IndexOf(':');
-        var evt = new AssEvent(_logger);
+        var evt = new AssEvent(logger);
         if (evt.Read(sp, sepIndex, lineNumber, Formats))
         {
             Collection.Add(evt);
@@ -36,27 +36,27 @@ public class AssEvents(ILogger? logger = null)
             {
                 throw new Exception("Events: Text must be last field.");
             }
-            _logger?.ZLogDebug($"Parse format line fine");
+            logger?.ZLogDebug($"Parse format line fine");
         }
     }
 
     public void Write(StreamWriter sw, char[] newline, bool ctsRounding)
     {
-        _logger?.ZLogInformation($"Start write section {sectionName}");
+        logger?.ZLogInformation($"Start write section {sectionName}");
         sw.Write(sectionName);
         sw.Write(newline);
         sw.Write($"Format: {string.Join(", ", Formats)}");
         sw.Write(newline);
-        _logger?.ZLogDebug($"Write format line fine");
+        logger?.ZLogDebug($"Write format line fine");
 
-        _logger?.ZLogDebug($"Start Write event line");
+        logger?.ZLogDebug($"Start Write event line");
         for (var i = 0; i < Collection.Count; i++)
         {
             Collection[i].Write(sw, Formats, ctsRounding);
             sw.Write(newline);
         }
         //sw.Write(newline);
-        _logger?.ZLogDebug($"Write event lines fine");
+        logger?.ZLogDebug($"Write event lines fine");
     }
 }
 
@@ -84,7 +84,6 @@ public class AssEvent(ILogger? logger = null)
     public int MarginB { get; set; } = 0;
     public string? Effect { get; set; }
     public List<char[]> Text { get; set; } = [];  // override tags block, special chars block, normal text block
-    private readonly ILogger? _logger = logger;
 
     public bool Read(ReadOnlySpan<char> sp, int lineNum, string[] formats) => Read(sp, sp.IndexOf(':'), lineNum, formats);
 
@@ -95,7 +94,7 @@ public class AssEvent(ILogger? logger = null)
             StartSemicolon = true;
             Untouched = sp.ToString();
             lineNumber = lineNum;
-            _logger?.ZLogInformation($"Line ${lineNum} is a comment line, will record untouched");
+            logger?.ZLogInformation($"Line ${lineNum} is a comment line, will record untouched");
             return true;
         }
 
