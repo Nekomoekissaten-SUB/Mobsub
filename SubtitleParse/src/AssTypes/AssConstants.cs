@@ -1,6 +1,6 @@
 namespace Mobsub.SubtitleParse.AssTypes;
 
-public class AssConstants
+public static partial class AssConstants
 {
     public const char StartOvrBlock = '{';
     public const char EndOvrBlock = '}';
@@ -11,7 +11,7 @@ public class AssConstants
     public const char Comment = ';';
     public const char StartValueBlock = '(';
     public const char EndValueBlock = ')';
-    public const char FunctionValueSeparator = ',';
+    public const char FunctionParamSeparator = ',';
     public const int NBSP_Utf16 = 0x00A0;
 
     public class ScriptInfo
@@ -46,4 +46,219 @@ public class AssConstants
     public static bool IsEventLine(ReadOnlySpan<char> sp) => sp.StartsWith("Comment") || sp.StartsWith("Dialogue");
     public static bool IsEventSpecialCharPair(char[] ca) => ca is ['\\', LineBreaker or WordBreaker or NBSP];
     public static bool IsEventSpecialCharPair(Span<char> ca) => ca.Length == 2 && ca[0] == '\\' && (ca[1] is LineBreaker or WordBreaker or NBSP);
+    
+    public static class OverrideTags
+    {
+        [AssOverrideTag(typeof(AssTextColor), "ParseTagColor", "1, false", "Colors")]
+        [AssTagKind(AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+        public const string ColorPrimary  = "1c";
+        
+        [AssOverrideTag(typeof(AssTextColor), "ParseTagColor", "1, false", "Colors")]
+        [AssTagKind(AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+        public const string ColorPrimaryAbbreviation = "c";
+        
+        [AssOverrideTag(typeof(AssTextColor), "ParseTagColor", "2, false", "Colors")]
+        [AssTagKind(AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+        public const string ColorSecondary  = "2c";
+        
+        [AssOverrideTag(typeof(AssTextColor), "ParseTagColor", "3, false", "Colors")]
+        [AssTagKind(AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+        public const string ColorBorder  = "3c";
+        
+        [AssOverrideTag(typeof(AssTextColor), "ParseTagColor", "4, false", "Colors")]
+        [AssTagKind(AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+        public const string ColorShadow  = "4c";
+        
+        [AssOverrideTag(typeof(AssTextColor), "ParseTagColor", "1, true", "Colors")]
+        [AssTagKind(AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+        public const string AlphaPrimary  = "1a";
+        
+        [AssOverrideTag(typeof(AssTextColor), "ParseTagColor", "2, true", "Colors")]
+        [AssTagKind(AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+        public const string AlphaSecondary  = "2a";
+        
+        [AssOverrideTag(typeof(AssTextColor), "ParseTagColor", "3, true", "Colors")]
+        [AssTagKind(AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+        public const string AlphaBorder  = "3a";
+        
+        [AssOverrideTag(typeof(AssTextColor), "ParseTagColor", "4, true", "Colors")]
+        [AssTagKind(AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+        public const string AlphaShadow  = "4a";
+        
+        [AssOverrideTag(typeof(AssTextColor), "ParseTagColor", "0, true", "Colors")]
+        [AssTagKind(AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+        public const string Alpha  = "alpha";
+        
+        [AssOverrideTag(typeof(int), "ParseTagAlignment", "false")]
+        [AssTagKind(AssTagKind.LineOnlyRenderFirst)]
+        public const string Alignment = "an";
+        
+        [AssOverrideTag(typeof(int), "ParseTagAlignment", "true", "Alignment")]
+        [AssTagKind(AssTagKind.LineOnlyRenderFirst)]
+        public const string AlignmentLegacy = "a";
+        
+        [AssOverrideTag(typeof(double), "ParseTagBlueEdges", "")] // sbyte?
+        [AssTagGeneralParse("null", true)]
+        [AssTagKind(AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+        public const string BlueEdges = "be";
+        
+        [AssOverrideTag(typeof(double), "ParseTagBlurEdgesGaussian", "")]
+        [AssTagGeneralParse("null", true)]
+        [AssTagKind(AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+        public const string BlurEdgesGaussian = "blur";
+        
+        [AssOverrideTag(typeof(AssTextBorder), "ParseTagBorder", "0", "Borders")]
+        [AssTagKind(AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+        [AssTagGeneralParse("Outline", true)]
+        public const string Border = "bord";
+        
+        [AssOverrideTag(typeof(AssTextBorder), "ParseTagBorder", "1", "Borders")]
+        [AssTagKind(AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+        public const string BorderX = "xbord";
+        
+        [AssOverrideTag(typeof(AssTextBorder), "ParseTagBorder", "2", "Borders")]
+        [AssTagKind(AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+        public const string BorderY = "ybord";
+        
+        [AssOverrideTag(typeof(int), "ParseTagBold", "", "FontWeight")]
+        [AssTagKind(AssTagKind.BlockOnlyRenderLatest)]
+        public const string Bold = "b";
+        
+        // [AssOverrideTag(typeof(int), "ParseClipTag", "")]
+        // public const string Clip = "clip";
+        // [AssOverrideTag(typeof(int), "ParseClipTag", "true", "Clip")]
+        // public const string InverseClip = "iclip";
+        // [AssOverrideTag(typeof(double[]), "ParseFade", "")]
+        // public const string Fade = "fade";
+        // [AssOverrideTag(typeof(double[]), "ParseFad", "")]
+        // public const string Fad = "fad";
+        // [AssOverrideTag(typeof(double), "ParseFontShift", "x", "FontShiftX")]
+        // public const string FontShiftX = "fax";
+        // [AssOverrideTag(typeof(double), "ParseFontShift", "y", "FontShiftY")]
+        // public const string FontShiftY = "fay";
+        
+        [AssOverrideTag(typeof(int), "ParseTagFontEncoding", "")]
+        [AssTagKind(AssTagKind.BlockOnlyRenderLatest)]
+        public const string FontEncoding = "fe";
+        
+        [AssOverrideTag(typeof(string), "ParseTagFontName", "")]
+        [AssTagKind(AssTagKind.BlockOnlyRenderLatest)]
+        public const string FontName = "fn";
+        
+        // [AssOverrideTag(typeof(double[]), "ParseFontRotation", "0", "Rotations")]
+        // public const string FontRotationX = "frx";
+        // [AssOverrideTag(typeof(double[]), "ParseFontRotation", "1", "Rotations")]
+        // public const string FontRotationY = "fry";
+        // [AssOverrideTag(typeof(double[]), "ParseFontRotation", "2", "Rotations")]
+        // public const string FontRotationZ = "frz";
+        // [AssOverrideTag(typeof(double[]), "ParseFontRotation", "-1", "Rotations")]
+        // public const string FontRotation = "fr";
+        
+        [AssOverrideTag(typeof(double), "ParseTagFontSize", "", "FontSize")]
+        [AssTagGeneralParse("Fontsize", true)]
+        [AssTagKind(AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+        public const string FontSize = "fs";
+        
+        [AssOverrideTag(typeof(AssTextScale), "ParseTagFontSizeScale", "1", "TextScale")]
+        [AssTagKind(AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+        [AssTagGeneralParse("Scale", true)]  // ScaleX
+        public const string FontSizeScaleX = "fscx";
+        
+        [AssOverrideTag(typeof(AssTextScale), "ParseTagFontSizeScale", "2", "TextScale")]
+        [AssTagKind(AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+        public const string FontSizeScaleY = "fscy";
+        
+        // public const string Fsc = "fsc";
+        
+        [AssOverrideTag(typeof(double), "ParseTagSpacing", "", "TextSpacing")]
+        [AssTagGeneralParse("Spacing")]
+        [AssTagKind(AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+        public const string FontSpacing = "fsp";
+        
+        [AssOverrideTag(typeof(bool), "ParseTagItalic", "", "FontItalic")]
+        [AssTagGeneralParse("Italic")]
+        [AssTagKind(AssTagKind.BlockOnlyRenderLatest)]
+        public const string Italic = "i";
+        
+        // public const string Kt = "kt";
+        // [AssOverrideTag(typeof(int), "ParseKaraoke", "")]
+        // public const string KaraokeO = "ko";
+        // [AssOverrideTag(typeof(int), "ParseKaraoke", "")]
+        // public const string KaraokeF = "kf";
+        // [AssOverrideTag(typeof(int), "ParseKaraoke", "")]
+        // public const string KaraokeFSimple = "K";
+        // [AssOverrideTag(typeof(int), "ParseKaraoke", "")]
+        // public const string Karaoke = "k";
+        // [AssOverrideTag(typeof(double[]), "ParseMovement", "")]
+        // public const string Movement = "move";
+        // [AssOverrideTag(typeof(double[]), "ParseOriginRotation", "")]
+        // public const string OriginRotation = "org";
+        // public const string Pbo = "pbo";
+        // [AssOverrideTag(typeof(double[]), "ParsePosition", "")]
+        // public const string Position = "pos";
+        // public const string P = "p";
+        
+        [AssOverrideTag(typeof(int), "ParseTagWrapStyle", "", "TextWrapStyle")]
+        [AssTagKind(AssTagKind.LineOnlyRenderLatest)]
+        public const string WrapStyle = "q";
+        
+        [AssOverrideTag(null, "ParseTagReset", "")]
+        [AssTagKind(AssTagKind.BlockOnlyRenderLatest)]
+        public const string Reset = "r";
+        
+        [AssOverrideTag(typeof(AssTextShadow), "ParseTagShadow", "0", "Shadows")]
+        [AssTagKind(AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+        [AssTagGeneralParse("Shadow", true)]
+        public const string Shadow = "shad";
+        
+        [AssOverrideTag(typeof(AssTextShadow), "ParseTagShadow", "1", "Shadows")]
+        [AssTagKind(AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+        public const string ShadowX = "xshad";
+        
+        [AssOverrideTag(typeof(AssTextShadow), "ParseTagShadow", "2", "Shadows")]
+        [AssTagKind(AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+        public const string ShadowY = "yshad";
+        
+        [AssOverrideTag(typeof(bool), "ParseTagStrikeout", "", "TextStrikeOut")]
+        [AssTagGeneralParse("StrikeOut")]
+        [AssTagKind(AssTagKind.BlockOnlyRenderLatest)]
+        public const string Strikeout = "s";
+        
+        [AssOverrideTag(typeof(List<AssTagTransform>), "ParseTagTransform", "")]
+        [AssTagKind(AssTagKind.ShouldBeFunction)]
+        public const string Transform = "t";
+        
+        [AssOverrideTag(typeof(bool), "ParseTagUnderline", "", "TextUnderline")]
+        [AssTagGeneralParse("Underline")]
+        [AssTagKind(AssTagKind.BlockOnlyRenderLatest)]
+        public const string Underline = "u";
+        
+
+        // https://sourceforge.net/p/guliverkli2/code/HEAD/tree/src/subtitles/RTS.cpp#l1383
+        // libass ass_types.h ass_render.h ass_parse.c
+    }
+}
+
+[AttributeUsage(AttributeTargets.Field, AllowMultiple = false)]
+public class AssOverrideTagAttribute(Type? propertyType, string parseMethod, string methodParams, string? mapPropName = null) : Attribute
+{
+}
+
+public class AssTagGeneralParseAttribute(string stylePropertyName, bool limit = false) : Attribute
+{
+}
+
+public class AssTagKindAttribute(AssTagKind kind) : Attribute
+{
+}
+
+[Flags]
+public enum AssTagKind
+{
+    BlockOnlyRenderLatest = 0,
+    LineOnlyRenderFirst = 0b_1,
+    Animateable = 0b_10,
+    ShouldBeFunction = 0b_100,
+    LineOnlyRenderLatest = 0b_1000,
+    IsVsFilterMod = 0b_10000,
 }
