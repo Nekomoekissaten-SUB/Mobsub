@@ -323,7 +323,7 @@ public partial class AssTagParse2(AssStyles styles, AssScriptInfo scriptInfo, IL
         {
             if (span.Length > 0)
             {
-                logger?.ZLogWarning($"Extra whitespace: {AssConstants.OverrideTags.Italic}{span.ToString()}");
+                logger?.ZLogWarning($"Extra whitespace: {AssConstants.OverrideTags.Reset}{span.ToString()}");
             }
             
             resetStyle = curTextStyle!.BaseStyle;
