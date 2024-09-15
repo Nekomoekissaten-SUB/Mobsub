@@ -14,7 +14,6 @@ public class AssEvents(ILogger? logger = null)
         set => formats = value;
     }
     public List<AssEvent> Collection = [];
-    private readonly ILogger? logger = logger;
     internal const string sectionName = "[Events]";
 
     public void Read(ReadOnlySpan<char> sp, string scriptType, int lineNumber)
@@ -83,7 +82,8 @@ public class AssEvent(ILogger? logger = null)
     public int MarginT { get; set; } = 0;
     public int MarginB { get; set; } = 0;
     public string? Effect { get; set; }
-    public List<char[]> Text { get; set; } = [];  // override tags block, special chars block, normal text block
+    public string? Text { get; set; }
+    public Range[] TextRanges = [];
 
     public bool Read(ReadOnlySpan<char> sp, int lineNum, string[] formats) => Read(sp, sp.IndexOf(':'), lineNum, formats);
 
@@ -143,41 +143,52 @@ public class AssEvent(ILogger? logger = null)
             startIndex = nextSep + 1;
         }
 
-        Text = ParseEventText(sp[startIndex..]);
+        Text = sp[startIndex..].ToString();
     }
 
-    public static List<char[]> ParseEventText(ReadOnlySpan<char> span)
+    /// <summary>
+    /// Split to override tags block, special chars block and normal text block
+    /// </summary>
+    /// <param name="span"></param>
+    /// <returns></returns>
+    public static Range[] SplitEventText(ReadOnlySpan<char> span)
     {
-        var records = new List<char[]>();
-        var sb = new StringBuilder();
-        var blk = false;
+        List<Range> ranges = [];
+
+        var inBlock = false;
         var backslash = false;
-        var _start = 0;
+        var start = 0;
         for (var i = 0; i < span.Length; i++)
         {
-            var c = span[i];
-            switch (c)
+            switch (span[i])
             {
                 case AssConstants.StartOvrBlock:
-                    if (!blk)
+                    if (!inBlock)
                     {
-                        EventAddRecord(span, ref _start, i, ref records);
-                        _start = i;
-                        blk = true;
+                        if (start != i)
+                        {
+                            ranges.Add(new Range(start, i));
+                            start = i;
+                        }
+                        inBlock = true;
                     }
                     break;
                 case AssConstants.EndOvrBlock:
-                    if (blk)
+                    if (inBlock)
                     {
-                        EventAddRecord(span, ref _start, i + 1, ref records);
-                        blk = false;
+                        ranges.Add(new Range(start, i + 1));
+                        start = i + 1;
+                        inBlock = false;
                     }
                     break;
                 case AssConstants.BackSlash:
-                    if (!blk)
+                    if (!inBlock)
                     {
-                        EventAddRecord(span, ref _start, i, ref records);
-                        _start = i;
+                        if (start != i)
+                        {
+                            ranges.Add(new Range(start, i));
+                            start = i;
+                        }
                         backslash = true;
                     }
                     break;
@@ -186,7 +197,8 @@ public class AssEvent(ILogger? logger = null)
                 case AssConstants.LineBreaker:
                     if (backslash)
                     {
-                        EventAddRecord(span, ref _start, i + 1, ref records);
+                        ranges.Add(new Range(start, i + 1));
+                        start = i + 1;
                         backslash = false;
                     }
                     break;
@@ -196,25 +208,15 @@ public class AssEvent(ILogger? logger = null)
             }
         }
 
-        if (_start < span.Length)
+        if (start < span.Length)
         {
-            EventAddRecord(span, ref _start, span.Length, ref records);
+            ranges.Add(new Range(start, span.Length));
         }
-        Debug.Assert(records.Sum(l => l.Length) == span.Length, $"Parse records length is {records.Sum(l => l.Length)}, should be {span.Length}");
-        return records;
+        
+        return ranges.ToArray();
     }
-    private static void EventAddRecord(ReadOnlySpan<char> span, ref int _start, int end, ref List<char[]> records)
-    {
-        if (_start < end)
-        {
-            var length = end - _start;
-            var record = new char[length];
-            span[_start..end].CopyTo(record);
-            records.Add(record);
-        }
-        _start = end;
-    }
-
+    public void UpdateTextRanges() => TextRanges = SplitEventText(Text.AsSpan());
+    
     public static void WriteTime(StringBuilder sb, AssTime time, bool ctsRounding)
     {
         sb.Append(time.Hour);
@@ -224,15 +226,7 @@ public class AssEvent(ILogger? logger = null)
         WriteChar(sb, time.Second, 2);
         sb.Append('.');
 
-        if (ctsRounding)
-        {
-            WriteChar(sb, DigitRounding(time.Millisecond), 3);
-        }
-        else
-        {
-            WriteChar(sb, time.Millisecond, 3);
-        }
-        
+        WriteChar(sb, ctsRounding ? DigitRounding(time.Millisecond) : time.Millisecond, 3);
     }
 
     private static void WriteChar(StringBuilder sb, int val, int length)
@@ -320,10 +314,7 @@ public class AssEvent(ILogger? logger = null)
                         sb.Append(Effect);
                         break;
                     case "Text":
-                        foreach (var ca in Text)
-                        {
-                            sb.Append(ca);
-                        }
+                        sb.Append(Text);
                         break;
                 }
                 
@@ -335,4 +326,18 @@ public class AssEvent(ILogger? logger = null)
         }
     }
 
+    // Utils
+    public static bool IsOverrideBlock(ReadOnlySpan<char> block)
+    {
+        if (block.Length < 2)
+        {
+            return false;
+        }
+        return block[0] == AssConstants.StartOvrBlock && block[^1] == AssConstants.EndOvrBlock;
+    }
+    public static bool IsEventSpecialCharPair(ReadOnlySpan<char> ca) =>
+        ca.Length == 2 && ca[0] == '\\' &&
+        ca[1] is AssConstants.LineBreaker or AssConstants.WordBreaker or AssConstants.NBSP;
+    public static bool IsTextBlock(Span<char> block) => !(IsOverrideBlock(block) || IsEventSpecialCharPair(block));
+    public bool WillSkip() => StartSemicolon || !IsDialogue || Text is null || Text.Length == 0;
 }
