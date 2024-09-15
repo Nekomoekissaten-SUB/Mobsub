@@ -106,12 +106,18 @@ public class SubRipText
         {
             // skip comment and empty event lines
             // Now not support tag convert
-            if (evt is not { StartSemicolon: false, IsDialogue: true, Text.Count: > 0 }) continue;
-            foreach (var s in evt.Text)
-            {
-                var sp = s.AsSpan();
+            if (evt.WillSkip()) { continue; }
 
-                if (AssTagParse.IsOverrideBlock(sp))
+            if (evt.TextRanges.Length == 0)
+            {
+                evt.UpdateTextRanges();
+            }
+
+            foreach (var range in evt.TextRanges)
+            {
+                var sp = evt.Text.AsSpan()[range];
+                
+                if (AssEvent.IsOverrideBlock(sp))
                 {
                     //if (!ignoreTags)
                     //{
@@ -135,7 +141,7 @@ public class SubRipText
                     sb.Append(sp);
                 }
             }
-                
+            
             if (sb.Length > 0)
                 text.Add(sb.ToString().Trim()); sb.Clear();
 
