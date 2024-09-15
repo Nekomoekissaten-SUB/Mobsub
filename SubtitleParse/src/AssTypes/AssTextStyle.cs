@@ -5,7 +5,7 @@ namespace Mobsub.SubtitleParse.AssTypes;
 
 public partial class AssTextStyle(AssStyle baseStyle, ILogger? logger = null)
 {
-    internal readonly AssStyle BaseStyle = baseStyle;
+    public readonly AssStyle BaseStyle = baseStyle;
 
     public void Reset(AssStyle style)
     {
