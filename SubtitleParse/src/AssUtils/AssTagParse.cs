@@ -222,6 +222,35 @@ public partial class AssTagParse2(AssStyles styles, AssScriptInfo scriptInfo, IL
             }
         }
     }
+
+    private void ParseTagPosition(ReadOnlySpan<char> span)
+    {
+        if (IsEmptyOrWhiteSpace(span))
+        {
+            if (span.Length > 0)
+            {
+                logger?.ZLogWarning($"Extra whitespace: {AssConstants.OverrideTags.Position}{AssConstants.StartValueBlock}{span.ToString()}{AssConstants.EndValueBlock}");
+            }
+        }
+        else
+        {
+            var splitResult = SplitFunctionParams(span, out var ranges);
+            if (splitResult == SplitStatus.NoValue || ranges.Count != 2)
+            {
+                logger?.ZLogWarning($"Useless position: {AssConstants.OverrideTags.Position}{AssConstants.StartValueBlock}{span.ToString()}{AssConstants.EndValueBlock}");
+                return;
+            }
+
+            var r1 = double.TryParse(span[ranges[0]], out var p1);
+            var r2 = double.TryParse(span[ranges[1]], out var p2);
+            if (!r1 || !r2)
+            {
+                logger?.ZLogWarning($"Useless position: {AssConstants.OverrideTags.Position}{AssConstants.StartValueBlock}{span.ToString()}{AssConstants.EndValueBlock}");
+            }
+
+            curTextStyle!.Position = new AssTextPosition(p1, p2);
+        }
+    }
     
     // Font
     private void ParseTagFontName(ReadOnlySpan<char> span)
@@ -481,7 +510,7 @@ public partial class AssTagParse2(AssStyles styles, AssScriptInfo scriptInfo, IL
         else
         {
             inTransformation = true;
-            var splitResult = SplitFunctionParams(span, out var ranges);
+            var splitResult = SplitTransFunctionParams(span, out var ranges);
             
             switch (splitResult)
             {
@@ -635,6 +664,26 @@ public partial class AssTagParse2(AssStyles styles, AssScriptInfo scriptInfo, IL
     }
 
     private SplitStatus SplitFunctionParams(ReadOnlySpan<char> span, out List<Range> ranges)
+    {
+        ranges = [];
+        var commaIdx = span.IndexOf(AssConstants.FunctionParamSeparator);
+
+        if (commaIdx < 0)
+        {
+            return SplitStatus.NoValue;
+        }
+        
+        var startIdx = 0;
+        while (commaIdx >= 0)
+        {
+            ranges.Add(new Range(startIdx, commaIdx));
+            startIdx = commaIdx + 1;
+            commaIdx = span[startIdx..].IndexOf(AssConstants.FunctionParamSeparator);
+        }
+
+        return SplitStatus.None;
+    }
+    private SplitStatus SplitTransFunctionParams(ReadOnlySpan<char> span, out List<Range> ranges)
     {
         var status = SplitStatus.None;
         ranges = [];

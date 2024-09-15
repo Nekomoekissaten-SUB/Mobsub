@@ -191,11 +191,15 @@ public static partial class AssConstants
         // public const string Movement = "move";
         // [AssOverrideTag(typeof(double[]), "ParseOriginRotation", "")]
         // public const string OriginRotation = "org";
-        // public const string Pbo = "pbo";
         
-        // [AssOverrideTag(typeof(double[]), "ParseTagPosition", "")]
-        // [AssTagKind(AssTagKind.LineOnlyRenderFirst)]
-        // public const string Position = "pos";
+        [AssOverrideTag(typeof(AssTextPosition), "ParseTagPosition", "")]
+        [AssTagKind(AssTagKind.LineOnlyRenderFirst | AssTagKind.ShouldBeFunction)]
+        public const string Position = "pos";
+        
+        [AssOverrideTag(typeof(int), "ParseTagPolygonBaselineOffset", "")]
+        [AssTagGeneralParse("null", false)]
+        [AssTagKind(AssTagKind.BlockOnlyRenderLatest)]
+        public const string PolygonBaselineOffset = "pbo";
         
         [AssOverrideTag(typeof(int), "ParseTagPolygon", "", "PolygonScale")]
         [AssTagKind(AssTagKind.BlockOnlyRenderLatest)]

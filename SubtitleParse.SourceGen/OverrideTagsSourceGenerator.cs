@@ -186,9 +186,34 @@ public class OverrideTagsSourceGenerator : ISourceGenerator
                                                     """);
                         break;
                     
+                    case "int":
+                        var defaultValue = stylePropName == "null" ? "0" : $"curTextStyle.BaseStyle.{stylePropName}";
+                        sbGeneralParse.AppendLine($$"""
+                                                        private void {{parseMethod}}(ReadOnlySpan<char> span)
+                                                        {
+                                                            if (IsEmptyOrWhiteSpace(span))
+                                                            {
+                                                               if (span.Length > 0)
+                                                               {
+                                                                   logger?.ZLogWarning($"Extra whitespace: {AssConstants.OverrideTags.{{propertyName}}}{span.ToString()}");
+                                                               }
+                                                               curTextStyle!.{{propertyNameLast}} = {{defaultValue}};
+                                                            }
+                                                            else
+                                                            {
+                                                                if (!int.TryParse(span, out var v))
+                                                                {
+                                                                    logger?.ZLogWarning($"Invalid value: {AssConstants.OverrideTags.{{propertyName}}}{span.ToString()}");
+                                                                }
+                                                                curTextStyle!.{{propertyNameLast}} = v;
+                                                            }
+                                                        }
+                                                    """);
+                        break;
+                    
                     case "double":
 
-                        var defaultValue = stylePropName == "null" ? "0" : $"curTextStyle.BaseStyle.{stylePropName}";
+                        defaultValue = stylePropName == "null" ? "0" : $"curTextStyle.BaseStyle.{stylePropName}";
                         var assignValue = isLimit ? $"v < 0 ? {defaultValue} : v" : "v";
                         
                         if (!isAnimateable)

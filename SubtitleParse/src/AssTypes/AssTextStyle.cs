@@ -73,3 +73,9 @@ public struct AssTextScale
     public double X;
     public double Y;
 }
+
+public struct AssTextPosition(double x, double y)
+{
+    public double X = x;
+    public double Y = y;
+}
