@@ -12,7 +12,7 @@ public static partial class AssConstants
     public const char StartValueBlock = '(';
     public const char EndValueBlock = ')';
     public const char FunctionParamSeparator = ',';
-    public const int NBSP_Utf16 = 0x00A0;
+    public const int NbspUtf16 = 0x00A0;
 
     public class ScriptInfo
     {
@@ -44,8 +44,6 @@ public static partial class AssConstants
     public const string FormatV4PP = "Layer, Start, End, Style, Name, MarginL, MarginR, MarginT, MarginB, Effect, Text";
 
     public static bool IsEventLine(ReadOnlySpan<char> sp) => sp.StartsWith("Comment") || sp.StartsWith("Dialogue");
-    public static bool IsEventSpecialCharPair(char[] ca) => ca is ['\\', LineBreaker or WordBreaker or NBSP];
-    public static bool IsEventSpecialCharPair(Span<char> ca) => ca.Length == 2 && ca[0] == '\\' && (ca[1] is LineBreaker or WordBreaker or NBSP);
     
     public static class OverrideTags
     {
@@ -154,11 +152,6 @@ public static partial class AssConstants
         // [AssOverrideTag(typeof(double[]), "ParseFontRotation", "-1", "Rotations")]
         // public const string FontRotation = "fr";
         
-        [AssOverrideTag(typeof(double), "ParseTagFontSize", "", "FontSize")]
-        [AssTagGeneralParse("Fontsize", true)]
-        [AssTagKind(AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
-        public const string FontSize = "fs";
-        
         [AssOverrideTag(typeof(AssTextScale), "ParseTagFontSizeScale", "1", "TextScale")]
         [AssTagKind(AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
         [AssTagGeneralParse("Scale", true)]  // ScaleX
@@ -174,6 +167,11 @@ public static partial class AssConstants
         [AssTagGeneralParse("Spacing")]
         [AssTagKind(AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
         public const string FontSpacing = "fsp";
+        
+        [AssOverrideTag(typeof(double), "ParseTagFontSize", "", "FontSize")]
+        [AssTagGeneralParse("Fontsize", true)]
+        [AssTagKind(AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+        public const string FontSize = "fs";
         
         [AssOverrideTag(typeof(bool), "ParseTagItalic", "", "FontItalic")]
         [AssTagGeneralParse("Italic")]
@@ -194,9 +192,14 @@ public static partial class AssConstants
         // [AssOverrideTag(typeof(double[]), "ParseOriginRotation", "")]
         // public const string OriginRotation = "org";
         // public const string Pbo = "pbo";
-        // [AssOverrideTag(typeof(double[]), "ParsePosition", "")]
+        
+        // [AssOverrideTag(typeof(double[]), "ParseTagPosition", "")]
+        // [AssTagKind(AssTagKind.LineOnlyRenderFirst)]
         // public const string Position = "pos";
-        // public const string P = "p";
+        
+        [AssOverrideTag(typeof(int), "ParseTagPolygon", "", "PolygonScale")]
+        [AssTagKind(AssTagKind.BlockOnlyRenderLatest)]
+        public const string Polygon = "p";
         
         [AssOverrideTag(typeof(int), "ParseTagWrapStyle", "", "TextWrapStyle")]
         [AssTagKind(AssTagKind.LineOnlyRenderLatest)]
@@ -240,17 +243,9 @@ public static partial class AssConstants
 }
 
 [AttributeUsage(AttributeTargets.Field, AllowMultiple = false)]
-public class AssOverrideTagAttribute(Type? propertyType, string parseMethod, string methodParams, string? mapPropName = null) : Attribute
-{
-}
-
-public class AssTagGeneralParseAttribute(string stylePropertyName, bool limit = false) : Attribute
-{
-}
-
-public class AssTagKindAttribute(AssTagKind kind) : Attribute
-{
-}
+public class AssOverrideTagAttribute(Type? propertyType, string parseMethod, string methodParams, string? mapPropName = null) : Attribute;
+public class AssTagGeneralParseAttribute(string stylePropertyName, bool limit = false) : Attribute;
+public class AssTagKindAttribute(AssTagKind kind) : Attribute;
 
 [Flags]
 public enum AssTagKind

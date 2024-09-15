@@ -1,9 +1,9 @@
 ﻿using System.Buffers;
 using System.Diagnostics;
+using System.Text;
 using Microsoft.Extensions.Logging;
 using ZLogger;
 using Mobsub.SubtitleParse.AssTypes;
-// using static Mobsub.SubtitleParse.AssTypes.AssConstants;
 
 namespace Mobsub.SubtitleParse.AssUtils;
 
@@ -20,6 +20,8 @@ public partial class AssTagParse2(AssStyles styles, AssScriptInfo scriptInfo, IL
     // private bool setLineAlignment = false;
     // private bool setLinePosition = false;
     // private bool setLineFade = false;
+    public bool DrawingMode = false;
+    public StringBuilder DrawingText = new ();
     
     private HashSet<string> curLineTags = [];
     private HashSet<string> curBlockTags = [];
@@ -29,13 +31,13 @@ public partial class AssTagParse2(AssStyles styles, AssScriptInfo scriptInfo, IL
     private AssTextStyle? curTextStyle;
     private AssTagTransform? curTextStyleTrans;
     // private List<AssTextStyleTrans> transTextStyles = [];
-
+    
     public void Parse(ReadOnlySpan<char> block, AssStyle style)
     {
         if (!inTransformation)
         {
             curTextStyle = new AssTextStyle(style);
-            if (IsOverrideBlock(block) && block.Length > 2)
+            if (AssEvent.IsOverrideBlock(block) && block.Length > 2)
             {
                 block = block[1..^1];
             }
@@ -85,7 +87,8 @@ public partial class AssTagParse2(AssStyles styles, AssScriptInfo scriptInfo, IL
             ParseTag(tag);
         }
     }
-    
+
+    public AssTextStyle? GetTextStyle() => curTextStyle;
     public void ResetNewBlock()
     {
         if (curBlockTags.Count != 0)
@@ -100,7 +103,77 @@ public partial class AssTagParse2(AssStyles styles, AssScriptInfo scriptInfo, IL
         curBlockTags.Clear();
         curLineTags.Clear();
     }
-    
+
+    public IEnumerable<Dictionary<AssTextStyle, List<Rune>>> ParseEvents(AssEvents evts)
+    {
+        foreach (var evt in evts.Collection)
+        {
+            if (evt.WillSkip()){ continue; }
+
+            styles.TryGetStyleWithFallback(evt.Style.AsSpan(), out var style);
+
+            if (evt.TextRanges.Length == 0)
+            {
+                evt.UpdateTextRanges();
+            }
+
+            Dictionary<AssTextStyle, List<Rune>> dict = [];
+            var i = 0;
+            foreach (var range in evt.TextRanges)
+            {
+                i += 1;
+                var sp = evt.Text.AsSpan()[range];
+                Debug.WriteLine(sp.ToString());
+                List<Rune> curRunes = [];
+                
+                if (DrawingMode)
+                {
+                    DrawingText.Append(sp);
+                    continue;
+                }
+                
+                if (AssEvent.IsOverrideBlock(sp))
+                {
+                    if (i == evt.TextRanges.Length) { continue; }
+                    Parse(sp, style!);
+                }
+                else
+                {
+                    if (AssEvent.IsEventSpecialCharPair(sp))
+                    {
+                        switch (sp[1])
+                        {
+                            case 'h':
+                                curRunes.Add(new Rune(AssConstants.NbspUtf16));
+                                break;
+                        }
+                    }
+                    else
+                    {
+                        DecodeCharsToRunes(sp, curRunes);
+                    }
+
+                    var textStyle = GetTextStyle();
+                    if (textStyle is not null)
+                    {
+                        if (!dict.TryAdd(textStyle, curRunes))
+                        {
+                            dict[textStyle].AddRange(curRunes);
+                        }
+                    }
+                    ResetNewBlock();
+                }
+            }
+
+            if (DrawingMode)
+            {
+                ParseDrawingText();
+            }
+
+            yield return dict;
+            ResetNewLine();
+        }
+    }
     
     
     // Position
@@ -229,8 +302,7 @@ public partial class AssTagParse2(AssStyles styles, AssScriptInfo scriptInfo, IL
         else
         {
             var sylName = span.TrimEnd().ToString();
-            var matched = styles.Collection.Where(syl => syl.Name == sylName).ToArray();
-            resetStyle = matched.Length == 0 ? curTextStyle!.BaseStyle : matched.Last();
+            resetStyle = styles.TryGetStyle(sylName, out var style) ? style! : curTextStyle!.BaseStyle;
         }
         curTextStyle!.Reset(resetStyle);
     }
@@ -359,6 +431,42 @@ public partial class AssTagParse2(AssStyles styles, AssScriptInfo scriptInfo, IL
     // ParseTagBorder()
     // ParseTagShadow()
     // ParseTagFontSizeScale()
+    
+    // Drawing
+    private void ParseTagPolygon(ReadOnlySpan<char> span)
+    {
+        if (IsEmptyOrWhiteSpace(span))
+        {
+            if (span.Length > 0)
+            {
+                logger?.ZLogWarning($"Extra whitespace: {AssConstants.OverrideTags.Polygon}{span.ToString()}");
+            }
+
+            DrawingMode = false;
+        }
+        else
+        {
+            if (!int.TryParse(span, out var v))
+            {
+                logger?.ZLogWarning($"Invalid value: {AssConstants.OverrideTags.Polygon}{span.ToString()}");
+            }
+
+            if (v <= 0)
+            {
+                logger?.ZLogWarning($"Invalid value: {AssConstants.OverrideTags.Polygon}{span.ToString()}");
+                DrawingMode = false;
+            }
+            else
+            {
+                curTextStyle!.PolygonScale = v;
+                DrawingMode = true;
+            }
+        }
+    }
+    public void ParseDrawingText()
+    {
+        
+    }
     
     // Transform
     private void ParseTagTransform(ReadOnlySpan<char> span)
@@ -560,6 +668,16 @@ public partial class AssTagParse2(AssStyles styles, AssScriptInfo scriptInfo, IL
         return status;
     }
     
+    private static void DecodeCharsToRunes(ReadOnlySpan<char> span, List<Rune> curRunes)
+    {
+        int charsConsumed;
+        for (var i = 0; i < span.Length; i += charsConsumed)
+        {
+            Rune.DecodeFromUtf16(span[i..], out var rune, out charsConsumed);
+            curRunes.Add(rune);
+        }
+    }
+    
     // Data
     [Flags]
     private enum TagDuplicate
@@ -585,7 +703,7 @@ public partial class AssTagParse2(AssStyles styles, AssScriptInfo scriptInfo, IL
     {
         List<char[]> tags = [];
         
-        if (IsOverrideBlock(block) && block.Length > 2)
+        if (AssEvent.IsOverrideBlock(block) && block.Length > 2)
         {
             block = block[1..^1];
         }
@@ -675,16 +793,4 @@ public partial class AssTagParse2(AssStyles styles, AssScriptInfo scriptInfo, IL
         }
         return cal;
     }
-    
-    
-    
-    public static bool IsOverrideBlock(ReadOnlySpan<char> block)
-    {
-        if (block.Length < 2)
-        {
-            return false;
-        }
-        return block[0] == AssConstants.StartOvrBlock && block[^1] == AssConstants.EndOvrBlock;
-    }
-    public static bool IsTextBlock(Span<char> block) => !(IsOverrideBlock(block) || AssConstants.IsEventSpecialCharPair(block));
 }

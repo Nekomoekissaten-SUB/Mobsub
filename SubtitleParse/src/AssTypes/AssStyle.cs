@@ -113,6 +113,54 @@ public class AssStyles(ILogger? logger = null)
         logger?.ZLogDebug($"Section write completed");
     }
 
+    public bool TryGetStyle(ReadOnlySpan<char> sylName, out AssStyle? style)
+    {
+        List<AssStyle> matched = [];
+        foreach (var syl in Collection)
+        {
+            if (syl.Name.AsSpan().SequenceEqual(sylName))
+            {
+                matched.Add(syl);
+            }
+        }
+        
+        if (matched.Count == 0)
+        {
+            style = null;
+            return false;
+        }
+        else
+        {
+            if (matched.Count > 1)
+            {
+                logger?.ZLogWarning($"Find {matched.Count} styles named {sylName.ToString()}");
+            }
+
+            style = matched.Last();
+            return true;
+        }
+    }
+
+    public bool TryGetStyleWithFallback(ReadOnlySpan<char> sylName, out AssStyle? style)
+    {
+        if (TryGetStyle(sylName, out style))
+        {
+            return true;
+        }
+
+        if (sylName is not "Default")
+        {
+            if (TryGetStyle("Default", out style))
+            {
+                logger?.ZLogWarning($"Style {sylName.ToString()} not found, fallback to style Default");
+                return false;
+            }
+        }
+        
+        style = new AssStyle().GetDefault();
+        logger?.ZLogWarning($"Style {sylName.ToString()} not found, fallback to ass default style");
+        return false;
+    }
 }
 
 public class AssStyle(ILogger? logger = null)
