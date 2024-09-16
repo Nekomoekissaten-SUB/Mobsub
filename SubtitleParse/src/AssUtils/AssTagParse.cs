@@ -20,8 +20,8 @@ public partial class AssTagParse2(AssStyles styles, AssScriptInfo scriptInfo, IL
     // private bool setLineAlignment = false;
     // private bool setLinePosition = false;
     // private bool setLineFade = false;
-    public bool DrawingMode = false;
-    public StringBuilder DrawingText = new ();
+    private bool drawingMode = false;
+    private StringBuilder drawingText = new ();
     
     private HashSet<string> curLineTags = [];
     private HashSet<string> curBlockTags = [];
@@ -126,9 +126,9 @@ public partial class AssTagParse2(AssStyles styles, AssScriptInfo scriptInfo, IL
                 Debug.WriteLine(sp.ToString());
                 List<Rune> curRunes = [];
                 
-                if (DrawingMode)
+                if (drawingMode)
                 {
-                    DrawingText.Append(sp);
+                    drawingText.Append(sp);
                     continue;
                 }
                 
@@ -165,7 +165,7 @@ public partial class AssTagParse2(AssStyles styles, AssScriptInfo scriptInfo, IL
                 }
             }
 
-            if (DrawingMode)
+            if (drawingMode)
             {
                 ParseDrawingText();
             }
@@ -471,7 +471,7 @@ public partial class AssTagParse2(AssStyles styles, AssScriptInfo scriptInfo, IL
                 logger?.ZLogWarning($"Extra whitespace: {AssConstants.OverrideTags.Polygon}{span.ToString()}");
             }
 
-            DrawingMode = false;
+            drawingMode = false;
         }
         else
         {
@@ -483,12 +483,12 @@ public partial class AssTagParse2(AssStyles styles, AssScriptInfo scriptInfo, IL
             if (v <= 0)
             {
                 logger?.ZLogWarning($"Invalid value: {AssConstants.OverrideTags.Polygon}{span.ToString()}");
-                DrawingMode = false;
+                drawingMode = false;
             }
             else
             {
                 curTextStyle!.PolygonScale = v;
-                DrawingMode = true;
+                drawingMode = true;
             }
         }
     }
