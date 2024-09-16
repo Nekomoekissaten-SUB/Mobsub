@@ -6,7 +6,8 @@ namespace Mobsub.SubtitleParse.AssUtils;
 
 public class AssAnalyze(AssData ass, ILogger? logger = null)
 {
-    private IEnumerable<Dictionary<AssTextStyle, List<Rune>>>? tagParseResult;
+    private AssTagParse2? atp;
+    private Dictionary<AssTextStyle, List<Rune>>[]? tagParseResult;
     
     public Dictionary<AssFontInfo, HashSet<Rune>> GetUsedFontInfosWithEncoding()
     {
@@ -67,11 +68,30 @@ public class AssAnalyze(AssData ass, ILogger? logger = null)
         };
     }
 
+    public HashSet<string> GetUsedStyles()
+    {
+        var styles = ass.Events.Collection
+            .Where(evt => evt.IsDialogue)
+            .Select(evt => evt.Style)
+            .ToHashSet();
+
+        GenerateTagParseResult();
+        styles.UnionWith(atp!.GetResetStyles());
+        return styles;
+    }
+    public HashSet<string> GetUndefinedStyles()
+    {
+        var usedStyles = GetUsedStyles();
+        var undefinedStyles = new HashSet<string>(usedStyles);
+        undefinedStyles.ExceptWith(ass.Styles.Names);
+        return undefinedStyles;
+    }
+    
     private void GenerateTagParseResult()
     {
         if (tagParseResult is not null){ return; }
-        var atp = new AssTagParse2(ass.Styles, ass.ScriptInfo, logger);
-        tagParseResult = atp.ParseEvents(ass.Events);
+        atp ??= new AssTagParse2(ass.Styles, ass.ScriptInfo, logger);
+        tagParseResult = atp.ParseEvents(ass.Events).ToArray();
     }
     
 }

@@ -51,10 +51,6 @@ public static partial class AssConstants
         [AssTagKind(AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
         public const string ColorPrimary  = "1c";
         
-        [AssOverrideTag(typeof(AssTextColor), "ParseTagColor", "1, false", "Colors")]
-        [AssTagKind(AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
-        public const string ColorPrimaryAbbreviation = "c";
-        
         [AssOverrideTag(typeof(AssTextColor), "ParseTagColor", "2, false", "Colors")]
         [AssTagKind(AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
         public const string ColorSecondary  = "2c";
@@ -122,10 +118,17 @@ public static partial class AssConstants
         [AssTagKind(AssTagKind.BlockOnlyRenderLatest)]
         public const string Bold = "b";
         
-        // [AssOverrideTag(typeof(int), "ParseClipTag", "")]
-        // public const string Clip = "clip";
+        [AssOverrideTag(typeof(string), "ParseTagClip", "")]
+        [AssTagKind(AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+        public const string Clip = "clip";
+        
         // [AssOverrideTag(typeof(int), "ParseClipTag", "true", "Clip")]
         // public const string InverseClip = "iclip";
+        
+        [AssOverrideTag(typeof(AssTextColor), "ParseTagColor", "1, false", "Colors")]
+        [AssTagKind(AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+        public const string ColorPrimaryAbbreviation = "c";
+        
         // [AssOverrideTag(typeof(double[]), "ParseFade", "")]
         // public const string Fade = "fade";
         // [AssOverrideTag(typeof(double[]), "ParseFad", "")]

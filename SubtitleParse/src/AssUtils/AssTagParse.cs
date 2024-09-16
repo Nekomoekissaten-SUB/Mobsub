@@ -28,6 +28,8 @@ public partial class AssTagParse2(AssStyles styles, AssScriptInfo scriptInfo, IL
     private HashSet<string> curTransTags = [];
     private HashSet<string> preTransTags = [];
 
+    private HashSet<string> resetStyles = [];
+
     private AssTextStyle? curTextStyle;
     private AssTagTransform? curTextStyleTrans;
     // private List<AssTextStyleTrans> transTextStyles = [];
@@ -89,6 +91,7 @@ public partial class AssTagParse2(AssStyles styles, AssScriptInfo scriptInfo, IL
     }
 
     public AssTextStyle? GetTextStyle() => curTextStyle;
+    public HashSet<string> GetResetStyles() => resetStyles;
     public void ResetNewBlock()
     {
         if (curBlockTags.Count != 0)
@@ -108,6 +111,7 @@ public partial class AssTagParse2(AssStyles styles, AssScriptInfo scriptInfo, IL
     {
         foreach (var evt in evts.Collection)
         {
+            Debug.WriteLine(evt.lineNumber);
             if (evt.WillSkip()){ continue; }
 
             styles.TryGetStyleWithFallback(evt.Style.AsSpan(), out var style);
@@ -331,6 +335,7 @@ public partial class AssTagParse2(AssStyles styles, AssScriptInfo scriptInfo, IL
         else
         {
             var sylName = span.TrimEnd().ToString();
+            resetStyles.Add(sylName);
             resetStyle = styles.TryGetStyle(sylName, out var style) ? style! : curTextStyle!.BaseStyle;
         }
         curTextStyle!.Reset(resetStyle);
@@ -496,6 +501,11 @@ public partial class AssTagParse2(AssStyles styles, AssScriptInfo scriptInfo, IL
     {
         
     }
+
+    private void ParseTagClip(ReadOnlySpan<char> span)
+    {
+        
+    }
     
     // Transform
     private void ParseTagTransform(ReadOnlySpan<char> span)
@@ -646,6 +656,11 @@ public partial class AssTagParse2(AssStyles styles, AssScriptInfo scriptInfo, IL
     }
     private ReadOnlySpan<char> TrimValueBlockSep(ReadOnlySpan<char> span, string tag)
     {
+        if (span.Length == 0)
+        {
+            return span;
+        }
+        
         if (span[0] == AssConstants.StartValueBlock && span[^1] == AssConstants.EndValueBlock)
         {
             if (!AssConstants.OverrideTagsShouldBeFunction.Contains(tag))
