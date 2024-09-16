@@ -4,9 +4,9 @@ using Microsoft.Extensions.Logging;
 
 namespace Mobsub.SubtitleParse.AssUtils;
 
-public class AssFontParse(AssData ass, ILogger? logger = null)
+public class AssFontParse(ILogger? logger = null)
 {
-    public Dictionary<AssFontInfo, HashSet<Rune>> GetUsedFontInfosWithEncoding()
+    public Dictionary<AssFontInfo, HashSet<Rune>> GetUsedFontInfosWithEncoding(AssData ass)
     {
         var atp = new AssTagParse2(ass.Styles, ass.ScriptInfo, logger);
         Dictionary<AssFontInfo, HashSet<Rune>> usedFontsAndGlyphs = [];
@@ -26,9 +26,9 @@ public class AssFontParse(AssData ass, ILogger? logger = null)
         return usedFontsAndGlyphs;
     }
     
-    public Dictionary<AssFontInfo, HashSet<Rune>> GetUsedFontInfos()
+    public Dictionary<AssFontInfo, HashSet<Rune>> GetUsedFontInfos(AssData ass)
     {
-        var usedFontsAndGlyphs = GetUsedFontInfosWithEncoding();
+        var usedFontsAndGlyphs = GetUsedFontInfosWithEncoding(ass);
         Dictionary<AssFontInfo, HashSet<Rune>> result = [];
         foreach (var (k, v) in usedFontsAndGlyphs)
         {
