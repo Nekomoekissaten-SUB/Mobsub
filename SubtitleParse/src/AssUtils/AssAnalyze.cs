@@ -4,19 +4,21 @@ using Microsoft.Extensions.Logging;
 
 namespace Mobsub.SubtitleParse.AssUtils;
 
-public class AssFontParse(ILogger? logger = null)
+public class AssAnalyze(AssData ass, ILogger? logger = null)
 {
-    public Dictionary<AssFontInfo, HashSet<Rune>> GetUsedFontInfosWithEncoding(AssData ass)
+    private IEnumerable<Dictionary<AssTextStyle, List<Rune>>>? tagParseResult;
+    
+    public Dictionary<AssFontInfo, HashSet<Rune>> GetUsedFontInfosWithEncoding()
     {
-        var atp = new AssTagParse2(ass.Styles, ass.ScriptInfo, logger);
+        GenerateTagParseResult();
         Dictionary<AssFontInfo, HashSet<Rune>> usedFontsAndGlyphs = [];
         
-        foreach (var d in atp.ParseEvents(ass.Events))
+        foreach (var d in tagParseResult!)
         {
             foreach (var (k, v) in d)
             {
                 var afs = GetAssFontInfo(k);
-                if (!usedFontsAndGlyphs.TryAdd(afs, new HashSet<Rune>(v)))
+                if (!usedFontsAndGlyphs.TryAdd(afs, [..v]))
                 {
                     usedFontsAndGlyphs[afs].UnionWith(v);
                 }
@@ -26,9 +28,9 @@ public class AssFontParse(ILogger? logger = null)
         return usedFontsAndGlyphs;
     }
     
-    public Dictionary<AssFontInfo, HashSet<Rune>> GetUsedFontInfos(AssData ass)
+    public Dictionary<AssFontInfo, HashSet<Rune>> GetUsedFontInfos()
     {
-        var usedFontsAndGlyphs = GetUsedFontInfosWithEncoding(ass);
+        var usedFontsAndGlyphs = GetUsedFontInfosWithEncoding();
         Dictionary<AssFontInfo, HashSet<Rune>> result = [];
         foreach (var (k, v) in usedFontsAndGlyphs)
         {
@@ -64,4 +66,12 @@ public class AssFontParse(ILogger? logger = null)
             Encoding = ts.FontEncoding ?? ts.BaseStyle.Encoding,
         };
     }
+
+    private void GenerateTagParseResult()
+    {
+        if (tagParseResult is not null){ return; }
+        var atp = new AssTagParse2(ass.Styles, ass.ScriptInfo, logger);
+        tagParseResult = atp.ParseEvents(ass.Events);
+    }
+    
 }
