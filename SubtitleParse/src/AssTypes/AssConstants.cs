@@ -7,12 +7,12 @@ public static partial class AssConstants
     public const char BackSlash = '\\';
     public const char LineBreaker = 'N';
     public const char WordBreaker = 'n';
-    public const char NBSP = 'h';
+    public const char NoBreakSpace = 'h';
     public const char Comment = ';';
     public const char StartValueBlock = '(';
     public const char EndValueBlock = ')';
     public const char FunctionParamSeparator = ',';
-    public const int NbspUtf16 = 0x00A0;
+    public const int NoBreakSpaceUtf16 = 0x00A0;
 
     public class ScriptInfo
     {

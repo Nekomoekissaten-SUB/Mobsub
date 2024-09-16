@@ -144,7 +144,7 @@ public partial class AssTagParse2(AssStyles styles, AssScriptInfo scriptInfo, IL
                         switch (sp[1])
                         {
                             case 'h':
-                                curRunes.Add(new Rune(AssConstants.NbspUtf16));
+                                curRunes.Add(new Rune(AssConstants.NoBreakSpaceUtf16));
                                 break;
                         }
                     }
