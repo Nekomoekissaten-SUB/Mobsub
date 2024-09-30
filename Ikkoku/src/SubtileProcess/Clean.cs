@@ -36,23 +36,16 @@ public class Clean
             rmSections.Remove(AssSection.AegisubExtradata);
 
         // remove list sections
-        var removeRecords = new List<string>();
-        foreach (var s1 in rmSections)
-        {
-            if (data.Sections.Contains(s1))
+        var removeRecords = (from s1 in rmSections
+            where data.Sections.Contains(s1)
+            select s1 switch
             {
-                removeRecords.Add(
-                    s1 switch
-                    {
-                        AssSection.Fonts => "Fonts",
-                        AssSection.Graphics => "Graphics",
-                        AssSection.AegisubProjectGarbage => "Aegisub Project Garbage",
-                        AssSection.AegisubExtradata => "Aegisub Extradata",
-                        _ => "Unknown Section"
-                    }
-                );
-            }
-        }
+                AssSection.Fonts => "Fonts",
+                AssSection.Graphics => "Graphics",
+                AssSection.AegisubProjectGarbage => "Aegisub Project Garbage",
+                AssSection.AegisubExtradata => "Aegisub Extradata",
+                _ => "Unknown Section"
+            }).ToList();
         if (removeRecords.Count > 0)
         {
             records.AppendLine($"Sections: remove {string.Join(", ", removeRecords)}");
@@ -95,9 +88,9 @@ public class Clean
         // add layoutres
         if (args.addLayoutRes)
         {
-            var _addLayoutX = data.ScriptInfo.Orders.Add("LayoutResX");
-            var _addLayoutY = data.ScriptInfo.Orders.Add("LayoutResY");
-            if (_addLayoutX || _addLayoutY)
+            var addLayoutX = data.ScriptInfo.Orders.Add("LayoutResX");
+            var addLayoutY = data.ScriptInfo.Orders.Add("LayoutResY");
+            if (addLayoutX || addLayoutY)
             {
                 records.Append(" add LayoutResX/Y;");
             }
@@ -106,7 +99,8 @@ public class Clean
     
         if (args.processEvents || args.dropUnusedStyles)
         {
-            var usedStyles = AssCheck.GetUsedStyles(data.Events.Collection);
+            var assAnlz = new AssAnalyze(data);
+            var usedStyles = assAnlz.GetUsedStyles();
             // Default style always use
             usedStyles.Add("Default");
 
@@ -123,7 +117,7 @@ public class Clean
                 }
                 // remove weird chars, replace weird space, remove aegisub-motion garbage
                 var etsb = new StringBuilder();
-                var hadWeridTime = false;
+                var hadWeirdTime = false;
                 var weirdTimeEventLines = new List<int>();
                 var eventLineFirst = data.Events.Collection[0].lineNumber;
                 var hadMotionGarbage = false;
@@ -131,29 +125,43 @@ public class Clean
                 var hadWeridSpace = false;
                 var hadEndSpace = false;
                 
-                for (var i = 0; i < data.Events.Collection.Count; i++)
+                foreach (var evt in data.Events.Collection)
                 {
-                    if (Check.WeirdTimeOneLine(data.Events.Collection[i]))
+                    if (Check.WeirdTimeOneLine(evt))
                     {
-                        data.Events.Collection[i].IsDialogue = false;
-                        hadWeridTime = true;
-                        weirdTimeEventLines.Add(data.Events.Collection[i].lineNumber - eventLineFirst + 1);
+                        evt.IsDialogue = false;
+                        hadWeirdTime = true;
+                        weirdTimeEventLines.Add(evt.lineNumber - eventLineFirst + 1);
                     }
+                    
+                    var text = evt.Text.AsSpan();
 
-                    var et = data.Events.Collection[i].Text;
-                    if (RemoveEndSpace(et))
-                        hadEndSpace = true;
-
-                    if (Check.HadMotionGarbage(et))
+                    if (char.IsWhiteSpace(text[^1]))
                     {
-                        et.RemoveAt(0);
+                        text = text.TrimEnd();
+                        hadEndSpace = true;
+                    }
+                    
+                    // now only remove first motion garbage
+                    if (Check.IsMotionGarbage(text[evt.TextRanges[0]]))
+                    {
+                        text = text.TrimStart(text[evt.TextRanges[0]]);
+                        evt.TextRanges = evt.TextRanges[1..];
                         hadMotionGarbage = true;
                     }
 
-                    RemoveWeridChars(et, ref hadUnusedChar, ref hadWeridSpace, etsb);
+                    if (RemoveWeirdChars(text, ref hadUnusedChar, ref hadWeridSpace, etsb))
+                    {
+                        evt.Text = etsb.ToString();
+                        evt.UpdateTextRanges();
+                    }
+                    else
+                    {
+                        evt.Text = text.ToString();
+                    }
                 }
 
-                if (hadWeridTime)
+                if (hadWeirdTime)
                 {
                     records.Append($" comment start > end event lines: {string.Join(", ", weirdTimeEventLines)};");
                 }
@@ -248,93 +256,62 @@ public class Clean
                 break;
         }
     }
-
-    private static void RemoveWeridChars(List<char[]> et, ref bool hadUnusedChar, ref bool hadWeridSpace, StringBuilder sb)
+    private static bool RemoveWeirdChars(ReadOnlySpan<char> text, ref bool hadUnusedChar, ref bool hadWeridSpace, StringBuilder sb)
     {
-        var _mod = false;
-        for (var j = 0; j < et.Count; j++)
+        var mod = false;
+        for (var i = 0; i < text.Length; i++)
         {
-            var blk = et[j];
-            
-            for (var k = 0; k < blk.Length; k++)
+            var c = text[i];
+            if (Check.EventUnusedChars.Contains(c))
             {
-                var c = blk[k];
-                if (Check.EventUnusedChars.Contains(c))
+                mod = true;
+                if (!hadUnusedChar)
                 {
-                    _mod = true;
-                    if (!hadUnusedChar)
-                    {
-                        hadUnusedChar = true;
-                    }
+                    hadUnusedChar = true;
                 }
-                else if (Check.EventWeirdSpace.Contains(c))
+            }
+            else if (Check.EventWeirdSpace.Contains(c))
+            {
+                mod = true;
+                sb.Append('\u0020');
+                if (!hadWeridSpace)
                 {
-                    _mod = true;
-                    sb.Append('\u0020');
-                    if (!hadWeridSpace)
-                    {
-                        hadWeridSpace = true;
-                    }
+                    hadWeridSpace = true;
                 }
-                else if (c == '\uFE0F')
+            }
+            else if (c == '\uFE0F')
+            {
+                // Now libass not support color emoji (https://github.com/libass/libass/issues/381), the char is meaningless
+                mod = true;
+                if (!hadUnusedChar)
                 {
-                    // Now libass not support color emoji (https://github.com/libass/libass/issues/381), the char is meaningless
-                    _mod = true;
-                    if (!hadUnusedChar)
-                    {
-                        hadUnusedChar = true;
-                    }
+                    hadUnusedChar = true;
                 }
-                else if (char.IsHighSurrogate(c))
-                {
-                    if (k + 1 < blk.Length && char.IsLowSurrogate(blk[k + 1]))
-                    {
-                        sb.Append(c);
-                        sb.Append(blk[k + 1]);
-                        k++;
-                    }
-                    else
-                    {
-                        _mod = true;
-                        if (!hadUnusedChar)
-                        {
-                            hadUnusedChar = true;
-                        }
-                    }
-                }
-                else
+            }
+            else if (char.IsHighSurrogate(c))
+            {
+                if (i + 1 < text.Length && char.IsLowSurrogate(text[i + 1]))
                 {
                     sb.Append(c);
+                    sb.Append(text[i + 1]);
+                    i++;
+                }
+                else
+                {
+                    mod = true;
+                    if (!hadUnusedChar)
+                    {
+                        hadUnusedChar = true;
+                    }
                 }
             }
-            
-            if (_mod)
+            else
             {
-                var _new = new char[sb.Length];
-                sb.CopyTo(0, _new, sb.Length);
-                et[j] = _new;
-            }
-            sb.Clear();
-        }
-    }
-
-    private static bool RemoveEndSpace(List<char[]> et)
-    {
-        if (et.Count == 0)
-            return false;
-
-        var last = et[^1];
-        for (var end = last.Length - 1; end >=0; end--)
-        {
-            if (!char.IsWhiteSpace(last[end]))
-            {
-                et[^1] = last[..(end + 1)];
-                if (end != last.Length - 1)
-                    return true;
-                else
-                    break;
+                sb.Append(c);
             }
         }
-        return false;
+
+        return mod;
     }
+    
 }

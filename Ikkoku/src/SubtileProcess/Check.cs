@@ -169,9 +169,11 @@ internal class Check
     /// <summary>
     /// such like {=} {=0} {=99}
     /// </summary>
-    /// <param name="et">Event.Text</param>
+    /// <param name="span">Event.Text block</param>
     /// <returns></returns>
-    internal static bool HadMotionGarbage(List<char[]> et) => et.Count > 0 && AssTagParse.IsOverrideBlock(et[0].AsSpan()) && et[0][1] == '=' && ((et[0].Length > 3 && char.IsDigit(et[0][2])) || et[0].Length == 3);
+    internal static bool IsMotionGarbage(ReadOnlySpan<char> span) => AssEvent.IsOverrideBlock(span) && span[1] == '=' &&
+                                                                     ((span.Length > 3 && char.IsDigit(span[2])) ||
+                                                                      span.Length == 3);
 
     internal static readonly char[] EventUnusedChars = ['\u200E', '\u200F', '\u200B'];
     internal static readonly char[] EventWeirdSpace = ['\u00A0', '\ufeff'];
