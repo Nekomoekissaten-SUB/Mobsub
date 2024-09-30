@@ -122,7 +122,7 @@ public class Clean
                 var eventLineFirst = data.Events.Collection[0].lineNumber;
                 var hadMotionGarbage = false;
                 var hadUnusedChar = false;
-                var hadWeridSpace = false;
+                var hadWeirdSpace = false;
                 var hadEndSpace = false;
                 
                 foreach (var evt in data.Events.Collection)
@@ -150,7 +150,7 @@ public class Clean
                         hadMotionGarbage = true;
                     }
 
-                    if (RemoveWeirdChars(text, ref hadUnusedChar, ref hadWeridSpace, etsb))
+                    if (RemoveWeirdChars(text, ref hadUnusedChar, ref hadWeirdSpace, etsb))
                     {
                         evt.Text = etsb.ToString();
                         evt.UpdateTextRanges();
@@ -173,7 +173,7 @@ public class Clean
                 {
                     records.Append(" remove unused unicode chars;");
                 }
-                if (hadWeridSpace)
+                if (hadWeirdSpace)
                 {
                     records.Append(" replace weird space chars;");
                 }
