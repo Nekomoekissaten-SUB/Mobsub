@@ -61,7 +61,7 @@ partial class Program
         // clean
         rootCommand.Add(CleanCmd.Build(path, optPath, verbose));
         // check
-        rootCommand.Add(CheckCmd.Build(path, verbose));
+        // rootCommand.Add(CheckCmd.Build(path, verbose));
         // tpp
         rootCommand.Add(TppCmd.Build(path, optPath, fps));
         // merge

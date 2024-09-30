@@ -47,64 +47,64 @@ internal class CheckCmd
 
     private static void CheckOneAss(FileInfo f, string? tagMode, bool styleCheck, bool verbose)
     {
-        Console.WriteLine(f);
-        var data = new AssData();
-        data.ReadAssFile(f.FullName);
-
-        if (tagMode is not null)
-        {
-            Check.PrintUnnormalAssTags(data.Events.Collection, verbose, tagMode);
-        }
-
-        if (styleCheck)
-        {
-            var usedStyles = AssCheck.GetUsedStyles(data.Events.Collection);
-            var undefinedStyles = new HashSet<string>(usedStyles);
-            undefinedStyles.ExceptWith(data.Styles.Names);
-
-            if (undefinedStyles.Count > 0)
-            {
-                Console.WriteLine($"Undefined styles: {string.Join(", ", undefinedStyles)}");
-            }
-        }
-
-        // var evtStartLine = data.Events.Collection.First().lineNumber;
-        List<int> weirdTimeLines = [];
-        List<int> unusedCharLines = [];
-        List<int> weirdSpaceLines = [];
-        foreach (var evt in data.Events.Collection)
-        {
-            if (Check.WeirdTimeOneLine(evt))
-            {
-                weirdTimeLines.Add(evt.lineNumber);
-            }
-
-            Check.CheckWeirdChars(evt.Text, out bool hadUnusedChar, out bool hadWeirdSpace);
-            if (hadUnusedChar)
-            {
-                unusedCharLines.Add(evt.lineNumber);
-            }
-            if (hadWeirdSpace)
-            {
-                weirdSpaceLines.Add(evt.lineNumber);
-            }
-        }
-
-        if (weirdTimeLines.Count > 0)
-        {
-            Console.WriteLine($"Dialogue end time less than start time: {string.Join(", ", weirdTimeLines)}");
-        }
-
-        if (unusedCharLines.Count > 0)
-        {
-            Console.WriteLine($"Maybe use unused chars: {string.Join(", ", unusedCharLines)}");
-        }
-
-        if (weirdSpaceLines.Count > 0)
-        {
-            Console.WriteLine($"Maybe use wrong space char: {string.Join(", ", weirdSpaceLines)}");
-        }
-
-        Console.WriteLine("Check completed.");
+        // Console.WriteLine(f);
+        // var data = new AssData();
+        // data.ReadAssFile(f.FullName);
+        //
+        // if (tagMode is not null)
+        // {
+        //     Check.PrintUnnormalAssTags(data.Events.Collection, verbose, tagMode);
+        // }
+        //
+        // if (styleCheck)
+        // {
+        //     var usedStyles = AssCheck.GetUsedStyles(data.Events.Collection);
+        //     var undefinedStyles = new HashSet<string>(usedStyles);
+        //     undefinedStyles.ExceptWith(data.Styles.Names);
+        //
+        //     if (undefinedStyles.Count > 0)
+        //     {
+        //         Console.WriteLine($"Undefined styles: {string.Join(", ", undefinedStyles)}");
+        //     }
+        // }
+        //
+        // // var evtStartLine = data.Events.Collection.First().lineNumber;
+        // List<int> weirdTimeLines = [];
+        // List<int> unusedCharLines = [];
+        // List<int> weirdSpaceLines = [];
+        // foreach (var evt in data.Events.Collection)
+        // {
+        //     if (Check.WeirdTimeOneLine(evt))
+        //     {
+        //         weirdTimeLines.Add(evt.lineNumber);
+        //     }
+        //
+        //     Check.CheckWeirdChars(evt.Text, out bool hadUnusedChar, out bool hadWeirdSpace);
+        //     if (hadUnusedChar)
+        //     {
+        //         unusedCharLines.Add(evt.lineNumber);
+        //     }
+        //     if (hadWeirdSpace)
+        //     {
+        //         weirdSpaceLines.Add(evt.lineNumber);
+        //     }
+        // }
+        //
+        // if (weirdTimeLines.Count > 0)
+        // {
+        //     Console.WriteLine($"Dialogue end time less than start time: {string.Join(", ", weirdTimeLines)}");
+        // }
+        //
+        // if (unusedCharLines.Count > 0)
+        // {
+        //     Console.WriteLine($"Maybe use unused chars: {string.Join(", ", unusedCharLines)}");
+        // }
+        //
+        // if (weirdSpaceLines.Count > 0)
+        // {
+        //     Console.WriteLine($"Maybe use wrong space char: {string.Join(", ", weirdSpaceLines)}");
+        // }
+        //
+        // Console.WriteLine("Check completed.");
     }
 }
