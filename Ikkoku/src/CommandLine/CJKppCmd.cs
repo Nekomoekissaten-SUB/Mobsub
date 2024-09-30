@@ -171,7 +171,7 @@ internal class CJKppCmd
             if (!CJKpp.NotZhConvert(et))
             {
                 CJKpp.StyleZhConvert(et);
-                CJKpp.ZhConvertEventLineByOpenccsharp(et.Text, sb, converter, out string[]? countChanges);
+                CJKpp.ZhConvertEventLineByOpenccsharp(et, sb, converter, out var countChanges);
 
                 if (countChanges is not null)
                 {
@@ -187,7 +187,7 @@ internal class CJKppCmd
             Console.WriteLine("Please pay attention:");
             foreach (var pair in changesRecord)
             {
-                Console.WriteLine($"Linenumber: {pair.Key}");
+                Console.WriteLine($"LineNumber: {pair.Key}");
                 Console.WriteLine(pair.Value[0]);
                 Console.WriteLine(pair.Value[1]);
                 Console.WriteLine();

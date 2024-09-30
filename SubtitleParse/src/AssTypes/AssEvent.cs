@@ -338,6 +338,6 @@ public class AssEvent(ILogger? logger = null)
     public static bool IsEventSpecialCharPair(ReadOnlySpan<char> ca) =>
         ca.Length == 2 && ca[0] == '\\' &&
         ca[1] is AssConstants.LineBreaker or AssConstants.WordBreaker or AssConstants.NoBreakSpace;
-    public static bool IsTextBlock(Span<char> block) => !(IsOverrideBlock(block) || IsEventSpecialCharPair(block));
+    public static bool IsTextBlock(ReadOnlySpan<char> block) => !(IsOverrideBlock(block) || IsEventSpecialCharPair(block));
     public bool WillSkip() => StartSemicolon || !IsDialogue || Text is null || Text.Length == 0;
 }

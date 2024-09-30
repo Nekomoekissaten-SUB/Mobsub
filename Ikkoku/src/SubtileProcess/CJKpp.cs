@@ -7,16 +7,19 @@ namespace Mobsub.Ikkoku.SubtileProcess;
 
 public class CJKpp
 {
-    public static void ZhConvertEventLineByOpenccsharp(List<char[]> etText, StringBuilder sb, ChainedScriptConverter converter, out string[]? charsCountChange)
+    public static void ZhConvertEventLineByOpenccsharp(AssEvent evt, StringBuilder sb, ChainedScriptConverter converter, out string[]? charsCountChange)
     {
+        // wip: correct block insert position
         sb.Clear();
         charsCountChange = null;
 
+        var text = evt.Text.AsSpan();
         List<int> textBlockIndex = [];
-        for (var i = 0; i < etText.Count; i++)
+        for (var i = 0; i < evt.TextRanges.Length; i++)
         {
-            var blk = etText[i];
-            if (AssTagParse.IsTextBlock(blk))
+            var range = evt.TextRanges[i];
+            var blk = text[range];
+            if (AssEvent.IsTextBlock(blk))
             {
                 sb.Append(blk);
                 textBlockIndex.Add(i);
@@ -30,28 +33,29 @@ public class CJKpp
             charsCountChange = [sb.ToString(), sconvp.ToString()];
         }
         sb.Clear();
-
-        var _start = 0;
-        int blkLen;
-        for (var i = 0; i < etText.Count; i++)
+        
+        for (var i = 0; i < evt.TextRanges.Length; i++)
         {
-            blkLen = etText[i].Length;
-            if (textBlockIndex.Contains(i))
+            var range = evt.TextRanges[i];
+            if (!textBlockIndex.Contains(i))
             {
-                if (textBlockIndex.Last() == i)
-                {
-                    etText[i] = sconvp[_start..].ToArray();
-                }
-                else
-                {
-                    etText[i] = sconvp.Slice(_start, blkLen).ToArray();
-                }
-
-                _start += blkLen;
+                sb.Append(text[range]);
+                continue;
             }
-        }
-    }
 
+            if (textBlockIndex.Last() == i)
+            {
+                sb.Append(sconvp[range.Start..]);
+                continue;
+            }
+
+            sb.Append(sconvp[range]);
+        }
+
+        evt.Text = sb.ToString();
+        evt.UpdateTextRanges();
+    }
+    
     public static bool NotZhConvert(AssEvent evt)
     {
         return evt.Style.AsSpan().Contains("JP".AsSpan(), StringComparison.OrdinalIgnoreCase);

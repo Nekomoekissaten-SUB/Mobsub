@@ -139,7 +139,7 @@ public partial class Merge
         if (!CJKpp.NotZhConvert(evt))
         {
             CJKpp.StyleZhConvert(evt);
-            CJKpp.ZhConvertEventLineByOpenccsharp(evt.Text, new StringBuilder(), converter, out var changes);
+            CJKpp.ZhConvertEventLineByOpenccsharp(evt, new StringBuilder(), converter, out var changes);
         }  
         var sb = new StringBuilder();
         evt.Write(sb, formats, false);
