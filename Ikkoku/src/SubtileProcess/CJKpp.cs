@@ -14,6 +14,10 @@ public class CJKpp
         charsCountChange = null;
 
         var text = evt.Text.AsSpan();
+        if (evt.TextRanges.Length == 0)
+        {
+            evt.UpdateTextRanges();
+        }
         List<int> textBlockIndex = [];
         for (var i = 0; i < evt.TextRanges.Length; i++)
         {

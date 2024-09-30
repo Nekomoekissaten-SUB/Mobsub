@@ -8,6 +8,10 @@ public class ConvertSub
     {
         foreach (var e in ass.Events.Collection.ToArray())
         {
+            if (e.TextRanges.Length == 0)
+            {
+                e.UpdateTextRanges();
+            }
             foreach (var range in e.TextRanges)
             {
                 var text = e.Text.AsSpan()[range];

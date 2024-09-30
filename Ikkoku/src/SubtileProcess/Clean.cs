@@ -143,6 +143,10 @@ public class Clean
                     }
                     
                     // now only remove first motion garbage
+                    if (evt.TextRanges.Length == 0)
+                    {
+                        evt.UpdateTextRanges();
+                    }
                     if (Check.IsMotionGarbage(text[evt.TextRanges[0]]))
                     {
                         text = text.TrimStart(text[evt.TextRanges[0]]);
