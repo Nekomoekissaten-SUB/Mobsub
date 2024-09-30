@@ -7,7 +7,7 @@ using Mobsub.SubtitleParse.AssTypes;
 
 namespace Mobsub.SubtitleParse.AssUtils;
 
-public partial class AssTagParse2(AssStyles styles, AssScriptInfo scriptInfo, ILogger? logger = null)
+public partial class AssTagParse(AssStyles styles, AssScriptInfo scriptInfo, ILogger? logger = null)
 {
     public bool useVSFmod = false;
 

@@ -58,7 +58,7 @@ public class OverrideTagsSourceGenerator : ISourceGenerator
 
                            namespace Mobsub.SubtitleParse.AssUtils;
 
-                           public partial class AssTagParse2
+                           public partial class AssTagParse
                            {
                                internal void ParseTag(ReadOnlySpan<char> span)
                                {
