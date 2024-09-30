@@ -6,10 +6,10 @@
     <Version>0.3.2</Version>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <!-- <PublishAot>true</PublishAot> -->
+    <PublishAot>true</PublishAot> 
     <IsAotCompatible>true</IsAotCompatible>
     <SelfContained>true</SelfContained>
-    <PublishSingleFile>true</PublishSingleFile>
+    <!-- <PublishSingleFile>true</PublishSingleFile> -->
     <PublishReadyToRun>true</PublishReadyToRun>
     <PublishTrimmed>true</PublishTrimmed>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
@@ -17,8 +17,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\SubtitleParse\SubtitleParse.csproj"></ProjectReference>
-    <ProjectReference Include="..\ZhConvert\ZhConvert.csproj"></ProjectReference>
+    <ProjectReference Include="..\SubtitleParse\SubtitleParse.csproj"/>
+    <ProjectReference Include="..\ZhConvert\ZhConvert.csproj"/>
   </ItemGroup>
 
   <ItemGroup>
