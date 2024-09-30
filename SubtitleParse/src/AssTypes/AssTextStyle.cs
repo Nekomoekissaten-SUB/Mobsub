@@ -16,6 +16,19 @@ public partial class AssTextStyle(AssStyle baseStyle, ILogger? logger = null)
         TextUnderline = style.Underline;
         TextStrikeOut = style.StrikeOut;
     }
+
+    public AssTextStyle DeepCopy()
+    {
+        var textStyle = (AssTextStyle)MemberwiseClone();
+        if (Transform is not null)
+        {
+            textStyle.Transform = new List<AssTagTransform>();
+            // not need deep copy?
+            textStyle.Transform.AddRange(Transform);
+        }
+
+        return textStyle;
+    }
 }
 
 public class AssTagTransform(ILogger? logger)
