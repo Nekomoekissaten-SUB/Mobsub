@@ -8,9 +8,10 @@ public class ConvertSub
     {
         foreach (var e in ass.Events.Collection.ToArray())
         {
-            foreach (var text in e.Text.ToArray())
+            foreach (var range in e.TextRanges)
             {
-                if (text[0] != '{')
+                var text = e.Text.AsSpan()[range];
+                if (text[0] != AssConstants.StartOvrBlock)
                 {
                     sw.Write(text);
                 }
