@@ -5,12 +5,21 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Version>0.0.1</Version>
+    <IsAotCompatible>true</IsAotCompatible>
+    <PackageId>Mobsub.$(AssemblyName)</PackageId>
+    <Authors>MIR</Authors>
+    <Description>Mobsub helper</Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageProjectUrl>https://github.com/Nekomoekissaten-SUB/Mobsub</PackageProjectUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Diagnostics" Version="8.3.2" />
     <PackageReference Include="OTFontFile" Version="1.0.1-beta" />
     <PackageReference Include="Vortice.Win32.Graphics.DirectWrite" Version="2.2.6" />
+    <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>
