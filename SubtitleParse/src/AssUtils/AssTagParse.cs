@@ -38,7 +38,10 @@ public partial class AssTagParse(AssStyles styles, AssScriptInfo scriptInfo, ILo
     {
         if (!inTransformation)
         {
-            curTextStyle = new AssTextStyle(style);
+            if (curTextStyle is null)
+            {
+                curTextStyle = new AssTextStyle(style);
+            }
             if (AssEvent.IsOverrideBlock(block) && block.Length > 2)
             {
                 block = block[1..^1];
@@ -91,6 +94,7 @@ public partial class AssTagParse(AssStyles styles, AssScriptInfo scriptInfo, ILo
     }
 
     public AssTextStyle? GetTextStyle() => curTextStyle;
+    public AssTextStyle? GetTextStylesDeepCopy() => curTextStyle?.DeepCopy();
     public HashSet<string> GetResetStyles() => resetStyles;
     public void ResetNewBlock()
     {
@@ -157,7 +161,7 @@ public partial class AssTagParse(AssStyles styles, AssScriptInfo scriptInfo, ILo
                         DecodeCharsToRunes(sp, curRunes);
                     }
 
-                    var textStyle = GetTextStyle();
+                    var textStyle = GetTextStylesDeepCopy();
                     if (textStyle is not null)
                     {
                         if (!dict.TryAdd(textStyle, curRunes))
@@ -763,98 +767,98 @@ public partial class AssTagParse(AssStyles styles, AssScriptInfo scriptInfo, ILo
     
     
     
-    public List<char[]> SplitTags(ReadOnlySpan<char> block)
-    {
-        List<char[]> tags = [];
-        
-        if (AssEvent.IsOverrideBlock(block) && block.Length > 2)
-        {
-            block = block[1..^1];
-        }
-        
-        var valueStartIndex = block.IndexOf(AssConstants.StartValueBlock);
-        var preEndIndex = -1;
-        var preOvrTagsEnd = -1;
-
-        while (valueStartIndex != -1)
-        {
-            preOvrTagsEnd = block[..valueStartIndex].LastIndexOf(AssConstants.BackSlash);
-        }
-        
-        SplitOnlyOvrTags(block, tags);
-        return tags;
-
-    }
-
-    /// <summary>
-    /// split override tags, maybe return empty when have consecutive backslash or bracket
-    /// </summary>
-    private void SplitOnlyOvrTags(ReadOnlySpan<char> block, List<char[]> cal, bool ingoreConsecutive)
-    {
-        if (block.IsEmpty)
-        {
-            return ;
-        }
-        var startIndex = block.IndexOf(AssConstants.BackSlash);
-
-        while (startIndex != -1)
-        {
-            var endIndex = block[(startIndex + 1)..].IndexOf(AssConstants.BackSlash);
-            if (endIndex != -1)
-            {
-                block = block.Slice(startIndex + 1, endIndex);
-                startIndex += endIndex + 1;
-            }
-            else
-            {
-                block = block[(startIndex + 1)..];
-                break;
-            }
-            
-            if (ingoreConsecutive)
-            {
-                if (block.Length > 0)
-                {
-                    cal.Add(block.ToArray());
-                }
-            }
-        }
-
-        if (ingoreConsecutive)
-        {
-            if (block.Length > 0)
-            {
-                cal.Add(block.ToArray());
-            }
-        }
-    }
-    private void SplitOnlyOvrTags(ReadOnlySpan<char> block, List<char[]> cal) => SplitOnlyOvrTags(block, cal, true);
-    
-    private void GetTagsFromFunction(ReadOnlySpan<char> block, List<char[]> cal, out ReadOnlySpan<char> function)
-    {
-        var openFunc = block.IndexOf(AssConstants.StartValueBlock);
-        function = block[..openFunc];
-        var closeFine = block.EndsWith(")".AsSpan());
-        var startIndex = block.IndexOf(AssConstants.BackSlash);
-        if (startIndex != -1)
-        {
-            var slice = closeFine ? block[startIndex..^1].Trim() : block[startIndex..].Trim();
-            SplitOnlyOvrTags(slice, cal);
-        }
-        else
-        {
-            cal.Add(block.ToArray());
-        }
-    }
-    
-    public List<char[]> GetTagsFromTransFunction(ReadOnlySpan<char> block)
-    {
-        List<char[]> cal = [];
-        GetTagsFromFunction(block, cal, out var function);
-        if (function.Length != 1 && function[0] != 't')
-        {
-            throw new Exception($"Invalid transformation function: {block.ToString()}");
-        }
-        return cal;
-    }
+    // public List<char[]> SplitTags(ReadOnlySpan<char> block)
+    // {
+    //     List<char[]> tags = [];
+    //     
+    //     if (AssEvent.IsOverrideBlock(block) && block.Length > 2)
+    //     {
+    //         block = block[1..^1];
+    //     }
+    //     
+    //     var valueStartIndex = block.IndexOf(AssConstants.StartValueBlock);
+    //     var preEndIndex = -1;
+    //     var preOvrTagsEnd = -1;
+    //
+    //     while (valueStartIndex != -1)
+    //     {
+    //         preOvrTagsEnd = block[..valueStartIndex].LastIndexOf(AssConstants.BackSlash);
+    //     }
+    //     
+    //     SplitOnlyOvrTags(block, tags);
+    //     return tags;
+    //
+    // }
+    //
+    // /// <summary>
+    // /// split override tags, maybe return empty when have consecutive backslash or bracket
+    // /// </summary>
+    // private void SplitOnlyOvrTags(ReadOnlySpan<char> block, List<char[]> cal, bool ingoreConsecutive)
+    // {
+    //     if (block.IsEmpty)
+    //     {
+    //         return ;
+    //     }
+    //     var startIndex = block.IndexOf(AssConstants.BackSlash);
+    //
+    //     while (startIndex != -1)
+    //     {
+    //         var endIndex = block[(startIndex + 1)..].IndexOf(AssConstants.BackSlash);
+    //         if (endIndex != -1)
+    //         {
+    //             block = block.Slice(startIndex + 1, endIndex);
+    //             startIndex += endIndex + 1;
+    //         }
+    //         else
+    //         {
+    //             block = block[(startIndex + 1)..];
+    //             break;
+    //         }
+    //         
+    //         if (ingoreConsecutive)
+    //         {
+    //             if (block.Length > 0)
+    //             {
+    //                 cal.Add(block.ToArray());
+    //             }
+    //         }
+    //     }
+    //
+    //     if (ingoreConsecutive)
+    //     {
+    //         if (block.Length > 0)
+    //         {
+    //             cal.Add(block.ToArray());
+    //         }
+    //     }
+    // }
+    // private void SplitOnlyOvrTags(ReadOnlySpan<char> block, List<char[]> cal) => SplitOnlyOvrTags(block, cal, true);
+    //
+    // private void GetTagsFromFunction(ReadOnlySpan<char> block, List<char[]> cal, out ReadOnlySpan<char> function)
+    // {
+    //     var openFunc = block.IndexOf(AssConstants.StartValueBlock);
+    //     function = block[..openFunc];
+    //     var closeFine = block.EndsWith(")".AsSpan());
+    //     var startIndex = block.IndexOf(AssConstants.BackSlash);
+    //     if (startIndex != -1)
+    //     {
+    //         var slice = closeFine ? block[startIndex..^1].Trim() : block[startIndex..].Trim();
+    //         SplitOnlyOvrTags(slice, cal);
+    //     }
+    //     else
+    //     {
+    //         cal.Add(block.ToArray());
+    //     }
+    // }
+    //
+    // public List<char[]> GetTagsFromTransFunction(ReadOnlySpan<char> block)
+    // {
+    //     List<char[]> cal = [];
+    //     GetTagsFromFunction(block, cal, out var function);
+    //     if (function.Length != 1 && function[0] != 't')
+    //     {
+    //         throw new Exception($"Invalid transformation function: {block.ToString()}");
+    //     }
+    //     return cal;
+    // }
 }
