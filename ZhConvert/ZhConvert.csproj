@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="CXuesong.OpenCCSharp.Conversion" Version="0.0.1-int.5" />
+    <PackageReference Include="CXuesong.OpenCCSharp.Conversion" Version="0.0.1-int.6" />
     <PackageReference Include="CXuesong.TriesSharp" Version="0.0.1-int.3" />
   </ItemGroup>
 
