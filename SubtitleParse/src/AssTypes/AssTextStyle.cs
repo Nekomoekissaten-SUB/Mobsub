@@ -9,12 +9,42 @@ public partial class AssTextStyle(AssStyle baseStyle, ILogger? logger = null)
 
     public void Reset(AssStyle style)
     {
-        FontWeight = style.Bold ? 1 : 0;
-        FontEncoding = style.Encoding;
         FontName = style.Fontname;
+        FontSize = style.Fontsize;
+        Colors = new AssTextColor()
+        {
+            Primary = style.PrimaryColour,
+            Secondary = style.SecondaryColour,
+            Outline = style.OutlineColour,
+            Back = style.BackColour,
+        };
+        FontWeight = style.Bold ? 1 : 0;
         FontItalic = style.Italic;
         TextUnderline = style.Underline;
         TextStrikeOut = style.StrikeOut;
+        TextScale = new AssTextScale()
+        {
+            X = style.ScaleX,
+            Y = style.ScaleY,
+        };
+        TextSpacing = style.Spacing;
+        // Angle
+        // BorderStyle
+        Borders = new AssTextBorder()
+        {
+            X = style.Outline,
+            Y = style.Outline,
+        };
+        Shadows = new AssTextShadow()
+        {
+            X = style.Shadow,
+            Y = style.Shadow,
+        };
+        // Alignment ??= style.Alignment;
+        // MarginL
+        // MarginR
+        // MarginV
+        FontEncoding = style.Encoding;
     }
 
     public AssTextStyle DeepCopy()
