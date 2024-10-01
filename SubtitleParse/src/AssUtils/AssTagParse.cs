@@ -30,22 +30,31 @@ public partial class AssTagParse(AssStyles styles, AssScriptInfo scriptInfo, ILo
 
     private HashSet<string> resetStyles = [];
 
+    private AssTextStyle? baseTextStyle;
     private AssTextStyle? curTextStyle;
     private AssTagTransform? curTextStyleTrans;
     // private List<AssTextStyleTrans> transTextStyles = [];
     
     public void Parse(ReadOnlySpan<char> block, AssStyle style)
     {
+        baseTextStyle = new AssTextStyle(style, logger);
+        Parse(block);
+    }
+    private void Parse(ReadOnlySpan<char> block)
+    {
         if (!inTransformation)
         {
-            if (curTextStyle is null)
-            {
-                curTextStyle = new AssTextStyle(style);
-            }
             if (AssEvent.IsOverrideBlock(block) && block.Length > 2)
             {
                 block = block[1..^1];
             }
+
+            if (block.IsWhiteSpace() || block.IsEmpty)
+            {
+                curTextStyle = baseTextStyle;
+            }
+        
+            curTextStyle ??= baseTextStyle!.DeepCopy();
         }
 
         var len = block.Length;
@@ -92,7 +101,7 @@ public partial class AssTagParse(AssStyles styles, AssScriptInfo scriptInfo, ILo
             ParseTag(tag);
         }
     }
-
+    
     public AssTextStyle? GetTextStyle() => curTextStyle;
     public AssTextStyle? GetTextStylesDeepCopy() => curTextStyle?.DeepCopy();
     public HashSet<string> GetResetStyles() => resetStyles;
@@ -119,6 +128,7 @@ public partial class AssTagParse(AssStyles styles, AssScriptInfo scriptInfo, ILo
             if (evt.WillSkip()){ continue; }
 
             styles.TryGetStyleWithFallback(evt.Style.AsSpan(), out var style);
+            baseTextStyle = new AssTextStyle(style!, logger);
 
             if (evt.TextRanges.Length == 0)
             {
@@ -143,7 +153,7 @@ public partial class AssTagParse(AssStyles styles, AssScriptInfo scriptInfo, ILo
                 if (AssEvent.IsOverrideBlock(sp))
                 {
                     if (i == evt.TextRanges.Length) { continue; }
-                    Parse(sp, style!);
+                    Parse(sp);
                 }
                 else
                 {
@@ -161,13 +171,10 @@ public partial class AssTagParse(AssStyles styles, AssScriptInfo scriptInfo, ILo
                         DecodeCharsToRunes(sp, curRunes);
                     }
 
-                    var textStyle = GetTextStylesDeepCopy();
-                    if (textStyle is not null)
+                    var textStyle = GetTextStylesDeepCopy() ?? baseTextStyle;
+                    if (!dict.TryAdd(textStyle, curRunes))
                     {
-                        if (!dict.TryAdd(textStyle, curRunes))
-                        {
-                            dict[textStyle].AddRange(curRunes);
-                        }
+                        dict[textStyle].AddRange(curRunes);
                     }
                     ResetNewBlock();
                 }
@@ -555,7 +562,7 @@ public partial class AssTagParse(AssStyles styles, AssScriptInfo scriptInfo, ILo
                     break;
             }
             
-            Parse(span[ranges[^1]], curTextStyle!.BaseStyle);
+            Parse(span[ranges[^1]]);
             ResetTransformation();
         }
     }
