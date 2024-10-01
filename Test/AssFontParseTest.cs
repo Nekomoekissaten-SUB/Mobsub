@@ -1,17 +1,13 @@
 ﻿using System.Text;
 using Mobsub.SubtitleParse.AssTypes;
 using Mobsub.SubtitleParse.AssUtils;
+using Microsoft.Extensions.Logging;
+using ZLogger;
 
 namespace Mobsub.Test;
 
-[TestClass]
-public partial class AssFontParseTest
+public partial class ParseTest
 {
-     private readonly string[] styles =
-     [
-         @"Style: Sign,Source Han Sans SC Medium,70,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0.1,0,1,3,0,2,30,30,30,1",
-     ];
-     
      [TestMethod]
      public void ClearOvrFont()
      {
@@ -57,42 +53,31 @@ public partial class AssFontParseTest
          Assert.IsTrue(AreDictionariesEqual(res2, target2));
      }
      
-     private AssData GenerateAssData(string[] evts)
+     [TestMethod]
+     public void ReadFileAndGetFontInfos()
      {
-         return new AssData()
-         {
-             ScriptInfo = new AssScriptInfo()
-             {
-                 ScriptType = "v4.00+",
-             },
-             Styles = ParseAssStyles(styles),
-             Events = ParseAssEvents(evts),
-         };
-     }
-     private static AssStyles ParseAssStyles(string[] stylesStr)
-     {
-         var assStyles = new AssStyles();
-         var lineNumber = 0;
-         foreach (var str in stylesStr)
-         {
-             assStyles.Read(str, lineNumber);
-             lineNumber += 1;
-         }
+         var logger = GetLogger(LogLevel.Debug);
+        
+         var assFile = @".\test_files\rStyle.ass";
+         var ass = new AssData(logger);
+         ass.ReadAssFile(assFile);
 
-         return assStyles;
-     }
-     private static AssEvents ParseAssEvents(string[] eventsStr)
-     {
-         var assEvents = new AssEvents();
-         var lineNumber = 0;
-         foreach (var str in eventsStr)
-         {
-             assEvents.Read(str, "v4.00++", lineNumber);
-             lineNumber += 1;
-         }
+         var anlz = new AssAnalyze(ass, logger);
+         var infos = anlz.GetUsedFontInfosWithEncoding();
 
-         return assEvents;
+         Dictionary<AssFontInfo, int> correctMap = [];
+         correctMap.Add(new AssFontInfo("FOT-UDMarugo_Large Pr6N E,0,0,1"), 20);
+         correctMap.Add(new AssFontInfo("FZCuYuan-M03,0,0,1"), 39);
+         correctMap.Add(new AssFontInfo("FOT-UDMarugo_Large Pr6N B,0,0,1"), 19);
+        
+         Assert.IsTrue(infos.Keys.SequenceEqual(correctMap.Keys));
+         foreach (var (k, v) in infos)
+         {
+             Assert.IsTrue(v.Count == correctMap[k]);
+         }
      }
+     
+
      private static HashSet<Rune> ConvertToRuneList(ReadOnlySpan<char> span)
      {
          HashSet<Rune> runes = [];

@@ -1,10 +1,13 @@
 using Mobsub.SubtitleParse;
 using Mobsub.SubtitleParse.AssTypes;
+using Mobsub.SubtitleParse.AssUtils;
+using Microsoft.Extensions.Logging;
+using ZLogger;
 
 namespace Mobsub.Test;
 
 [TestClass]
-public class ParseTest
+public partial class ParseTest
 {
     [TestMethod]
     public void ReadWrite()
@@ -19,4 +22,14 @@ public class ParseTest
 
         Assert.IsTrue(refAss.SequenceEqual(writeAss));
     }
+
+    // [TestMethod]
+    // public void ParseTagBlock()
+    // {
+    //     var block = @"{\fnFZLanTingHei-B-GBK\bord5\rSign\b1\t(0,100,\rDefault\fnFZLanTingHei-H-GBK\i1\fs100)\s1}".AsSpan();
+    //     
+    //     var assStyles = ParseAssStyles(styles);
+    //     var atp = new AssTagParse(assStyles, GetScriptInfo());
+    //     atp.Parse(block, assStyles.Collection.First());
+    // }
 }
