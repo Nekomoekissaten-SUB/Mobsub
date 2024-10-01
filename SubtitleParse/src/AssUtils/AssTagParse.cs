@@ -706,6 +706,7 @@ public partial class AssTagParse(AssStyles styles, AssScriptInfo scriptInfo, ILo
             startIdx = commaIdx + 1;
             commaIdx = span[startIdx..].IndexOf(AssConstants.FunctionParamSeparator);
         }
+        ranges.Add(Range.StartAt(startIdx));
 
         return SplitStatus.None;
     }
