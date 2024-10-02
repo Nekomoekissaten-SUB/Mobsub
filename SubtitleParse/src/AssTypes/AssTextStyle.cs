@@ -3,7 +3,7 @@ using ZLogger;
 
 namespace Mobsub.SubtitleParse.AssTypes;
 
-public partial class AssTextStyle(AssStyle baseStyle, ILogger? logger = null)
+public partial class AssTextStyle(AssStyle baseStyle)
 {
     public readonly AssStyle BaseStyle = baseStyle;
 

@@ -37,7 +37,7 @@ public partial class AssTagParse(AssStyles styles, AssScriptInfo scriptInfo, ILo
     
     public void Parse(ReadOnlySpan<char> block, AssStyle style)
     {
-        baseTextStyle = new AssTextStyle(style, logger);
+        baseTextStyle = new AssTextStyle(style);
         Parse(block);
     }
     private void Parse(ReadOnlySpan<char> block)
@@ -128,7 +128,7 @@ public partial class AssTagParse(AssStyles styles, AssScriptInfo scriptInfo, ILo
             if (evt.WillSkip()){ continue; }
 
             styles.TryGetStyleWithFallback(evt.Style.AsSpan(), out var style);
-            baseTextStyle = new AssTextStyle(style!, logger);
+            baseTextStyle = new AssTextStyle(style!);
 
             if (evt.TextRanges.Length == 0)
             {

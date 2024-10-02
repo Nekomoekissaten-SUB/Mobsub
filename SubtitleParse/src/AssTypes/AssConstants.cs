@@ -250,11 +250,12 @@ public static partial class AssConstants
         // libass ass_types.h ass_render.h ass_parse.c
     }
 }
-
+#pragma warning disable CS9113
 [AttributeUsage(AttributeTargets.Field, AllowMultiple = false)]
 public class AssOverrideTagAttribute(Type? propertyType, string parseMethod, string methodParams, string? mapPropName = null) : Attribute;
 public class AssTagGeneralParseAttribute(string stylePropertyName, bool limit = false) : Attribute;
 public class AssTagKindAttribute(AssTagKind kind) : Attribute;
+#pragma warning restore CS9113
 
 [Flags]
 public enum AssTagKind
