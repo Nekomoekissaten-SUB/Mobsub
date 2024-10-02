@@ -20,6 +20,7 @@ public class OverrideTagsSourceGenerator : ISourceGenerator
     public void Execute(GeneratorExecutionContext context)
     {
         if (context.SyntaxReceiver is not AssTypesSyntaxReceiver receiver) { return; }
+        if (receiver.Declaration is null) { return; }
         Generate(receiver.Declaration, out var def, out var parse, out var constants, out var defTrans);
         
         context.AddSource("AssTextStyle.g.cs", SourceText.From(def, Encoding.UTF8));
@@ -397,7 +398,7 @@ public class OverrideTagsSourceGenerator : ISourceGenerator
 
 internal class AssTypesSyntaxReceiver : ISyntaxReceiver
 {
-    public ClassDeclarationSyntax Declaration;
+    public ClassDeclarationSyntax? Declaration;
 
     public void OnVisitSyntaxNode(SyntaxNode syntaxNode)
     {

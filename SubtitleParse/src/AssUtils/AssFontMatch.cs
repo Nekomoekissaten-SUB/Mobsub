@@ -15,7 +15,7 @@ public class AssFontMatch(IEnumerable<FontFaceInfoBase> fontFaceInfos)
     public FontFaceInfoBase? GetFontFace(AssFontInfo assFontInfo)
     {
         var faceInfosArr = faceInfos.ToArray();
-        var sameFamilyNameFaces = faceInfosArr.Where(face => face.FamilyNames.ContainsValue(assFontInfo.Name));
+        var sameFamilyNameFaces = faceInfosArr.Where(face => face.FamilyNames!.ContainsValue(assFontInfo.Name));
     
         if (!sameFamilyNameFaces.Any()) { return null; }
     
