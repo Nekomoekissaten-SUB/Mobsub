@@ -37,23 +37,26 @@ public class CJKpp
             charsCountChange = [sb.ToString(), sconvp.ToString()];
         }
         sb.Clear();
-        
+
+        var offset = 0;
         for (var i = 0; i < evt.TextRanges.Length; i++)
         {
             var range = evt.TextRanges[i];
             if (!textBlockIndex.Contains(i))
             {
                 sb.Append(text[range]);
+                offset += range.End.Value - range.Start.Value;
                 continue;
             }
 
+            var offsetRange = new Range(range.Start.Value - offset, range.End.Value - offset);
             if (textBlockIndex.Last() == i)
             {
-                sb.Append(sconvp[range.Start..]);
+                sb.Append(sconvp[offsetRange.Start..]);
                 continue;
             }
 
-            sb.Append(sconvp[range]);
+            sb.Append(sconvp[offsetRange]);
         }
 
         evt.Text = sb.ToString();
