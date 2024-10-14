@@ -135,6 +135,7 @@ public class Clean
                     }
                     
                     var text = evt.Text.AsSpan();
+                    if (text.IsEmpty){ continue; }
 
                     if (char.IsWhiteSpace(text[^1]))
                     {
