@@ -465,9 +465,9 @@ public partial class AssTagParse(AssStyles styles, AssScriptInfo scriptInfo, ILo
     }
     private byte ParseHexAlpha(ReadOnlySpan<char> span)
     {
-        if (span[0] == '&' && span[1] == 'H' && span[^1] == '&' && span.Length == 5)
+        if (span[0] == '&' && span[^1] == '&' && span.Length == 4)
         {
-            return Convert.ToByte(AssRGB8.HexCharToInt(span[2]) * 16 + AssRGB8.HexCharToInt(span[3]));
+            return Convert.ToByte(AssRGB8.HexCharToInt(span[1]) * 16 + AssRGB8.HexCharToInt(span[2]));
         }
 
         logger?.ZLogError($"Unknown alpha tags: {span.ToString()}");
