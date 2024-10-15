@@ -1,5 +1,6 @@
 ﻿using System.Buffers;
 using System.Diagnostics;
+using System.Globalization;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using ZLogger;
@@ -391,7 +392,7 @@ public partial class AssTagParse(AssStyles styles, AssScriptInfo scriptInfo, ILo
     // ParseTagBlurEdgesGaussian()
     private void ParseTagColor(ReadOnlySpan<char> span, int index, bool isAlpha)
     {
-        span = span.TrimEnd();
+        NormalizeTagColor(span, out _, out var value, isAlpha);
         var colors = inTransformation switch
         {
             true when curTextStyleTrans!.TransTextStyle.Colors is not null => curTextStyleTrans.TransTextStyle.Colors,
@@ -414,15 +415,7 @@ public partial class AssTagParse(AssStyles styles, AssScriptInfo scriptInfo, ILo
             }
             else
             {
-                try
-                {
-                    c.Parse(span);
-                }
-                catch (Exception)
-                {
-                    logger?.ZLogError($"Unknown color tags: {span.ToString()}");
-                    c = new AssRGB8(0, 0, 0, 0);
-                }
+                c.Parse(value, false);
             }
             
             switch (index)
@@ -447,7 +440,7 @@ public partial class AssTagParse(AssStyles styles, AssScriptInfo scriptInfo, ILo
         }
         else
         {
-            var a = span.IsEmpty ? index == 0 ? (byte)0 : ResetAlpha(index) : ParseHexAlpha(span);
+            var a = span.IsEmpty ? index == 0 ? (byte)0 : ResetAlpha(index) : (byte)(value & 0xff);
             switch (index)
             {
                 case 0:
@@ -480,17 +473,7 @@ public partial class AssTagParse(AssStyles styles, AssScriptInfo scriptInfo, ILo
             curTextStyle!.Colors = colors;
         }
     }
-    private byte ParseHexAlpha(ReadOnlySpan<char> span)
-    {
-        if (span.Length == 4 && span[0] == '&' && span[^1] == '&')
-        {
-            return Convert.ToByte(AssRGB8.HexCharToInt(span[1]) * 16 + AssRGB8.HexCharToInt(span[2]));
-        }
-
-        logger?.ZLogError($"Unknown alpha tags: {span.ToString()}");
-        return 0;
-    }
-
+    
     private AssRGB8 ResetColor(int index) => index switch
     {
         1 => curTextStyle!.BaseStyle.PrimaryColour,
@@ -501,6 +484,37 @@ public partial class AssTagParse(AssStyles styles, AssScriptInfo scriptInfo, ILo
     };
 
     private byte ResetAlpha(int index) => ResetColor(index).A;
+
+    private bool NormalizeTagColor(ReadOnlySpan<char> span, out ReadOnlySpan<char> destination, out int value, bool isAlpha)
+    {
+        if (span.IsEmpty)
+        {
+            destination = span;
+            value = 0;
+            return false;
+        }
+
+        if (char.IsWhiteSpace(span[^1]))
+        {
+            logger?.ZLogWarning($"Extra whitespace in color tags: {span.ToString()}");
+            span = span.TrimEnd();
+        }
+
+        var formatLength = isAlpha ? 5 : 9;
+        var notNeedMod = TryParseHexToInt(span, out value);
+        if (span.Length == formatLength && span[0] == '&' && span[1] == 'H' && span[^1] == '&' && notNeedMod)
+        {
+            destination = span;
+            return false;
+        }
+
+        var sb = new StringBuilder(formatLength);
+        var valueString = value.ToString(isAlpha ? "X2" : "X6");
+        sb.Append($"&H{valueString}&");
+        logger?.ZLogWarning($"Normalization: {span.ToString()} => {sb}");
+        destination = sb.ToString().AsSpan();
+        return true;
+    }
     // ParseTagBorder()
     // ParseTagShadow()
     // ParseTagFontSizeScale()
@@ -780,6 +794,62 @@ public partial class AssTagParse(AssStyles styles, AssScriptInfo scriptInfo, ILo
             Rune.DecodeFromUtf16(span[i..], out var rune, out charsConsumed);
             curRunes.Add(rune);
         }
+    }
+    
+    // Convert Utilities (move to Mobsub.Helper?)
+    private static bool TryParseHexToInt(ReadOnlySpan<char> span, out int number)
+    {
+        span = span.Trim('&').Trim('H');
+        
+        if (IsEmptyOrWhiteSpace(span))
+        {
+            number = 0;
+            return false;
+        }
+
+        var notNecessaryHead = false;
+        var negative = false;
+        var start = 0;
+        switch (span[0])
+        {
+            case '+':
+                start = 1;
+                notNecessaryHead = true;
+                break;
+            case '-':
+                negative = true;
+                notNecessaryHead = true;
+                start = 1;
+                break;
+            default:
+            {
+                if (!char.IsAsciiHexDigit(span[0]))
+                {
+                    number = 0;
+                    return false;
+                }
+                break;
+            }
+        }
+
+        var end = -1;
+        for (var i = start; i < span.Length; i++)
+        {
+            if (char.IsAsciiHexDigit(span[i])) continue;
+            end = i;
+            break;
+        }
+
+        var invalidTail = end != -1;
+        span = end == -1 ? span[start..] : span[start..end];
+
+        var status = int.TryParse(span, NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture, out number);
+        if (status)
+        {
+            number = (negative ? -number : number) & 0xFFFFFF;
+        }
+
+        return status && !invalidTail && !notNecessaryHead;
     }
     
     // Data

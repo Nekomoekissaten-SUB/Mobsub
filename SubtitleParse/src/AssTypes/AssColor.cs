@@ -86,7 +86,25 @@ public struct AssRGB8(byte red, byte green, byte blue, byte alpha)
 
         return this;
     }
+    public AssRGB8 Parse(long value, bool alpha)
+    {
+        if (alpha)
+        {
+            A = (byte)((value & 0xff000000) >> 24);
+            B = (byte)((value & 0x00ff0000) >> 16);
+            G = (byte)((value & 0x0000ff00) >> 8);
+            R = (byte)(value & 0x000000ff);
+        }
+        else
+        {
+            B = (byte)((value & 0xff0000) >> 16);
+            G = (byte)((value & 0x00ff00) >> 8);
+            R = (byte)(value & 0x0000ff);
+        }
 
+        return this;
+    }
+    
     public readonly string ConvertToString(bool alpha)
     {
         var bytel = new List<byte>();
