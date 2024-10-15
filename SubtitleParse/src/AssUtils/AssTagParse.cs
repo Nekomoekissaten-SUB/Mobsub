@@ -391,6 +391,7 @@ public partial class AssTagParse(AssStyles styles, AssScriptInfo scriptInfo, ILo
     // ParseTagBlurEdgesGaussian()
     private void ParseTagColor(ReadOnlySpan<char> span, int index, bool isAlpha)
     {
+        span = span.TrimEnd();
         var colors = inTransformation switch
         {
             true when curTextStyleTrans!.TransTextStyle.Colors is not null => curTextStyleTrans.TransTextStyle.Colors,
@@ -407,7 +408,23 @@ public partial class AssTagParse(AssStyles styles, AssScriptInfo scriptInfo, ILo
         if (!isAlpha)
         {
             var c = new AssRGB8();
-            c.Parse(span);
+            if (span.IsEmpty)
+            {
+                c = ResetColor(index);
+            }
+            else
+            {
+                try
+                {
+                    c.Parse(span);
+                }
+                catch (Exception)
+                {
+                    logger?.ZLogError($"Unknown color tags: {span.ToString()}");
+                    c = new AssRGB8(0, 0, 0, 0);
+                }
+            }
+            
             switch (index)
             {
                 case 1:
@@ -430,14 +447,14 @@ public partial class AssTagParse(AssStyles styles, AssScriptInfo scriptInfo, ILo
         }
         else
         {
-            var a = ParseHexAlpha(span);
+            var a = span.IsEmpty ? index == 0 ? (byte)0 : ResetAlpha(index) : ParseHexAlpha(span);
             switch (index)
             {
                 case 0:
-                    colors.Primary.A = a;
-                    colors.Secondary.A = a;
-                    colors.Outline.A = a;
-                    colors.Back.A = a;
+                    colors.Primary.A = span.IsEmpty ? ResetAlpha(1) : a;
+                    colors.Secondary.A = span.IsEmpty ? ResetAlpha(2) : a;
+                    colors.Outline.A = span.IsEmpty ? ResetAlpha(3) : a;
+                    colors.Back.A = span.IsEmpty ? ResetAlpha(4) : a;
                     break;
                 case 1:
                     colors.Primary.A = a;
@@ -465,7 +482,7 @@ public partial class AssTagParse(AssStyles styles, AssScriptInfo scriptInfo, ILo
     }
     private byte ParseHexAlpha(ReadOnlySpan<char> span)
     {
-        if (span[0] == '&' && span[^1] == '&' && span.Length == 4)
+        if (span.Length == 4 && span[0] == '&' && span[^1] == '&')
         {
             return Convert.ToByte(AssRGB8.HexCharToInt(span[1]) * 16 + AssRGB8.HexCharToInt(span[2]));
         }
@@ -473,6 +490,17 @@ public partial class AssTagParse(AssStyles styles, AssScriptInfo scriptInfo, ILo
         logger?.ZLogError($"Unknown alpha tags: {span.ToString()}");
         return 0;
     }
+
+    private AssRGB8 ResetColor(int index) => index switch
+    {
+        1 => curTextStyle!.BaseStyle.PrimaryColour,
+        2 => curTextStyle!.BaseStyle.SecondaryColour,
+        3 => curTextStyle!.BaseStyle.OutlineColour,
+        4 => curTextStyle!.BaseStyle.BackColour,
+        _ => throw new Exception("Invalid index")
+    };
+
+    private byte ResetAlpha(int index) => ResetColor(index).A;
     // ParseTagBorder()
     // ParseTagShadow()
     // ParseTagFontSizeScale()
