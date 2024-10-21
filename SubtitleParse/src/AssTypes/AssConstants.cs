@@ -119,7 +119,7 @@ public static partial class AssConstants
         public const string Bold = "b";
         
         [AssOverrideTag(typeof(string), "ParseTagClip", "")]
-        [AssTagKind(AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+        [AssTagKind(AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable | AssTagKind.ShouldBeFunction)]
         public const string Clip = "clip";
         
         // [AssOverrideTag(typeof(int), "ParseClipTag", "true", "Clip")]
