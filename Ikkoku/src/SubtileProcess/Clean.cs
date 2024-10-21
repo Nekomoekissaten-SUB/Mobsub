@@ -150,7 +150,7 @@ public class Clean
                     }
                     if (Check.IsMotionGarbage(text[evt.TextRanges[0]]))
                     {
-                        text = text.TrimStart(text[evt.TextRanges[0]]);
+                        text = text[(evt.TextRanges[0].End.Value - evt.TextRanges[0].Start.Value)..];
                         evt.TextRanges = evt.TextRanges[1..];
                         hadMotionGarbage = true;
                     }
