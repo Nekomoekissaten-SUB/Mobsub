@@ -119,6 +119,7 @@ public partial class AssTagParse(AssStyles styles, AssScriptInfo scriptInfo, ILo
         curTextStyle = null;
         curBlockTags.Clear();
         curLineTags.Clear();
+        drawingMode = false;
     }
 
     public IEnumerable<Dictionary<AssTextStyle, List<Rune>>> ParseEvents(AssEvents evts)
@@ -184,6 +185,8 @@ public partial class AssTagParse(AssStyles styles, AssScriptInfo scriptInfo, ILo
             if (drawingMode)
             {
                 ParseDrawingText();
+                var textStyle = GetTextStylesDeepCopy() ?? baseTextStyle;
+                dict.TryAdd(textStyle, new List<Rune>());
             }
 
             yield return dict;
