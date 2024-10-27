@@ -136,23 +136,24 @@ public class Clean
                     
                     var text = evt.Text.AsSpan();
                     if (text.IsEmpty){ continue; }
-
-                    if (char.IsWhiteSpace(text[^1]))
-                    {
-                        text = text.TrimEnd();
-                        hadEndSpace = true;
-                    }
                     
                     // now only remove first motion garbage
                     if (evt.TextRanges.Length == 0)
                     {
                         evt.UpdateTextRanges();
                     }
+
                     if (Check.IsMotionGarbage(text[evt.TextRanges[0]]))
                     {
                         text = text[(evt.TextRanges[0].End.Value - evt.TextRanges[0].Start.Value)..];
                         evt.TextRanges = evt.TextRanges[1..];
                         hadMotionGarbage = true;
+                    }
+                    
+                    if (char.IsWhiteSpace(text[^1]))
+                    {
+                        text = text.TrimEnd();
+                        hadEndSpace = true;
                     }
 
                     if (RemoveWeirdChars(text, ref hadUnusedChar, ref hadWeirdSpace, etsb))
