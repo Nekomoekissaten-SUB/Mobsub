@@ -21,7 +21,7 @@ public class AssScriptInfo(ILogger? logger = null)
             {
                 logger?.ZLogError($"ScriptType: {value} is invalid");
             }
-            if (scriptType.AsSpan()[0] == 'V')
+            if (value.AsSpan()[0] == 'V')
             {
                 logger?.ZLogWarning($"ScriptType is {value}, it should be start with 'v'");
             }
