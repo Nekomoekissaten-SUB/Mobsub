@@ -74,8 +74,7 @@ public class AssScriptInfo(ILogger? logger = null)
     public Dictionary<string, string> Others = [];
     // public int status = 0;
     public HashSet<string> Orders = [];
-
-    private readonly ILogger? _logger = logger;
+    
     internal const string sectionName = "[Script Info]";
 
     public void Read(ReadOnlySpan<char> sp, int lineNumber)
@@ -84,11 +83,11 @@ public class AssScriptInfo(ILogger? logger = null)
         {
             case '!':
                 CustomData.Add(sp[1..].Trim().ToString());
-                _logger?.ZLogDebug($"Line {lineNumber} is customized metadata");
+                logger?.ZLogDebug($"Line {lineNumber} is customized metadata");
                 break;
             case ';':
                 Comment.Add(sp[1..].Trim().ToString());
-                _logger?.ZLogDebug($"Line {lineNumber} is comment");
+                logger?.ZLogDebug($"Line {lineNumber} is comment");
                 break;
             default:
                 if (Utils.TrySplitKeyValue(sp, out var k, out var v))
@@ -127,14 +126,14 @@ public class AssScriptInfo(ILogger? logger = null)
                 {
                     logger?.ZLogError($"Unknown line: {sp.ToString()}");
                 }
-                _logger?.ZLogDebug($"Line {lineNumber} is a key-pair, key {k} parse completed");
+                logger?.ZLogDebug($"Line {lineNumber} is a key-pair, key {k} parse completed");
                 break;
         }
     }
 
     public void Write(StreamWriter sw, char[] newline)
     {
-        _logger?.ZLogInformation($"Start write section {sectionName}");
+        logger?.ZLogInformation($"Start write section {sectionName}");
         sw.Write(sectionName);
         sw.Write(newline);
         
@@ -143,7 +142,7 @@ public class AssScriptInfo(ILogger? logger = null)
             sw.Write($"; {s}");
             sw.Write(newline);
         }
-        _logger?.ZLogDebug($"Write comment lines fine");
+        logger?.ZLogDebug($"Write comment lines fine");
 
         foreach (var k in Orders)
         {
@@ -211,16 +210,16 @@ public class AssScriptInfo(ILogger? logger = null)
             }
             sw.Write(newline);
         }
-        _logger?.ZLogDebug($"Write key-pair lines fine");
+        logger?.ZLogDebug($"Write key-pair lines fine");
 
         foreach (var s in CustomData)
         {
             sw.Write($"!: {s}");
             sw.Write(newline);
         }
-        _logger?.ZLogDebug($"Write customized metadata lines fine");
+        logger?.ZLogDebug($"Write customized metadata lines fine");
 
         //sw.Write(newline);
-        _logger?.ZLogDebug($"Section write completed");
+        logger?.ZLogDebug($"Section write completed");
     }
 }
