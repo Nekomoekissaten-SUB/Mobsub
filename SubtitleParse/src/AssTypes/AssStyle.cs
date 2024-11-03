@@ -74,6 +74,7 @@ public class AssStyles(ILogger? logger = null)
         switch (scriptType)
         {
             case "v4.00":
+            case "V4.00":
                 if (fmtStr != formatV4)
                 {
                     throw new Exception("Invalid style format for v4.00 script. Expected: " + formatV4 + ", got: " + fmtStr);
@@ -82,6 +83,7 @@ public class AssStyles(ILogger? logger = null)
                 sw.Write(sectionNameV4);
                 break;
             case "v4.00+":
+            case "V4.00+":
                 if (fmtStr != formatV4P)
                 {
                     throw new Exception("Invalid style format for v4.00 script. Expected: " + formatV4P + ", got: " + fmtStr);
@@ -90,6 +92,7 @@ public class AssStyles(ILogger? logger = null)
                 sw.Write(sectionNameV4P);
                 break;
             case "v4.00++":
+            case "V4.00++":
                 if (fmtStr != formatV4PP)
                 {
                     Formats = formatV4PP.Split(',').Select(s => s.Trim()).ToArray();

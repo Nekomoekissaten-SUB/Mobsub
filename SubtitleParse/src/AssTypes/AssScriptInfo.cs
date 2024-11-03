@@ -17,9 +17,13 @@ public class AssScriptInfo(ILogger? logger = null)
         get => scriptType;
         set
         {
-            if (!scriptTypes.Contains(value))
+            if (!scriptTypes.Contains(value, StringComparer.OrdinalIgnoreCase))
             {
-                throw new ArgumentException($"ScriptType: {value} should be valid");
+                logger?.ZLogError($"ScriptType: {value} is invalid");
+            }
+            if (scriptType.AsSpan()[0] == 'V')
+            {
+                logger?.ZLogWarning($"ScriptType is {value}, it should be start with 'v'");
             }
             scriptType = value;
         }
@@ -46,9 +50,9 @@ public class AssScriptInfo(ILogger? logger = null)
         get => wrapStyle ?? 0;
         set
         {
-            if (scriptType == "v4.00")
+            if (scriptType.Equals("v4.00", StringComparison.OrdinalIgnoreCase))
             {
-                throw new ArgumentException($"WrapStyle: ass / ssa version {scriptType} don’t support {value}");
+                logger?.ZLogError($"WrapStyle: ass / ssa version {scriptType} don’t support {value}");
             }
             wrapStyle = value;
         }
@@ -116,12 +120,12 @@ public class AssScriptInfo(ILogger? logger = null)
                     
                     if (!Orders.Add(k))
                     {
-                        throw new Exception($"Duplicate key in Script Info: {k}");
+                        logger?.ZLogError($"Duplicate key in Script Info: {k}");
                     }
                 }
                 else
                 {
-                    throw new Exception($"Unknown line: {sp.ToString()}");
+                    logger?.ZLogError($"Unknown line: {sp.ToString()}");
                 }
                 _logger?.ZLogDebug($"Line {lineNumber} is a key-pair, key {k} parse completed");
                 break;
