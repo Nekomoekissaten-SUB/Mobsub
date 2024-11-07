@@ -18,6 +18,11 @@ public class AssAnalyze(AssData ass, ILogger? logger = null)
         {
             foreach (var (k, v) in d)
             {
+                if (v.Count == 0)
+                {
+                    continue;
+                }
+                
                 var afs = GetAssFontInfo(k);
                 if (!usedFontsAndGlyphs.TryAdd(afs, [..v]))
                 {
