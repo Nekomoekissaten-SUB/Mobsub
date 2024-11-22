@@ -1,0 +1,8 @@
+﻿<Solution>
+  <Project Path="Helper\Helper.csproj" Type="Classic C#" />
+  <Project Path="Ikkoku\Ikkoku.csproj" />
+  <Project Path="SubtitleParse.SourceGen\SubtitleParse.SourceGen.csproj" Type="Classic C#" />
+  <Project Path="SubtitleParse\SubtitleParse.csproj" />
+  <Project Path="Test\Test.csproj" />
+  <Project Path="ZhConvert\ZhConvert.csproj" />
+</Solution>
