@@ -1,6 +1,8 @@
 ﻿<Solution>
   <Project Path="Helper\Helper.csproj" Type="Classic C#" />
   <Project Path="Ikkoku\Ikkoku.csproj" />
+  <Project Path="Native\Mobsub.Native.csproj" Type="Classic C#" />
+  <Project Path="RainCurtain\Mobsub.RainCurtain.csproj" Type="Classic C#" />
   <Project Path="SubtitleParse.SourceGen\SubtitleParse.SourceGen.csproj" Type="Classic C#" />
   <Project Path="SubtitleParse\SubtitleParse.csproj" />
   <Project Path="Test\Test.csproj" />

@@ -1,0 +1,92 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:Mobsub.RainCurtain.ViewModels"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="Mobsub.RainCurtain.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Width="2560" Height="1440"
+        Title="RainCurtain">
+
+    <Design.DataContext>
+        <!-- This only sets the DataContext for the previewer in an IDE,
+             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
+        <vm:MainWindowViewModel/>
+    </Design.DataContext>
+
+    <Window.Resources>
+        <vm:AssTimeConverter x:Key="AssTimeConverter"/>
+    </Window.Resources>
+    
+    <DockPanel>
+        <Menu DockPanel.Dock="Top">
+            <MenuItem Header="_File">
+                <MenuItem Header="_Open..."/>
+                <Separator/>
+                <MenuItem Header="_Exit"/>
+            </MenuItem>
+            <MenuItem Header="_Edit">
+            </MenuItem>
+            <MenuItem Header="_Subtitle">
+            </MenuItem>
+            <MenuItem Header="_Timing">
+            </MenuItem>
+            <MenuItem Header="_Video">
+            </MenuItem>
+            <MenuItem Header="_Audio">
+            </MenuItem>
+            <MenuItem Header="_Automation">
+            </MenuItem>
+            <MenuItem Header="_View">
+            </MenuItem>
+            <MenuItem Header="_Help">
+            </MenuItem>
+        </Menu>
+        <Border BorderThickness="0,1,0,0" BorderBrush="Aqua">
+            <Grid RowDefinitions="30,30, 1*, 1, 4*" ShowGridLines="True">
+                <TextBox Grid.Row="2" Margin="2,2,2,2"/>
+                <GridSplitter Grid.Row="3" ResizeDirection="Rows"/>
+                <DataGrid Grid.Row="4" Margin="20" ItemsSource="{Binding AssEvents}"
+                          IsReadOnly="True"
+                          CanUserReorderColumns="False"
+                          CanUserResizeColumns="False"
+                          CanUserSortColumns="False"
+                          GridLinesVisibility="All"
+                          BorderThickness="1" BorderBrush="Gray">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="L"  Binding="{Binding Layer}" IsVisible="{Binding LayerIsVisible}"/>
+                        <DataGridTextColumn Header="Start" Binding="{Binding Start,
+                                                Converter={StaticResource AssTimeConverter}, ConverterParameter=ctsRounding
+                                                }"/>
+                        <DataGridTextColumn Header="End" Binding="{Binding End,
+                                                Converter={StaticResource AssTimeConverter}, ConverterParameter=ctsRounding
+                                                }" />
+                        <DataGridTextColumn Header="Style" Binding="{Binding Style}" />
+                        <DataGridTextColumn Header="Text" Width="*" Binding="{Binding Text}" />
+                    </DataGrid.Columns>
+                    <DataGrid.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem Header="Copy"/>
+                            <MenuItem Header="Paste"/>
+                        </ContextMenu>
+                    </DataGrid.ContextMenu>
+                    </DataGrid>
+            </Grid>
+        </Border>
+        
+        
+        <!-- <Border BorderBrush="Black" BorderThickness="2" Margin="20" Height="20" DockPanel.Dock="Top" -->
+        <!--         Background="LightGray" -->
+        <!--         HorizontalAlignment="Stretch" VerticalAlignment="Top" -->
+        <!--         DragDrop.AllowDrop="True" /> -->
+        <!--     ~1~ <TextBlock x:Name="DropHint" @1@ -->
+        <!--     ~1~            HorizontalAlignment="Center" @1@ -->
+        <!--     ~1~            VerticalAlignment="Center" @1@ -->
+        <!--     ~1~            Text="Drag files here!" /> @1@ -->
+        <!-- <TextBlock Name="FpsLabel" DockPanel.Dock="Left" Background="Chartreuse" Margin="20,0,0,0" Width="80" Height="100"/> -->
+        <!-- ~1~ <SKCanvasControl Name="CanvasControl" Margin="20" Width="1920" Height="1080" /> @1@ -->
+        <!-- <Image Name="Image" Margin="20" Width="1920" Height="1080"></Image> -->
+    </DockPanel>
+
+</Window>
