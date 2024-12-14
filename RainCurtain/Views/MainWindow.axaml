@@ -54,24 +54,6 @@
             <Grid RowDefinitions="30,30, 1*, 1, 4*" ShowGridLines="True">
                 <TextBox Grid.Row="2" Margin="2,2,2,2"/>
                 <GridSplitter Grid.Row="3" ResizeDirection="Rows"/>
-                <!-- <TreeDataGrid Grid.Row="4" Margin="20" Source="{Binding AssEventSource, Mode=TwoWay}" -->
-                <!--           BorderThickness="1" BorderBrush="Gray"> -->
-                <!--     <TreeDataGrid.Resources> -->
-                <!--         <DataTemplate x:Key="AssStartCell" x:DataType="ass:AssEvent"> -->
-                <!--             <TextBlock Text="{Binding Start, Converter={StaticResource AssTimeConverter}, ConverterParameter=ctsRounding}"/> -->
-                <!--         </DataTemplate> -->
-                <!--         <DataTemplate x:Key="AssEndCell" x:DataType="ass:AssEvent"> -->
-                <!--             <TextBlock Text="{Binding End, Converter={StaticResource AssTimeConverter}, ConverterParameter=ctsRounding}"> -->
-                <!--                 <TextBlock.Background> -->
-                <!--                     <MultiBinding Converter="{StaticResource InvalidValueColorConverter}"> -->
-                <!--                         <Binding Path="Start"></Binding> -->
-                <!--                         <Binding Path="End"></Binding> -->
-                <!--                     </MultiBinding> -->
-                <!--                 </TextBlock.Background> -->
-                <!--             </TextBlock> -->
-                <!--         </DataTemplate> -->
-                <!--     </TreeDataGrid.Resources> -->
-                <!-- </TreeDataGrid> -->
                 <DataGrid Grid.Row="4" Margin="20" ItemsSource="{Binding AssEvents, Mode=TwoWay}"
                           IsReadOnly="True"
                           CanUserReorderColumns="False"
