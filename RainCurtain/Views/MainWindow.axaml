@@ -80,11 +80,11 @@
                           GridLinesVisibility="All"
                           HeadersVisibility="All"
                           BorderThickness="1" BorderBrush="Gray">
-                    <!-- <DataGrid.Styles> -->
-                    <!--     <Style Selector="DataGridRow"> -->
-                    <!--         <Setter Property="Header" Value="{Binding $self.Index}"/> -->
-                    <!--     </Style> -->
-                    <!-- </DataGrid.Styles> -->
+                    <DataGrid.Styles>
+                        <Style Selector="DataGridRow">
+                            <Setter Property="Header" Value="{Binding $self.Index}"/>
+                        </Style>
+                    </DataGrid.Styles>
                     
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="L" Binding="{Binding Layer}" IsVisible="{Binding LayerIsVisible}"/>
@@ -110,10 +110,10 @@
                         </DataGridTemplateColumn>
                         <DataGridTextColumn Header="Style" Binding="{Binding Style}" />
                         <DataGridTextColumn Header="Actor" Binding="{Binding Name}" IsVisible="{Binding ActorNameIsVisible}"/>
-                        <DataGridTextColumn Header="MarginL" Binding="{Binding Name}" IsVisible="{Binding MarginLIsVisible}"/>
-                        <DataGridTextColumn Header="MarginR" Binding="{Binding Name}" IsVisible="{Binding MarginRIsVisible}"/>
-                        <DataGridTextColumn Header="MarginV" Binding="{Binding Name}" IsVisible="{Binding MarginVIsVisible}"/>
-                        <DataGridTextColumn Header="Effect" Binding="{Binding Name}" IsVisible="{Binding EffectIsVisible}"/>
+                        <DataGridTextColumn Header="MarginL" Binding="{Binding MarginL}" IsVisible="{Binding MarginLIsVisible}"/>
+                        <DataGridTextColumn Header="MarginR" Binding="{Binding MarginR}" IsVisible="{Binding MarginRIsVisible}"/>
+                        <DataGridTextColumn Header="MarginV" Binding="{Binding MarginV}" IsVisible="{Binding MarginVIsVisible}"/>
+                        <DataGridTextColumn Header="Effect" Binding="{Binding Effect}" IsVisible="{Binding EffectIsVisible}"/>
                         <DataGridTextColumn Header="Text" Width="*" Binding="{Binding Text}" />
                     </DataGrid.Columns>
                 
