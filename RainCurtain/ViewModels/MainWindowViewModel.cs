@@ -95,6 +95,7 @@ public partial class MainWindowViewModel : ViewModelBase
         if (assData is null) return;
         
         var events = assData.Events.Collection;
+        if (events.Count <= 0) return;
         AssEvents.Clear();
         AssEvents = new ObservableCollection<AssEvent>(events);
     
