@@ -19,11 +19,11 @@ sealed class Program
             .WithInterFont()
             .With(new Win32PlatformOptions()
             {
-                RenderingMode = [Win32RenderingMode.Vulkan, Win32RenderingMode.Software]
+                RenderingMode = [Win32RenderingMode.Vulkan, Win32RenderingMode.AngleEgl, Win32RenderingMode.Software]
             })
             .With(new X11PlatformOptions()
             {
-                RenderingMode = [X11RenderingMode.Vulkan, X11RenderingMode.Software]
+                RenderingMode = [X11RenderingMode.Vulkan, X11RenderingMode.Glx, X11RenderingMode.Software]
             })
             .With(new MacOSPlatformOptions())
             .LogToTrace();
