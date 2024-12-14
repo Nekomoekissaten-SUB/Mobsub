@@ -1,13 +1,12 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="Mobsub.RainCurtain.App"
-             xmlns:local="using:RainCurtain"
-             xmlns:rainCurtain="clr-namespace:Mobsub.RainCurtain"
+             xmlns:local="using:Mobsub.RainCurtain"
              RequestedThemeVariant="Default">
              <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
 
     <Application.DataTemplates>
-        <rainCurtain:ViewLocator/>
+        <local:ViewLocator/>
     </Application.DataTemplates>
   
     <Application.Styles>
