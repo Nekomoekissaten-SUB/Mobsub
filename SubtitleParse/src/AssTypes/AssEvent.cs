@@ -216,44 +216,6 @@ public class AssEvent(ILogger? logger = null)
         return ranges.ToArray();
     }
     public void UpdateTextRanges() => TextRanges = SplitEventText(Text.AsSpan());
-    
-    public static void WriteTime(StringBuilder sb, AssTime time, bool ctsRounding)
-    {
-        sb.Append(time.Hour);
-        sb.Append(':');
-        WriteChar(sb, time.Minute, 2);
-        sb.Append(':');
-        WriteChar(sb, time.Second, 2);
-        sb.Append('.');
-
-        WriteChar(sb, ctsRounding ? DigitRounding(time.Millisecond) : time.Millisecond, 3);
-    }
-
-    private static void WriteChar(StringBuilder sb, int val, int length)
-    {
-        var ca = new char[length];
-        
-        var divisor = 1;
-        for (var i = 1; i < length; i++)
-        {
-            divisor *= 10;
-        }
-
-        for (int i = 0; i < length; i++)
-        {
-            ca[i] = (char)(val / divisor + '0');
-            val %= divisor;
-            divisor /= 10;
-        }
-
-        sb.Append(ca[0..Math.Min(length, 2)]);
-    }
-
-    private static int DigitRounding(int i)
-    {
-        var last = i % 10;
-        return (i > 994) ? 990 : last >= 0 && last <= 4 ? i - last : i + (10 - last);
-    }
 
     public void Write(StreamWriter sw, string[] fmts, bool ctsRounding)
     {
@@ -284,10 +246,10 @@ public class AssEvent(ILogger? logger = null)
                         sb.Append(Layer);
                         break;
                     case "Start":
-                        WriteTime(sb, Start, ctsRounding);
+                        AssTime.WriteAssTime(sb, Start, ctsRounding);
                         break;
                     case "End":
-                        WriteTime(sb, End, ctsRounding);
+                        AssTime.WriteAssTime(sb, End, ctsRounding);
                         break;
                     case "Style":
                         sb.Append(Style);
