@@ -107,69 +107,6 @@ public partial class MainWindowViewModel : ViewModelBase
         EffectIsVisible = events.Any(e => !string.IsNullOrEmpty(e.Effect));
     }
     
-    // public FlatTreeDataGridSource<AssEvent> AssEventSource { get; set; }
-    // private void CreateAssGrid()
-    // {
-    //     if (assData is null) return;
-    //     
-    //     var events = assData.Events.Collection;
-    //     AssEvents.Clear();
-    //     AssEvents = new ObservableCollection<AssEvent>(events);
-    //
-    //     LayerIsVisible = events.Any(e => e.Layer != 0);
-    //     ActorNameIsVisible = events.Any(e => !string.IsNullOrEmpty(e.Name));
-    //     MarginLIsVisible = events.Any(e => e.MarginL != 0);
-    //     MarginRIsVisible = events.Any(e => e.MarginR != 0);
-    //     MarginVIsVisible = events.Any(e => e.MarginV != 0);
-    //     EffectIsVisible = events.Any(e => !string.IsNullOrEmpty(e.Effect));
-    //     
-    //     AssEventSource = new FlatTreeDataGridSource<AssEvent>(events);
-    //     
-    //     if (LayerIsVisible)
-    //     {
-    //         AssEventSource.Columns.Add(new TextColumn<AssEvent,int>("L", x => x.Layer));
-    //     }
-    //
-    //     AssEventSource.Columns.Add(new TemplateColumn<AssEvent>("Start", "AssStartCell"));
-    //     AssEventSource.Columns.Add(new TemplateColumn<AssEvent>("End", new FuncDataTemplate<AssEvent>((_, _) => new TextBlock()
-    //     {
-    //         [!TextBlock.TextProperty] = new Binding("End"){ Converter = new AssTimeConverter(), ConverterParameter = "ctsRounding" },
-    //         [!TextBlock.BackgroundProperty] = new MultiBinding()
-    //         {
-    //             Bindings = new List<IBinding>()
-    //             {
-    //                 new Binding("Start"), new Binding("End")
-    //             },
-    //             Converter = new InvalidValueColorConverter()
-    //         }
-    //     })));
-    //     AssEventSource.Columns.Add(new TemplateColumn<AssEvent>("End", "AssEndCell"));
-    //     AssEventSource.Columns.Add(new TextColumn<AssEvent,string>("Style", x => x.Style));
-    //     if (ActorNameIsVisible)
-    //     {
-    //         AssEventSource.Columns.Add(new TextColumn<AssEvent,string>("Actor", x => x.Name));
-    //     }
-    //     if (MarginLIsVisible)
-    //     {
-    //         AssEventSource.Columns.Add(new TextColumn<AssEvent,int>("MarginL", x => x.MarginL));
-    //     }
-    //     if (MarginRIsVisible)
-    //     {
-    //         AssEventSource.Columns.Add(new TextColumn<AssEvent,int>("MarginR", x => x.MarginR));
-    //     }
-    //     if (MarginVIsVisible)
-    //     {
-    //         AssEventSource.Columns.Add(new TextColumn<AssEvent,int>("MarginV", x => x.MarginV));
-    //     }
-    //     
-    //     if (EffectIsVisible)
-    //     {
-    //         AssEventSource.Columns.Add(new TextColumn<AssEvent,string>("Effect", x => x.Effect));
-    //     }
-    //     
-    //     AssEventSource.Columns.Add(new TextColumn<AssEvent,string>("Text", x => x.Text, width: GridLength.Star));
-    // }
-
     private async Task<IStorageFile?> DoOpenFilePickerAsync()
     {
         throw new NotImplementedException();
