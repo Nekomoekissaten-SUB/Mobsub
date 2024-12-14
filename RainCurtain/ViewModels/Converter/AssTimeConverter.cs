@@ -5,7 +5,7 @@ using Avalonia.Data;
 using Avalonia.Data.Converters;
 using Mobsub.SubtitleParse.AssTypes;
 
-namespace Mobsub.RainCurtain.ViewModels;
+namespace Mobsub.RainCurtain.ViewModels.Converter;
 
 public class AssTimeConverter : IValueConverter
 {

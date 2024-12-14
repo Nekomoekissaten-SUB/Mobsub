@@ -2,8 +2,10 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Controls;
+using Avalonia.Data;
 using Mobsub.Native.FFMS2Binding;
 using Mobsub.RainCurtain.Models.Video;
+using Mobsub.RainCurtain.ViewModels;
 
 namespace Mobsub.RainCurtain.Views;
 
@@ -163,6 +165,7 @@ public partial class MainWindow : Window
     //     }
     // }
 }
+
 
 
 

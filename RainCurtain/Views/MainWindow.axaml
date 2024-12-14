@@ -3,9 +3,11 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="clr-namespace:Mobsub.RainCurtain.ViewModels"
+        xmlns:converter="clr-namespace:Mobsub.RainCurtain.ViewModels.Converter"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="Mobsub.RainCurtain.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
+        x:CompileBindings="True"
         Width="2560" Height="1440"
         Title="RainCurtain">
 
@@ -16,7 +18,9 @@
     </Design.DataContext>
 
     <Window.Resources>
-        <vm:AssTimeConverter x:Key="AssTimeConverter"/>
+        <converter:AssTimeConverter x:Key="AssTimeConverter"/>
+        <converter:InvalidValueColorConverter x:Key="InvalidValueColorConverter"/>
+        <converter:CommentLineConverter x:Key="CommentLineConverter"/>
     </Window.Resources>
     
     <DockPanel>
@@ -55,16 +59,53 @@
                           GridLinesVisibility="All"
                           BorderThickness="1" BorderBrush="Gray">
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="L"  Binding="{Binding Layer}" IsVisible="{Binding LayerIsVisible}"/>
+                        <DataGridTemplateColumn Header="#">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding LineNumber}" Padding="10,6,10,0"
+                                               Background="{Binding IsDialogue, Converter={StaticResource CommentLineConverter}}"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTextColumn Header="L" Binding="{Binding Layer}" IsVisible="{Binding LayerIsVisible}"/>
                         <DataGridTextColumn Header="Start" Binding="{Binding Start,
                                                 Converter={StaticResource AssTimeConverter}, ConverterParameter=ctsRounding
                                                 }"/>
-                        <DataGridTextColumn Header="End" Binding="{Binding End,
+                        <DataGridTemplateColumn Header="End">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding End,
                                                 Converter={StaticResource AssTimeConverter}, ConverterParameter=ctsRounding
-                                                }" />
+                                                }"
+                                               Padding="12, 6,12,0">
+                                        <TextBlock.Background>
+                                            <MultiBinding Converter="{StaticResource InvalidValueColorConverter}">
+                                                <Binding Path="Start"></Binding>
+                                                <Binding Path="End"></Binding>
+                                            </MultiBinding>
+                                        </TextBlock.Background>
+                                    </TextBlock>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
                         <DataGridTextColumn Header="Style" Binding="{Binding Style}" />
+                        <DataGridTextColumn Header="Actor" Binding="{Binding Name}" IsVisible="{Binding ActorNameIsVisible}"/>
+                        <DataGridTextColumn Header="MarginL" Binding="{Binding Name}" IsVisible="{Binding MarginLIsVisible}"/>
+                        <DataGridTextColumn Header="MarginR" Binding="{Binding Name}" IsVisible="{Binding MarginRIsVisible}"/>
+                        <DataGridTextColumn Header="MarginV" Binding="{Binding Name}" IsVisible="{Binding MarginVIsVisible}"/>
+                        <DataGridTextColumn Header="Effect" Binding="{Binding Name}" IsVisible="{Binding EffectIsVisible}"/>
                         <DataGridTextColumn Header="Text" Width="*" Binding="{Binding Text}" />
                     </DataGrid.Columns>
+                    
+                    <!-- <DataGrid.Styles> -->
+                    <!--     <Style Selector="DataGridCell:selected" x:DataType="ass:AssEvent"> -->
+                    <!--         <Setter Property="Background" Value="{Binding IsDialogue, Converter={StaticResource CommentLineConverter}, ConverterParameter=Selected}" /> -->
+                    <!--     </Style> -->
+                    <!--     <Style Selector="DataGridCell" x:DataType="ass:AssEvent"> -->
+                    <!--         <Setter Property="Background" Value="{Binding IsDialogue, Converter={StaticResource CommentLineConverter}}" /> -->
+                    <!--     </Style> -->
+                    <!-- </DataGrid.Styles> -->
+                    
                     <DataGrid.ContextMenu>
                         <ContextMenu>
                             <MenuItem Header="Copy"/>
