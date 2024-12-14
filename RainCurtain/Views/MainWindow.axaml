@@ -78,16 +78,15 @@
                           CanUserResizeColumns="False"
                           CanUserSortColumns="False"
                           GridLinesVisibility="All"
+                          HeadersVisibility="All"
                           BorderThickness="1" BorderBrush="Gray">
+                    <!-- <DataGrid.Styles> -->
+                    <!--     <Style Selector="DataGridRow"> -->
+                    <!--         <Setter Property="Header" Value="{Binding $self.Index}"/> -->
+                    <!--     </Style> -->
+                    <!-- </DataGrid.Styles> -->
+                    
                     <DataGrid.Columns>
-                        <DataGridTemplateColumn Header="#">
-                            <DataGridTemplateColumn.CellTemplate>
-                                <DataTemplate>
-                                    <TextBlock Text="{Binding LineNumber}" Padding="10,6,10,0"
-                                               Background="{Binding IsDialogue, Converter={StaticResource CommentLineConverter}}"/>
-                                </DataTemplate>
-                            </DataGridTemplateColumn.CellTemplate>
-                        </DataGridTemplateColumn>
                         <DataGridTextColumn Header="L" Binding="{Binding Layer}" IsVisible="{Binding LayerIsVisible}"/>
                         <DataGridTextColumn Header="Start" Binding="{Binding Start,
                                                 Converter={StaticResource AssTimeConverter}, ConverterParameter=ctsRounding

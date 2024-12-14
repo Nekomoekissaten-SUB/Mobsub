@@ -66,7 +66,6 @@ public class AssEvent(ILogger? logger = null)
     public bool StartSemicolon = false;
     public string? Untouched = string.Empty;
     public bool IsDialogue { get; set; } = true;
-    public int LineNumber { get => lineNumber; set => lineNumber = value > 0 ? value : 0; }
     public int Layer
     {
         get => layer;
