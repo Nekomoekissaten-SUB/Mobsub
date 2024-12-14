@@ -67,6 +67,9 @@
                         <Style Selector="DataGridRow">
                             <Setter Property="Header" Value="{Binding $self.Index}"/>
                         </Style>
+                        <Style Selector="DataGridCell" x:DataType="ass:AssEvent">
+                            <Setter Property="Background" Value="{Binding IsDialogue, Converter={StaticResource CommentLineConverter}}"/>
+                        </Style>
                     </DataGrid.Styles>
                     
                     <DataGrid.Columns>
