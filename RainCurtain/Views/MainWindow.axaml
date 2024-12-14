@@ -22,6 +22,7 @@
         <converter:AssTimeConverter x:Key="AssTimeConverter"/>
         <converter:InvalidValueColorConverter x:Key="InvalidValueColorConverter"/>
         <converter:CommentLineConverter x:Key="CommentLineConverter"/>
+        <converter:HideZeroConverter x:Key="HideZeroConverter"/>
     </Window.Resources>
     
     <DockPanel>
@@ -69,7 +70,7 @@
                     </DataGrid.Styles>
                     
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="L" Binding="{Binding Layer}" IsVisible="{Binding LayerIsVisible}"/>
+                        <DataGridTextColumn Header="L" Binding="{Binding Layer, Converter={StaticResource HideZeroConverter}}" IsVisible="{Binding LayerIsVisible}"/>
                         <DataGridTextColumn Header="Start" Binding="{Binding Start,
                                                 Converter={StaticResource AssTimeConverter}, ConverterParameter=ctsRounding
                                                 }"/>
@@ -92,9 +93,9 @@
                         </DataGridTemplateColumn>
                         <DataGridTextColumn Header="Style" Binding="{Binding Style}" />
                         <DataGridTextColumn Header="Actor" Binding="{Binding Name}" IsVisible="{Binding ActorNameIsVisible}"/>
-                        <DataGridTextColumn Header="MarginL" Binding="{Binding MarginL}" IsVisible="{Binding MarginLIsVisible}"/>
-                        <DataGridTextColumn Header="MarginR" Binding="{Binding MarginR}" IsVisible="{Binding MarginRIsVisible}"/>
-                        <DataGridTextColumn Header="MarginV" Binding="{Binding MarginV}" IsVisible="{Binding MarginVIsVisible}"/>
+                        <DataGridTextColumn Header="MarginL" Binding="{Binding MarginL, Converter={StaticResource HideZeroConverter}}" IsVisible="{Binding MarginLIsVisible}"/>
+                        <DataGridTextColumn Header="MarginR" Binding="{Binding MarginR, Converter={StaticResource HideZeroConverter}}" IsVisible="{Binding MarginRIsVisible}"/>
+                        <DataGridTextColumn Header="MarginV" Binding="{Binding MarginV, Converter={StaticResource HideZeroConverter}}" IsVisible="{Binding MarginVIsVisible}"/>
                         <DataGridTextColumn Header="Effect" Binding="{Binding Effect}" IsVisible="{Binding EffectIsVisible}"/>
                         <DataGridTextColumn Header="Text" Width="*" Binding="{Binding Text}" />
                     </DataGrid.Columns>
