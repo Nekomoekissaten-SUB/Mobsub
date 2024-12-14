@@ -8,6 +8,7 @@
         <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <AssemblyName>RainCurtain</AssemblyName>
+        <PublishAot>true</PublishAot>
     </PropertyGroup>
 
     <ItemGroup>

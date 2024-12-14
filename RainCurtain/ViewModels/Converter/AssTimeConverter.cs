@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Text;
 using Avalonia.Data;
 using Avalonia.Data.Converters;
+using Mobsub.SubtitleParse;
 using Mobsub.SubtitleParse.AssTypes;
 
 namespace Mobsub.RainCurtain.ViewModels.Converter;
@@ -14,17 +15,7 @@ public class AssTimeConverter : IValueConverter
         if (value is AssTime asstime && parameter is string target
                                      && targetType.IsAssignableTo(typeof(string)))
         {
-            var sb = new StringBuilder();
-            switch (target)
-            {
-                case "ctsRounding":
-                    AssEvent.WriteTime(sb, asstime, true);
-                    break;
-                default:
-                    AssEvent.WriteTime(sb, asstime, false);
-                    break;
-            }
-            return sb.ToString();
+            return asstime.ToString(SubtitleType.Ass, target == "ctsRounding");
         }
         return new BindingNotification(new InvalidCastException(), BindingErrorType.Error);
     }
