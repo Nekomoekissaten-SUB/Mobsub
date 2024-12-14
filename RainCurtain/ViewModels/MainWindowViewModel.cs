@@ -26,12 +26,12 @@ public partial class MainWindowViewModel : ViewModelBase
     private AssData? assData;
     
     public ObservableCollection<AssEvent> AssEvents { get; set; }
-    public bool LayerIsVisible { get; set; }
-    public bool ActorNameIsVisible { get; set; }
-    public bool MarginLIsVisible { get; set; }
-    public bool MarginRIsVisible { get; set; }
-    public bool MarginVIsVisible { get; set; }
-    public bool EffectIsVisible { get; set; }
+    [ObservableProperty] private bool _layerIsVisible;
+    [ObservableProperty] private bool _actorNameIsVisible;
+    [ObservableProperty] private bool _marginLIsVisible;
+    [ObservableProperty] private bool _marginRIsVisible;
+    [ObservableProperty] private bool _marginVIsVisible;
+    [ObservableProperty] private bool _effectIsVisible;
     
     public MainWindowViewModel()
     {
