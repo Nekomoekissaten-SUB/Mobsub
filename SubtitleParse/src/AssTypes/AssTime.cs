@@ -159,4 +159,9 @@ public readonly struct AssTime
         var last = i % 10;
         return (i > 994) ? 990 : last >= 0 && last <= 4 ? i - last : i + (10 - last);
     }
+
+    public double SubtractionMilliseconds(AssTime time)
+    {
+        return new TimeSpan(_ticks - time.Ticks).TotalMilliseconds;
+    }
 }
