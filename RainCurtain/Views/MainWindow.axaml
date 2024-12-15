@@ -53,9 +53,11 @@
         </Menu>
         <Border BorderThickness="0,1,0,0" BorderBrush="Aqua">
             <Grid RowDefinitions="30,30, 1*, 1, 4*" ShowGridLines="True">
-                <TextBox Grid.Row="2" Margin="2,2,2,2" Text="{Binding SelectedEvent.Text, Mode=TwoWay}"/>
+                <CheckBox Grid.Row="0" Grid.Column="0" Margin="10,0,0,0" Content="_Comment" IsChecked="{Binding !SelectedEvent.IsDialogue}"
+                          Command="{Binding CommentSelectedCommand}" CommandParameter="{Binding ElementName=SubtitleEvents, Path=SelectedItems}"/>
+                <TextBox Grid.Row="2" Margin="2,2,2,2" Text="{Binding SelectedEvent.Text, Mode=TwoWay, FallbackValue=''}"/>
                 <GridSplitter Grid.Row="3" ResizeDirection="Rows"/>
-                <DataGrid Grid.Row="4" Margin="20" ItemsSource="{Binding AssEvents, Mode=TwoWay}"
+                <DataGrid Name="SubtitleEvents" Grid.Row="4" Margin="20" ItemsSource="{Binding AssEvents, Mode=TwoWay}"
                           SelectedItem="{Binding SelectedEvent, Mode=TwoWay}"
                           IsReadOnly="True"
                           CanUserReorderColumns="False"
