@@ -72,16 +72,18 @@ public partial class AssEvent(ILogger? logger = null) : ObservableObject
     [ObservableProperty] private AssTime _start;
     [ObservableProperty] private AssTime _end;
     [ObservableProperty] private string _style = "Default";
-    [ObservableProperty] private string _name = string.Empty;
+    [ObservableProperty] private string? _name;
     [ObservableProperty] private int _marginL;
     [ObservableProperty] private int _marginR;
     [ObservableProperty] private int _marginV;
     [ObservableProperty] private int _marginT;
     [ObservableProperty] private int _marginB;
     [ObservableProperty] private string? _effect;
-    [ObservableProperty] private string? _text;
+    
+    [ObservableProperty]
+    private string? _text;
     public Range[] TextRanges = [];
-
+    
     public bool Read(ReadOnlySpan<char> sp, int lineNum, string[] formats) => Read(sp, sp.IndexOf(':'), lineNum, formats);
 
     public bool Read(ReadOnlySpan<char> sp, int sepIndex, int lineNum, string[] formats)
@@ -214,6 +216,11 @@ public partial class AssEvent(ILogger? logger = null) : ObservableObject
     }
     public void UpdateTextRanges() => TextRanges = SplitEventText(Text.AsSpan());
 
+    partial void OnTextChanged(string? value)
+    {
+        UpdateTextRanges();
+    }
+    
     public void Write(StreamWriter sw, string[] fmts, bool ctsRounding)
     {
         var sb = new StringBuilder();
