@@ -33,6 +33,8 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty] private bool _marginVIsVisible;
     [ObservableProperty] private bool _effectIsVisible;
     
+    [ObservableProperty] private AssEvent _selectedEvent = new();
+    
     public MainWindowViewModel()
     {
         // var events = new List<AssEvent> 
@@ -63,7 +65,6 @@ public partial class MainWindowViewModel : ViewModelBase
             var localPath = file.TryGetLocalPath();
             if (localPath is null) return;
             await LoadDataFromFile(localPath);
-            OnPropertyChanged(nameof(AssEvents));
         }
         catch (Exception e)
         {
@@ -87,6 +88,7 @@ public partial class MainWindowViewModel : ViewModelBase
         if (ext == ".ass")
         {
             CreateAssGrid();
+            OnPropertyChanged(nameof(AssEvents));
         }
     }
 
@@ -95,7 +97,6 @@ public partial class MainWindowViewModel : ViewModelBase
         if (assData is null) return;
         
         var events = assData.Events.Collection;
-        if (events.Count <= 0) return;
         AssEvents.Clear();
         AssEvents = new ObservableCollection<AssEvent>(events);
     

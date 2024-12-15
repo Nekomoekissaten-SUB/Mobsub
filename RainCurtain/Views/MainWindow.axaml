@@ -53,9 +53,10 @@
         </Menu>
         <Border BorderThickness="0,1,0,0" BorderBrush="Aqua">
             <Grid RowDefinitions="30,30, 1*, 1, 4*" ShowGridLines="True">
-                <TextBox Grid.Row="2" Margin="2,2,2,2"/>
+                <TextBox Grid.Row="2" Margin="2,2,2,2" Text="{Binding SelectedEvent.Text, Mode=TwoWay}"/>
                 <GridSplitter Grid.Row="3" ResizeDirection="Rows"/>
                 <DataGrid Grid.Row="4" Margin="20" ItemsSource="{Binding AssEvents, Mode=TwoWay}"
+                          SelectedItem="{Binding SelectedEvent, Mode=TwoWay}"
                           IsReadOnly="True"
                           CanUserReorderColumns="False"
                           CanUserResizeColumns="False"
@@ -64,19 +65,18 @@
                           HeadersVisibility="All"
                           BorderThickness="1" BorderBrush="Gray">
                     <DataGrid.Styles>
-                        <Style Selector="DataGridRow">
+                        <Style Selector="DataGridRow" x:DataType="ass:AssEvent">
                             <Setter Property="Header" Value="{Binding $self.Index}"/>
+                            <Setter Property="Background" Value="{Binding IsDialogue, Converter={StaticResource CommentLineConverter}}"></Setter>
                         </Style>
-                        <Style Selector="DataGridCell" x:DataType="ass:AssEvent">
-                            <Setter Property="Background" Value="{Binding IsDialogue, Converter={StaticResource CommentLineConverter}}"/>
-                        </Style>
+                        <!-- <Style Selector="DataGridCell" x:DataType="ass:AssEvent"> -->
+                        <!--     <Setter Property="Background" Value="{Binding IsDialogue, Converter={StaticResource CommentLineConverter}}"/> -->
+                        <!-- </Style> -->
                     </DataGrid.Styles>
                     
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="L" Binding="{Binding Layer, Converter={StaticResource HideZeroConverter}}" IsVisible="{Binding LayerIsVisible}"/>
-                        <DataGridTextColumn Header="Start" Binding="{Binding Start,
-                                                Converter={StaticResource AssTimeConverter}, ConverterParameter=ctsRounding
-                                                }"/>
+                        <DataGridTextColumn Header="Start" Binding="{Binding Start, Converter={StaticResource AssTimeConverter}, ConverterParameter=ctsRounding}"/>
                         <DataGridTemplateColumn Header="End">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
