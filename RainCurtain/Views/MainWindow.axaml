@@ -23,6 +23,8 @@
         <converter:InvalidValueColorConverter x:Key="InvalidValueColorConverter"/>
         <converter:CommentLineConverter x:Key="CommentLineConverter"/>
         <converter:HideZeroConverter x:Key="HideZeroConverter"/>
+        <converter:CharactersPerSecondConverter x:Key="CharactersPerSecondConverter"/>
+        <converter:StartFromOneConverter x:Key="StartFromOneConverter"/>
     </Window.Resources>
     
     <DockPanel>
@@ -53,7 +55,7 @@
         </Menu>
         <Border BorderThickness="0,1,0,0" BorderBrush="Aqua">
             <Grid RowDefinitions="30,30, 1*, 1, 4*" ShowGridLines="True">
-                <CheckBox Grid.Row="0" Grid.Column="0" Margin="10,0,0,0" Content="_Comment" IsChecked="{Binding !SelectedEvent.IsDialogue}"
+                <CheckBox Grid.Row="0" Grid.Column="0" Margin="10,0,0,0" Content="_Comment" IsChecked="{Binding !SelectedEvent.IsDialogue, FallbackValue=false}"
                           Command="{Binding CommentSelectedCommand}" CommandParameter="{Binding ElementName=SubtitleEvents, Path=SelectedItems}"/>
                 <TextBox Grid.Row="2" Margin="2,2,2,2" Text="{Binding SelectedEvent.Text, Mode=TwoWay, FallbackValue=''}"/>
                 <GridSplitter Grid.Row="3" ResizeDirection="Rows"/>
@@ -68,7 +70,7 @@
                           BorderThickness="1" BorderBrush="Gray">
                     <DataGrid.Styles>
                         <Style Selector="DataGridRow" x:DataType="ass:AssEvent">
-                            <Setter Property="Header" Value="{Binding $self.Index}"/>
+                            <Setter Property="Header" Value="{Binding $self.Index, Converter={StaticResource StartFromOneConverter}}"/>
                             <Setter Property="Background" Value="{Binding IsDialogue, Converter={StaticResource CommentLineConverter}}"></Setter>
                         </Style>
                         <!-- <Style Selector="DataGridCell" x:DataType="ass:AssEvent"> -->
@@ -92,6 +94,22 @@
                                                 <Binding Path="End"></Binding>
                                             </MultiBinding>
                                         </TextBlock.Background>
+                                    </TextBlock>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="CPS">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock TextAlignment="Center" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <TextBlock.Text>
+                                            <MultiBinding Converter="{StaticResource CharactersPerSecondConverter}">
+                                                <Binding Path="IsDialogue"></Binding>
+                                                <Binding Path="Start"></Binding>
+                                                <Binding Path="End"></Binding>
+                                                <Binding Path="Text"></Binding>
+                                            </MultiBinding>
+                                        </TextBlock.Text>
                                     </TextBlock>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
