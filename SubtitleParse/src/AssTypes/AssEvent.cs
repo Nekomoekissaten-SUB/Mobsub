@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using ZLogger;
 using System.Diagnostics;
 using System.Text;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Mobsub.SubtitleParse.AssTypes;
 
@@ -59,30 +60,26 @@ public class AssEvents(ILogger? logger = null)
     }
 }
 
-public class AssEvent(ILogger? logger = null)
+public partial class AssEvent(ILogger? logger = null) : ObservableObject
 {
-    private int layer = 0;
+    
     public int lineNumber;
     public bool StartSemicolon = false;
     public string? Untouched = string.Empty;
-    public bool IsDialogue { get; set; } = true;
-    public int Layer
-    {
-        get => layer;
-        set => layer = value >= 0 ? value : 0;
-    }
+    [ObservableProperty] private bool _isDialogue = true;
+    [ObservableProperty] private int _layer;
     public readonly int Marked = 0;
-    public AssTime Start { get; set; }
-    public AssTime End { get; set; }
-    public string Style { get; set; } = "Default";
-    public string Name { get; set; } = string.Empty;
-    public int MarginL { get; set; } = 0;
-    public int MarginR { get; set; } = 0;
-    public int MarginV { get; set; } = 0;
-    public int MarginT { get; set; } = 0;
-    public int MarginB { get; set; } = 0;
-    public string? Effect { get; set; }
-    public string? Text { get; set; }
+    [ObservableProperty] private AssTime _start;
+    [ObservableProperty] private AssTime _end;
+    [ObservableProperty] private string _style = "Default";
+    [ObservableProperty] private string _name = string.Empty;
+    [ObservableProperty] private int _marginL;
+    [ObservableProperty] private int _marginR;
+    [ObservableProperty] private int _marginV;
+    [ObservableProperty] private int _marginT;
+    [ObservableProperty] private int _marginB;
+    [ObservableProperty] private string? _effect;
+    [ObservableProperty] private string? _text;
     public Range[] TextRanges = [];
 
     public bool Read(ReadOnlySpan<char> sp, int lineNum, string[] formats) => Read(sp, sp.IndexOf(':'), lineNum, formats);
