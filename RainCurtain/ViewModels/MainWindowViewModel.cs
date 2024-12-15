@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -33,7 +34,7 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty] private bool _marginVIsVisible;
     [ObservableProperty] private bool _effectIsVisible;
     
-    [ObservableProperty] private AssEvent _selectedEvent = new();
+    [ObservableProperty] private AssEvent? _selectedEvent;
     
     public MainWindowViewModel()
     {
@@ -106,6 +107,29 @@ public partial class MainWindowViewModel : ViewModelBase
         MarginRIsVisible = events.Any(e => e.MarginR != 0);
         MarginVIsVisible = events.Any(e => e.MarginV != 0);
         EffectIsVisible = events.Any(e => !string.IsNullOrEmpty(e.Effect));
+    }
+
+    [RelayCommand]
+    private async Task CommentSelected(IList selectedItems, CancellationToken token)
+    {
+        if (SelectedEvent is null) { return; }
+        try
+        {
+            var evts = selectedItems.Cast<AssEvent>().ToList();
+            var isComment = !SelectedEvent.IsDialogue;
+            await Task.Run(() =>
+            {
+                foreach (var evt in evts)
+                {
+                    evt.IsDialogue = !isComment;
+                }
+            }, token);
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw;
+        }
     }
     
     private async Task<IStorageFile?> DoOpenFilePickerAsync()
