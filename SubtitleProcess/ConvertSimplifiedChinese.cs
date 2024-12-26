@@ -1,13 +1,15 @@
-using System.Text;
+﻿using System.Text;
 using Mobsub.SubtitleParse.AssTypes;
 using Mobsub.SubtitleParse;
 using OpenCCSharp.Conversion;
 
-namespace Mobsub.Ikkoku.SubtileProcess;
+namespace Mobsub.SubtitleProcess;
 
-public class CJKpp
+public class ConvertSimplifiedChinese(ChainedScriptConverter converter)
 {
-    public static void ZhConvertEventLineByOpenccsharp(AssEvent evt, StringBuilder sb, ChainedScriptConverter converter, out string[]? charsCountChange)
+    private StringBuilder sb = new();
+    
+    public void ZhConvertEventTextByOpenccSharp(AssEvent evt, out string[]? charsCountChange)
     {
         // wip: correct block insert position
         sb.Clear();
@@ -61,6 +63,29 @@ public class CJKpp
 
         evt.Text = sb.ToString();
         evt.UpdateTextRanges();
+    }
+    
+    public void ZhConvertEventByOpenccSharp(AssEvent evt)
+    {
+        if (!NotZhConvert(evt))
+        {
+            StyleZhConvert(evt);
+            ZhConvertEventTextByOpenccSharp(evt, out var _);
+        }
+    }
+    
+    public void ZhConvertEventByOpenccSharp(AssEvent evt, Dictionary<int, string[]> changesRecord)
+    {
+        if (!NotZhConvert(evt))
+        {
+            StyleZhConvert(evt);
+            ZhConvertEventTextByOpenccSharp(evt, out var countChanges);
+            
+            if (countChanges is not null)
+            {
+                changesRecord.Add(evt.lineNumber, countChanges);
+            }
+        }
     }
     
     public static bool NotZhConvert(AssEvent evt)
