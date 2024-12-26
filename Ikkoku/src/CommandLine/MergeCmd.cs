@@ -6,6 +6,7 @@ using YamlDotNet.Serialization;
 using Mobsub.Ikkoku.SubtileProcess;
 using System.CommandLine;
 using System.Text;
+using Mobsub.SubtitleProcessNotAot;
 
 namespace Mobsub.Ikkoku.CommandLine;
 
@@ -271,107 +272,12 @@ internal class MergeCmd
         return Math.Max(digitCount, minLength);
     }
 
-    private static bool FindGitRootDirectory(string startPath, out string rootPath, out string relativePath)
-    {
-        var currentPath = startPath;
-        rootPath = relativePath = string.Empty;
-
-        while (!string.IsNullOrEmpty(currentPath))
-        {
-            var gitPath = Path.Combine(currentPath, ".git");
-            if (Directory.Exists(gitPath))
-            {
-                rootPath = currentPath;
-                break;
-            }
-            var parentDir = Directory.GetParent(currentPath);
-            if (parentDir == null)
-            {
-                break;
-            }
-            currentPath = parentDir.FullName;
-        }
-
-        if (!string.IsNullOrEmpty(rootPath))
-        {
-            relativePath = Path.GetRelativePath(rootPath, startPath);
-            return true;
-        }
-        return false;
-    }
-
-    private static string[] GetHadSuffixes(DirectoryInfo path)
-    {
-        var suffixes = new[] { "*.jpsc.ass", "*.sc.ass", "*.chs.ass", "*.gb.ass" };
-        var options = new EnumerationOptions
-        {
-            MatchCasing = MatchCasing.CaseInsensitive,
-            RecurseSubdirectories = false
-        };
-        string? ssuffix = null;
-
-        foreach (var suffix in suffixes)
-        {
-            var files = path.GetFiles(suffix, options);
-            if (files.Length > 0)
-            {
-                ssuffix = files[0].Name[^(suffix.Length - 1)..];
-                break;
-            }
-        }
-
-        return ssuffix is null ? [] : [ssuffix, GetChtSuffix(ssuffix)];
-    }
-
-    private static string GetChtSuffix(string suffix)
-    {
-        var mappings = new[]
-        {
-            new { From = "sc", To = "tc" },
-            new { From = "chs", To = "cht" },
-            new { From = "gb", To = "big5" }
-        };
-
-        var sb = new StringBuilder(suffix);
-
-        foreach (var mapping in mappings)
-        {
-            var index = sb.ToString().IndexOf(mapping.From, StringComparison.OrdinalIgnoreCase);
-            if (index != -1)
-            {
-                var actualFrom = suffix.Substring(index, mapping.From.Length);
-                var replacement = actualFrom.Select((c, i) =>
-                    char.IsUpper(c) ? mapping.To[i].ToString().ToUpper() : mapping.To[i].ToString().ToLower()
-                    ).Aggregate((a, b) => a + b);
-                sb.Replace(actualFrom, replacement, index, mapping.From.Length);
-                break;
-            }
-        }
-        return sb.ToString();
-    }
-
+    
     private static void MergeDiffByDirectory(DirectoryInfo dir, string[] subtitleSuffixes, string startCommitId, string endCommitId, string confName)
     {
         try
         {
-            if (FindGitRootDirectory(dir.FullName, out var repoLocalPath, out var relativePath))
-            {
-                subtitleSuffixes = subtitleSuffixes.Length == 0 ? GetHadSuffixes(dir) : subtitleSuffixes;
-                if (subtitleSuffixes.Length == 0)
-                {
-                    throw new ArgumentException();
-                }
-                else
-                {
-                    var baseSuffix = subtitleSuffixes[0];
-                    var targetSuffix = subtitleSuffixes[1];
-                    Merge.MergeGitDiffToCht(repoLocalPath, startCommitId, endCommitId, relativePath, baseSuffix, targetSuffix, confName);
-                }
-            }
-            else
-            {
-                throw new DirectoryNotFoundException();
-            }
+            MergeSimplifiedChineseGitDiff.MergeDiffByDirectory(dir, subtitleSuffixes, startCommitId, endCommitId, confName);
         }
         catch (ArgumentException)
         {

@@ -4,6 +4,7 @@ using Mobsub.ZhConvert;
 using OpenCCSharp.Conversion;
 using System.CommandLine;
 using System.Text;
+using Mobsub.SubtitleProcess;
 
 namespace Mobsub.Ikkoku.CommandLine;
 
@@ -163,21 +164,12 @@ internal class CJKppCmd
         Console.WriteLine($"Output: {opt}");
         var data = new AssData();
         data.ReadAssFile(f.FullName);
-        var sb = new StringBuilder();
+        var evtConverter = new ConvertSimplifiedChinese(converter);
         Dictionary<int, string[]> changesRecord = [];
 
         foreach (var et in data.Events.Collection)
         {
-            if (!CJKpp.NotZhConvert(et))
-            {
-                CJKpp.StyleZhConvert(et);
-                CJKpp.ZhConvertEventLineByOpenccsharp(et, sb, converter, out var countChanges);
-
-                if (countChanges is not null)
-                {
-                    changesRecord.Add(et.lineNumber, countChanges);
-                }
-            }
+            evtConverter.ZhConvertEventByOpenccSharp(et, changesRecord);
         }
 
         data.WriteAssFile(opt.FullName);
