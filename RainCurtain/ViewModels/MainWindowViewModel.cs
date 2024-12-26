@@ -15,7 +15,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualBasic.FileIO;
-using Mobsub.RainCurtain.Services;
+using Mobsub.Helper.Avalonia.Services;
 using Mobsub.RainCurtain.ViewModels.Converter;
 using Mobsub.SubtitleParse;
 using Mobsub.SubtitleParse.AssTypes;
