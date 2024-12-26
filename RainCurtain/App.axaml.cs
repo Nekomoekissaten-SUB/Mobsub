@@ -4,7 +4,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data.Core.Plugins;
 using Avalonia.Markup.Xaml;
 using Microsoft.Extensions.DependencyInjection;
-using Mobsub.RainCurtain.Services;
+using Mobsub.Helper.Avalonia.Services;
 using Mobsub.RainCurtain.ViewModels;
 using Mobsub.RainCurtain.Views;
 
