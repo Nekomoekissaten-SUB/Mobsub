@@ -18,12 +18,10 @@ public static class MergeSimplifiedChineseGitDiff
             {
                 throw new ArgumentException();
             }
-            else
-            {
-                var baseSuffix = subtitleSuffixes[0];
-                var targetSuffix = subtitleSuffixes[1];
-                MergeGitDiffToCht(repoLocalPath, startCommitId, endCommitId, relativePath, baseSuffix, targetSuffix, confName);
-            }
+
+            var baseSuffix = subtitleSuffixes[0];
+            var targetSuffix = subtitleSuffixes[1];
+            MergeGitDiffToCht(repoLocalPath, startCommitId, endCommitId, relativePath, baseSuffix, targetSuffix, confName);
         }
         else
         {
@@ -32,40 +30,45 @@ public static class MergeSimplifiedChineseGitDiff
     }
     
     
-    private struct MergeGitDiffParams
+    public struct MergeGitDiffParams
     {
         internal bool toCht;
         internal bool isAss;
         internal ChainedScriptConverter? converter;
     }
 
-    public static void MergeGitDiffToCht(string repoLocalPath, string startCommitId, string endCommitId, string relativePath, string baseSuffix, string targetSuffix, string? convConfPath)
+    public static MergeGitDiffParams GetMergeGitDiffParams(string? convConfPath, bool isAss = true)
     {
-        var pfParams = new MergeGitDiffParams() { toCht =  true, isAss = true };
+        var pfParams = new MergeGitDiffParams() { toCht =  true, isAss = isAss };
         if (pfParams.toCht )
         {
             if (convConfPath is null)
             {
                 throw new ArgumentNullException();
             }
-            else
-            {
-                var dicts = OpenCCSharpUtils.LoadJson(new FileInfo(convConfPath));
-                pfParams.converter = OpenCCSharpUtils.GetConverter(dicts);
-            }
+
+            var dicts = OpenCCSharpUtils.LoadJson(new FileInfo(convConfPath));
+            pfParams.converter = OpenCCSharpUtils.GetConverter(dicts);
         }
-        var evtFormats = AssConstants.FormatV4P.Split(',').Select(s => s.Trim()).ToArray();
 
+        return pfParams;
+    }
+
+    public static void MergeGitDiffToCht(string repoLocalPath, string startCommitId, string endCommitId,
+        string relativePath, string baseSuffix, string targetSuffix, string? convConfPath)
+    {
+        var pfParams = GetMergeGitDiffParams(convConfPath);
+        
         using var repo = new Repository(repoLocalPath);
-        var commit1 = repo.Lookup<Commit>(startCommitId);
-        var commit2 = repo.Lookup<Commit>(endCommitId);
-        var tree1 = commit1.Tree;
-        var tree2 = commit2.Tree;
+        var diffs = GetDirectoryPatch(repo, startCommitId, endCommitId, relativePath);
+        MergeGitDiffToCht(diffs, repoLocalPath, baseSuffix, targetSuffix, pfParams);
+    }
+    
+    public static void MergeGitDiffToCht(Patch? diffs, string repoLocalPath, string baseSuffix, string targetSuffix, MergeGitDiffParams pfParams)
+    {
+        if (diffs is null) return;
 
-        var relativePathProcess = relativePath.Contains('\\') ? relativePath.Replace("\\", "/") : relativePath;
-        var diffs = repo.Diff.Compare<Patch>(tree1, tree2, new[] { relativePathProcess });
-        var fullPath = new FileInfo(Path.Combine(repoLocalPath, relativePathProcess)).FullName;
-        var filterDiffs = Directory.Exists(fullPath) ? diffs.Where(f => f.Path.EndsWith(baseSuffix)) : diffs;
+        var evtFormats = AssConstants.FormatV4P.Split(',').Select(s => s.Trim()).ToArray();
 
         foreach (var diff in diffs)
         {
@@ -115,6 +118,20 @@ public static class MergeSimplifiedChineseGitDiff
         }
     }
 
+    public static Patch? GetDirectoryPatch(Repository repo, string startCommitId, string endCommitId, string relativePath)
+    {
+        var commit1 = repo.Lookup<Commit>(startCommitId);
+        var commit2 = repo.Lookup<Commit>(endCommitId);
+        var tree1 = commit1.Tree;
+        var tree2 = commit2.Tree;
+        
+        var relativePathProcess = relativePath.Contains('\\') ? relativePath.Replace("\\", "/") : relativePath;
+        var diffs = repo.Diff.Compare<Patch>(tree1, tree2, new[] { relativePathProcess });
+        // var fullPath = new FileInfo(Path.Combine(repoRootPath, relativePathProcess)).FullName;
+        // var filterDiffs = Directory.Exists(fullPath) ? diffs.Where(f => f.Path.EndsWith(baseSuffix)) : diffs;
+        return diffs;
+    }
+    
     private static IEnumerable<string> MergeGitDiff(StreamReader sr, List<Line> deleteLines, List<Line> addLines, MergeGitDiffParams pfParams, string[]? formats)
     {
         // now only line by line correspondence
@@ -211,7 +228,7 @@ public static class MergeSimplifiedChineseGitDiff
     }
 
     
-    private static bool FindGitRootDirectory(string startPath, out string rootPath, out string relativePath)
+    public static bool FindGitRootDirectory(string startPath, out string rootPath, out string relativePath)
     {
         var currentPath = startPath;
         rootPath = relativePath = string.Empty;

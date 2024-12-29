@@ -1,0 +1,29 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>WinExe</OutputType>
+        <Nullable>enable</Nullable>
+        <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+        <ApplicationManifest>app.manifest</ApplicationManifest>
+        <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+        <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
+        <RootNamespace>Mobsub.IkkokuMergeBaseDiff</RootNamespace>
+        <PackageId>Mobsub.IkkokuMergeBaseDiff</PackageId>
+        <AssemblyName>IkkokuMergeBaseDiff</AssemblyName>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Folder Include="Models\"/>
+        <AvaloniaResource Include="Assets\**"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="LibGit2Sharp" Version="0.31.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\SubtitleParse\SubtitleParse.csproj" />
+      <ProjectReference Include="..\..\SubtitleProcessNotAot\Mobsub.SubtitleProcessNotAot.csproj" />
+      <ProjectReference Include="..\..\ZhConvert\ZhConvert.csproj" />
+      <ProjectReference Include="..\..\Helper.Avalonia\Mobsub.Helper.Avalonia.csproj" />
+    </ItemGroup>
+</Project>

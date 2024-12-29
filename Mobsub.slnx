@@ -1,10 +1,14 @@
 ﻿<Solution>
+  <Project Path="Helper.Avalonia\Mobsub.Helper.Avalonia.csproj" Type="Classic C#" />
   <Project Path="Helper\Helper.csproj" Type="Classic C#" />
   <Project Path="Ikkoku\Ikkoku.csproj" />
   <Project Path="Native\Mobsub.Native.csproj" Type="Classic C#" />
   <Project Path="RainCurtain\Mobsub.RainCurtain.csproj" Type="Classic C#" />
+  <Project Path="SimpleTools\IkkokuMergeBaseDiff\Mobsub.IkkokuMergeBaseDiff.csproj" Type="Classic C#" />
   <Project Path="SubtitleParse.SourceGen\SubtitleParse.SourceGen.csproj" Type="Classic C#" />
   <Project Path="SubtitleParse\SubtitleParse.csproj" />
+  <Project Path="SubtitleProcessNotAot\Mobsub.SubtitleProcessNotAot.csproj" Type="Classic C#" />
+  <Project Path="SubtitleProcess\Mobsub.SubtitleProcess.csproj" Type="Classic C#" />
   <Project Path="Test\Test.csproj" />
   <Project Path="ZhConvert\ZhConvert.csproj" />
 </Solution>
