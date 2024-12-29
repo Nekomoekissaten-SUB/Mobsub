@@ -1,0 +1,65 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:viewModels="clr-namespace:Mobsub.IkkokuMergeBaseDiff.ViewModels"
+        xmlns:converter="clr-namespace:Mobsub.IkkokuMergeBaseDiff.ViewModels.Converter"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="Mobsub.IkkokuMergeBaseDiff.Views.MainWindow"
+        x:DataType="viewModels:MainWindowViewModel"
+        Icon="/Assets/avalonia-logo.ico"
+        Title="IkkokuMergeBaseDiff">
+
+    <Design.DataContext>
+        <!-- This only sets the DataContext for the previewer in an IDE,
+             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
+        <viewModels:MainWindowViewModel/>
+    </Design.DataContext>
+
+    <Window.Resources>
+        <converter:DisplayCommitConverter x:Key="DisplayCommitConverter"/>
+    </Window.Resources>
+    
+    <DockPanel>
+        <Grid RowDefinitions="45, 45, 45, *" ShowGridLines="True">
+            <WrapPanel>
+                <TextBlock Margin="10" VerticalAlignment="Center" Text="Path:" Width="50"></TextBlock>
+                <TextBox Margin="5" VerticalAlignment="Center" Width="400" AcceptsReturn="False" Text="{Binding WorkDirectory}"></TextBox>
+                <Button Margin="5" VerticalAlignment="Center" FontSize="10" Command="{Binding SelectWorkDirectoryCommand}">...</Button>
+                <TextBlock Margin="10" Text="{Binding GitRepositoryPath}"></TextBlock>
+            </WrapPanel>
+            <WrapPanel Grid.Row="1">
+                <TextBlock Margin="10" VerticalAlignment="Center" Text="Start:" Width="50"></TextBlock>
+                <ComboBox Margin="5" SelectedIndex="0"
+                          ItemsSource="{Binding StartCommits}" SelectedItem="{Binding StartCommit}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Converter={StaticResource DisplayCommitConverter}}" />
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+                
+                <TextBlock Margin="50,10,10,10" VerticalAlignment="Center" Text="End:" Width="30"></TextBlock>
+                <ComboBox Margin="5" SelectedIndex="0"
+                          ItemsSource="{Binding EndCommits}" SelectedItem="{Binding EndCommit}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Converter={StaticResource DisplayCommitConverter}}" />
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+                
+                <!-- <Button Margin="10" FontSize="10" Command="{Binding DisplayPatchChangesCommand}">View Changes</Button> -->
+            </WrapPanel>
+            
+            <WrapPanel Grid.Row="2">
+                <TextBlock Margin="10" VerticalAlignment="Center" Text="Config:" Width="50"></TextBlock>
+                <TextBox Margin="5" VerticalAlignment="Center" Width="400" AcceptsReturn="False" Text="{Binding ZhConvertConfig}"></TextBox>
+                <Button Margin="5" VerticalAlignment="Center" FontSize="10" Command="{Binding SelectZhConvertConfigCommand}">...</Button>
+                <Button Margin="5" VerticalAlignment="Center" FontSize="10" Command="{Binding MergePatchCommand}">Merge</Button>
+            </WrapPanel>
+            
+        </Grid>
+    </DockPanel>
+
+</Window>
