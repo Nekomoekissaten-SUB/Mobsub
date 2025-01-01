@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-namespace Mobsub.Ikkoku.FormatData;
+namespace Mobsub.SubtitleProcess.FormatData;
 
 public class AVTimestamp
 {

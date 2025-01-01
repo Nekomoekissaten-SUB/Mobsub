@@ -3,7 +3,7 @@ using YamlDotNet.Core;
 using YamlDotNet.Core.Events;
 using System.Text;
 
-namespace Mobsub.Ikkoku.FormatData;
+namespace Mobsub.SubtitleProcess.FormatData;
 
 [YamlSerializable]
 public class ShiftMergeYaml

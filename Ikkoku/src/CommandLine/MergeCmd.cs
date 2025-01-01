@@ -1,12 +1,7 @@
-﻿using Mobsub.Ikkoku.FormatData;
-using Mobsub.SubtitleParse.AssTypes;
-using System.Diagnostics;
-using YamlDotNet.Serialization.NamingConventions;
-using YamlDotNet.Serialization;
-using Mobsub.Ikkoku.SubtileProcess;
+﻿using Mobsub.SubtitleParse.AssTypes;
 using System.CommandLine;
-using System.Text;
 using Mobsub.SubtitleProcessNotAot;
+using Mobsub.SubtitleProcess;
 
 namespace Mobsub.Ikkoku.CommandLine;
 
@@ -126,8 +121,21 @@ internal class MergeCmd
         }
         else
         {
-            DirectoryInfo baseDir = conf.Directory!;
+            var baseDir = conf.Directory!;
+            var mergeConf = new MergeByConfig(conf.FullName);
 
+            switch (optPath)
+            {
+                case DirectoryInfo d:
+                    if (!d.Exists)
+                    {
+                        d.Create();
+                    }
+                    break;
+                default:
+                    throw new ArgumentException("Output must be a directory.");
+            }
+            
             var _sepIndex = confVar![0].AsSpan().IndexOf(':');
 
             if (_sepIndex > -1)
@@ -137,7 +145,7 @@ internal class MergeCmd
                     var minLength = confVar[0].Length - _sepIndex - 1;
                     for (var i = _epStart; i <= _epEnd; i++)
                     {
-                        MergeByConfigBase(i.ToString().PadLeft(CountDigits(_epEnd, minLength), '0'), confVar[1], conf, baseDir, optPath, mergeSection);
+                        mergeConf.Merge(i.ToString().PadLeft(CountDigits(_epEnd, minLength)), confVar[1], baseDir.FullName, optPath.FullName, mergeSection);
                     }
                 }
                 else
@@ -147,7 +155,7 @@ internal class MergeCmd
             }
             else
             {
-                MergeByConfigBase(confVar[0], confVar[1], conf, baseDir, optPath, mergeSection);
+                mergeConf.Merge(confVar[0], confVar[1], baseDir.FullName, optPath.FullName, mergeSection);
             }
         }
     }
@@ -162,84 +170,8 @@ internal class MergeCmd
         }).ToArray();
         var baseData = new AssData();
         baseData.ReadAssFile(baseFile.FullName);
-        Merge.MergeAss(baseData, mergeData, mergeSection);
+        MergeCommon.MergeAss(baseData, mergeData, mergeSection);
         Utils.WriteAssToPath(baseData, baseFile, optPath);
-    }
-
-    private static void MergeByConfigBase(string episode, string lang, FileInfo conf, DirectoryInfo baseDir, FileSystemInfo optPath, string mergeSection)
-    {
-
-        var tmpValues = new ShiftMergeYamlValue(episode, lang);
-        var ymlString = File.ReadAllText(conf.FullName);
-        if (ymlString.Length == 0)
-        {
-            throw new FormatException("Configuration file is empty.");
-        }
-        var _deserializer = new StaticDeserializerBuilder(new YamlStaticContext()).WithNodeDeserializer(tmpValues).WithNamingConvention(UnderscoredNamingConvention.Instance).Build();
-        if (!ymlString.AsSpan().StartsWith("version")) { Debug.Assert(ShiftMergeYaml.ConvertToV2File(conf.FullName)); }
-        var ymlData = ymlString.AsSpan().StartsWith("version") ? _deserializer.Deserialize<ShiftMergeYamlV2>(ymlString) : _deserializer.Deserialize<ShiftMergeYaml>(ymlString).CovertToV2();
-        Debug.Assert(ymlData is not null);
-
-        var baseFileName = $"{ymlData.Namef["master"]}.ass";
-        var mergeDataList = new List<AssData>();
-
-        string optFileName;
-        switch (optPath)
-        {
-            case DirectoryInfo d:
-                if (!d.Exists)
-                {
-                    d.Create();
-                }
-                optFileName = Path.Combine(optPath.FullName, baseFileName);
-                break;
-            default:
-                throw new ArgumentException("Output must be a directory.");
-        }
-
-        string[]? mergePartName = null;
-        foreach (var kvp in ymlData.ShiftFr.Where(kvp => kvp.Key == episode))
-        {
-            TimeSpan tsp;
-            foreach (var kvpEp in kvp.Value)
-            {
-                if (kvpEp.Value.Length > 3 || (kvpEp.Value.Length > 1 && kvpEp.Value[1] != -1 && (kvpEp.Value[1] - ymlData.TplFr[kvpEp.Key] != kvpEp.Value[0])))
-                {
-                    throw new Exception("Merge: Please check your configuration file shift_fr, it may be wrong.");
-                }
-
-                var dataFrom = new AssData();
-                dataFrom.ReadAssFile(Path.Combine(baseDir.FullName, $"{ymlData.Namef[kvpEp.Key]}.ass"));
-                tsp = Utils.GetTimespan($"{kvpEp.Value[0]}frm", ymlData.Fps);
-
-                if (kvpEp.Value.Length == 3 && kvpEp.Value[2] != -1)
-                {
-                    var start = new AssTime((int)Utils.FrameToMillisecond(kvpEp.Value[2], Utils.UnifiedFps(ymlData.Fps)));
-                    Tpp.ShiftAss(dataFrom.Events.Collection, tsp, start);
-                }
-                else
-                {
-                    Tpp.ShiftAss(dataFrom.Events.Collection, tsp);
-                }
-
-                mergeDataList.Add(dataFrom);
-            }
-            if (!ymlData.ConvertFromV1) { mergePartName = kvp.Value.Keys.ToArray(); }
-        }
-
-        var baseData = new AssData();
-        var bf = Path.Combine(baseDir.FullName, baseFileName);
-        baseData.ReadAssFile(bf);
-
-        if (mergeDataList.Count == 0)
-        {
-            File.Copy(bf, optFileName);
-        }
-        else
-        {
-            Merge.MergeAss(baseData, [.. mergeDataList], mergeSection, mergePartName);
-            baseData.WriteAssFile(optFileName);
-        }
     }
 
     private static void ExecuteBaseDiff(FileSystemInfo path, string startCommitId, string endCommitId, FileInfo convConf, string[] subtitleSuffixes)

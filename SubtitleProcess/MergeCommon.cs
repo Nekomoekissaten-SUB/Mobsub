@@ -1,8 +1,8 @@
 using Mobsub.SubtitleParse.AssTypes;
 
-namespace Mobsub.Ikkoku.SubtileProcess;
+namespace Mobsub.SubtitleProcess;
 
-public partial class Merge
+public class MergeCommon
 {
     public static void MergeAss(AssData baseData, AssData[] mergeData, string mergeType, string[]? commentEventLineStyleHeader = null)
     {
@@ -39,7 +39,7 @@ public partial class Merge
                 foreach (var st in md.Styles.Names)
                 {
                     var _add = true;
-                    var mSyl = md.Styles.Collection.Where(x => x.Name == st).First();
+                    var mSyl = md.Styles.Collection.First(x => x.Name == st);
                     // should override when duplicate style name
                     if (!baseData.Styles.Names.Add(st))
                     {

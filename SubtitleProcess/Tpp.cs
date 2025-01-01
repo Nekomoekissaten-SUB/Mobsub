@@ -1,8 +1,8 @@
-using Mobsub.SubtitleParse.AssTypes;
-using Mobsub.Ikkoku.FormatData;
 using System.Diagnostics;
+using Mobsub.SubtitleParse.AssTypes;
+using Mobsub.SubtitleProcess.FormatData;
 
-namespace Mobsub.Ikkoku.SubtileProcess;
+namespace Mobsub.SubtitleProcess;
 
 public class Tpp
 {
