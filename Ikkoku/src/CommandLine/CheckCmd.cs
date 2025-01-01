@@ -1,7 +1,5 @@
-﻿using Mobsub.SubtitleParse.AssTypes;
-using Mobsub.SubtitleParse.AssUtils;
-using Mobsub.Ikkoku.SubtileProcess;
-using System.CommandLine;
+﻿using System.CommandLine;
+using Mobsub.SubtitleProcess;
 
 namespace Mobsub.Ikkoku.CommandLine;
 

@@ -2,6 +2,7 @@
 using Mobsub.SubtitleParse.AssTypes;
 using Mobsub.SubtitleParse.PGS;
 using System.CommandLine;
+using Mobsub.SubtitleProcess;
 
 namespace Mobsub.Ikkoku.CommandLine;
 

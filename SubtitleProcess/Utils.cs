@@ -1,12 +1,11 @@
-﻿using Mobsub.Ikkoku.FormatData;
-using Mobsub.SubtitleParse.AssTypes;
+﻿using Mobsub.SubtitleParse.AssTypes;
 using System.Text;
 
-namespace Mobsub.Ikkoku;
+namespace Mobsub.SubtitleProcess;
 
-internal class Utils
+public class Utils
 {
-    internal static void RemoveChar(StringBuilder sb, char[] chars)
+    public static void RemoveChar(StringBuilder sb, char[] chars)
     {
         for (int i = 0; i < sb.Length; i++)
         {
@@ -21,7 +20,7 @@ internal class Utils
         }
     }
 
-    internal static void RemoveChar(StringBuilder sb, char c)
+    public static void RemoveChar(StringBuilder sb, char c)
     {
         for (int i = 0; i < sb.Length; i++)
         {
@@ -33,9 +32,9 @@ internal class Utils
         }
     }
 
-    internal static FileInfo[] Traversal(DirectoryInfo path, string ext) => path.GetFiles().Where(fi => fi.Extension == ext).ToArray();
+    public static FileInfo[] Traversal(DirectoryInfo path, string ext) => path.GetFiles().Where(fi => fi.Extension == ext).ToArray();
 
-    internal static TimeSpan GetTimespan(string shiftSpan, string fps)
+    public static TimeSpan GetTimespan(string shiftSpan, string fps)
     {
         var ss = shiftSpan.AsSpan();
         TimeSpan tsp;
@@ -83,9 +82,9 @@ internal class Utils
         return tsp;
     }
 
-    internal static double FrameToMillisecond(int frame, decimal fps) => (double)(frame / fps) * 1000;
+    public static double FrameToMillisecond(int frame, decimal fps) => (double)(frame / fps) * 1000;
 
-    internal static decimal UnifiedFps(string fpsString)
+    public static decimal UnifiedFps(string fpsString)
     {
         string[] Arr24 = ["23.976", "23.98"];
         string[] Arr30 = ["29.970", "29.97"];
@@ -114,7 +113,7 @@ internal class Utils
         }
     }
 
-    internal static void WriteAssToPath(AssData data, FileInfo baseFile, FileSystemInfo optPath)
+    public static void WriteAssToPath(AssData data, FileInfo baseFile, FileSystemInfo optPath)
     {
         switch (optPath)
         {
@@ -131,8 +130,8 @@ internal class Utils
         }
     }
 
-    internal static FileInfo ChangeSuffix(FileInfo f, string suffix) => ChangeSuffix(f, f.Directory!, suffix);
-    internal static FileInfo ChangeSuffix(FileInfo f, DirectoryInfo dir, string suffix)
+    public static FileInfo ChangeSuffix(FileInfo f, string suffix) => ChangeSuffix(f, f.Directory!, suffix);
+    public static FileInfo ChangeSuffix(FileInfo f, DirectoryInfo dir, string suffix)
     {
         return new FileInfo(Path.Combine(dir.FullName, Path.GetFileNameWithoutExtension(f.FullName) + suffix));
     }
