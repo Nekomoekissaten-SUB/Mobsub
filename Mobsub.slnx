@@ -5,6 +5,7 @@
   <Project Path="Native\Mobsub.Native.csproj" Type="Classic C#" />
   <Project Path="RainCurtain\Mobsub.RainCurtain.csproj" Type="Classic C#" />
   <Project Path="SimpleTools\IkkokuMergeBaseDiff\Mobsub.IkkokuMergeBaseDiff.csproj" Type="Classic C#" />
+  <Project Path="SimpleTools\Mobsub.SubtitlesPublic\Mobsub.SubtitlesPublic.csproj" Type="Classic C#" />
   <Project Path="SubtitleParse.SourceGen\SubtitleParse.SourceGen.csproj" Type="Classic C#" />
   <Project Path="SubtitleParse\SubtitleParse.csproj" />
   <Project Path="SubtitleProcessNotAot\Mobsub.SubtitleProcessNotAot.csproj" Type="Classic C#" />
