@@ -127,6 +127,11 @@ public partial class AssEvent(ILogger? logger = null) : ObservableObject
         {
             nextSep = sp[startIndex..].IndexOf(sepChar) + startIndex;
 
+            if (nextSep < startIndex)
+            {
+                throw new FormatException($"Invalid line: '{sp.ToString()}'");
+            }
+            
             var v = sp[startIndex..nextSep].ToString();
 
             switch (fmts[segCount])
