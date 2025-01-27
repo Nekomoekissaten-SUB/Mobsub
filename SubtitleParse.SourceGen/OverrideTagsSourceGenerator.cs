@@ -79,6 +79,9 @@ public class OverrideTagsSourceGenerator : ISourceGenerator
         sbTagsAnimateable.AppendLine();
         var sbTagsShouldBeFunction = new StringBuilder("    public static readonly HashSet<string> OverrideTagsShouldBeFunction = [");
         sbTagsShouldBeFunction.AppendLine();
+
+        var sbGetProp = new StringBuilder();
+        var sbTryGetProp = new StringBuilder();
         
         foreach (var member in syntax.Members)
         {
@@ -110,6 +113,7 @@ public class OverrideTagsSourceGenerator : ISourceGenerator
             if (propertyType is not null & !propertyNames.Contains(propertyNameLast))
             {
                 sbDef.AppendLine($"    public {propertyType}? {propertyNameLast} {{ get; set; }}");
+                sbGetProp.AppendLine($"    public {propertyType}? Get{propertyNameLast}() => this.{propertyNameLast};");
                 propertyNames.Add(propertyNameLast);
             }
             
@@ -158,67 +162,43 @@ public class OverrideTagsSourceGenerator : ISourceGenerator
             {
                 if (propertyType is null) { continue; }
                 var gFuncArgs = generalParseFuncAttr.ArgumentList!.Arguments;
+
                 var stylePropName = gFuncArgs[0].ToString().Trim('"');
                 var isLimit = gFuncArgs.Count > 1 && gFuncArgs[1].ToString() == "true";
+                var isGeneralParse = gFuncArgs.Count == 2 || !(gFuncArgs.Count > 2 && gFuncArgs[2].ToString() == "false");
                 
-                switch (propertyType)
+                if (isGeneralParse)
                 {
-                    case "bool":
-                        sbGeneralParse.AppendLine($$"""
-                                                        private void {{parseMethod}}(ReadOnlySpan<char> span)
-                                                        {
-                                                            if (IsEmptyOrWhiteSpace(span))
+                    switch (propertyType)
+                    {
+                        case "bool":
+                            sbGeneralParse.AppendLine($$"""
+                                                            private void {{parseMethod}}(ReadOnlySpan<char> span)
                                                             {
-                                                               if (span.Length > 0)
-                                                               {
-                                                                   logger?.ZLogWarning($"Extra whitespace: {AssConstants.OverrideTags.{{propertyName}}}{span.ToString()}");
-                                                               }
-                                                               curTextStyle!.{{propertyNameLast}} = curTextStyle.BaseStyle.{{stylePropName}};
-                                                            }
-                                                            else
-                                                            {
-                                                                if (!int.TryParse(span, out var v))
+                                                                if (IsEmptyOrWhiteSpace(span))
                                                                 {
-                                                                    logger?.ZLogWarning($"Invalid value: {AssConstants.OverrideTags.{{propertyName}}}{span.ToString()}");
+                                                                   if (span.Length > 0)
+                                                                   {
+                                                                       logger?.ZLogWarning($"Extra whitespace: {AssConstants.OverrideTags.{{propertyName}}}{span.ToString()}");
+                                                                   }
+                                                                   curTextStyle!.{{propertyNameLast}} = curTextStyle.BaseStyle.{{stylePropName}};
                                                                 }
-                                                                curTextStyle!.{{propertyNameLast}} = v != 0 && (v == 1 || curTextStyle.BaseStyle.{{stylePropName}});
-                                                            }
-                                                        }
-                                                    """);
-                        break;
-                    
-                    case "int":
-                        var defaultValue = stylePropName == "null" ? "0" : $"curTextStyle.BaseStyle.{stylePropName}";
-                        sbGeneralParse.AppendLine($$"""
-                                                        private void {{parseMethod}}(ReadOnlySpan<char> span)
-                                                        {
-                                                            if (IsEmptyOrWhiteSpace(span))
-                                                            {
-                                                               if (span.Length > 0)
-                                                               {
-                                                                   logger?.ZLogWarning($"Extra whitespace: {AssConstants.OverrideTags.{{propertyName}}}{span.ToString()}");
-                                                               }
-                                                               curTextStyle!.{{propertyNameLast}} = {{defaultValue}};
-                                                            }
-                                                            else
-                                                            {
-                                                                if (!int.TryParse(span, out var v))
+                                                                else
                                                                 {
-                                                                    logger?.ZLogWarning($"Invalid value: {AssConstants.OverrideTags.{{propertyName}}}{span.ToString()}");
+                                                                    if (!int.TryParse(span, out var v))
+                                                                    {
+                                                                        logger?.ZLogWarning($"Invalid value: {AssConstants.OverrideTags.{{propertyName}}}{span.ToString()}");
+                                                                    }
+                                                                    curTextStyle!.{{propertyNameLast}} = v != 0 && (v == 1 || curTextStyle.BaseStyle.{{stylePropName}});
                                                                 }
-                                                                curTextStyle!.{{propertyNameLast}} = v;
                                                             }
-                                                        }
-                                                    """);
-                        break;
-                    
-                    case "double":
+                                                        """);
+                            break;
 
-                        defaultValue = stylePropName == "null" ? "0" : $"curTextStyle.BaseStyle.{stylePropName}";
-                        var assignValue = isLimit ? $"v < 0 ? {defaultValue} : v" : "v";
-                        
-                        if (!isAnimateable)
-                        {
+                        case "int":
+                            var defaultValue = stylePropName == "null"
+                                ? "0"
+                                : $"curTextStyle.BaseStyle.{stylePropName}";
                             sbGeneralParse.AppendLine($$"""
                                                             private void {{parseMethod}}(ReadOnlySpan<char> span)
                                                             {
@@ -232,128 +212,212 @@ public class OverrideTagsSourceGenerator : ISourceGenerator
                                                                 }
                                                                 else
                                                                 {
-                                                                    if (!double.TryParse(span, out var v))
+                                                                    if (!int.TryParse(span, out var v))
                                                                     {
                                                                         logger?.ZLogWarning($"Invalid value: {AssConstants.OverrideTags.{{propertyName}}}{span.ToString()}");
                                                                     }
-                                                                    curTextStyle!.{{propertyNameLast}} = {{assignValue}};
+                                                                    curTextStyle!.{{propertyNameLast}} = v;
                                                                 }
                                                             }
                                                         """);
-                        }
-                        else
-                        {
+                            break;
+
+                        case "double":
+
+                            defaultValue = stylePropName == "null" ? "0" : $"curTextStyle.BaseStyle.{stylePropName}";
+                            var assignValue = isLimit ? $"v < 0 ? {defaultValue} : v" : "v";
+
+                            if (!isAnimateable)
+                            {
+                                sbGeneralParse.AppendLine($$"""
+                                                                private void {{parseMethod}}(ReadOnlySpan<char> span)
+                                                                {
+                                                                    if (IsEmptyOrWhiteSpace(span))
+                                                                    {
+                                                                       if (span.Length > 0)
+                                                                       {
+                                                                           logger?.ZLogWarning($"Extra whitespace: {AssConstants.OverrideTags.{{propertyName}}}{span.ToString()}");
+                                                                       }
+                                                                       curTextStyle!.{{propertyNameLast}} = {{defaultValue}};
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        if (!double.TryParse(span, out var v))
+                                                                        {
+                                                                            logger?.ZLogWarning($"Invalid value: {AssConstants.OverrideTags.{{propertyName}}}{span.ToString()}");
+                                                                        }
+                                                                        curTextStyle!.{{propertyNameLast}} = {{assignValue}};
+                                                                    }
+                                                                }
+                                                            """);
+                            }
+                            else
+                            {
+                                sbGeneralParse.AppendLine($$"""
+                                                                private void {{parseMethod}}(ReadOnlySpan<char> span)
+                                                                {
+                                                                    if (IsEmptyOrWhiteSpace(span))
+                                                                    {
+                                                                       if (span.Length > 0)
+                                                                       {
+                                                                           logger?.ZLogWarning($"Extra whitespace: {AssConstants.OverrideTags.{{propertyName}}}{span.ToString()}");
+                                                                       }
+                                                                       if (inTransformation)
+                                                                       {
+                                                                           curTextStyleTrans!.TransTextStyle!.{{propertyNameLast}} = {{defaultValue}};
+                                                                       }
+                                                                       else
+                                                                       {
+                                                                           curTextStyle!.{{propertyNameLast}} = {{defaultValue}};
+                                                                       }
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        if (!double.TryParse(span, out var v))
+                                                                        {
+                                                                            logger?.ZLogWarning($"Invalid value: {AssConstants.OverrideTags.{{propertyName}}}{span.ToString()}");
+                                                                        }
+                                                                        if (inTransformation)
+                                                                        {
+                                                                            curTextStyleTrans!.TransTextStyle!.{{propertyNameLast}} = {{assignValue}};
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            curTextStyle!.{{propertyNameLast}} = {{assignValue}};
+                                                                        }
+                                                                    }
+                                                                }
+                                                            """);
+                            }
+
+                            break;
+
+                        case "AssTextBorder":
+                        case "AssTextShadow":
+                        case "AssTextScale":
+
+                            var stylePropNameX = propertyType == "AssTextScale" ? $"{stylePropName}X" : stylePropName;
+                            var stylePropNameY = propertyType == "AssTextScale" ? $"{stylePropName}Y" : stylePropName;
+                            var isBase = !(propertyName.AsSpan().EndsWith("X".AsSpan()) ||
+                                           propertyName.AsSpan().EndsWith("Y".AsSpan()));
+
                             sbGeneralParse.AppendLine($$"""
-                                                            private void {{parseMethod}}(ReadOnlySpan<char> span)
+                                                            private void {{parseMethod}}(ReadOnlySpan<char> span, int index)
                                                             {
+                                                                var value = inTransformation switch
+                                                                {
+                                                                    true when curTextStyleTrans!.TransTextStyle.{{propertyNameLast}} is not null => ({{propertyType}})curTextStyleTrans.TransTextStyle.{{propertyNameLast}},
+                                                                    false when curTextStyle!.{{propertyNameLast}} is not null => ({{propertyType}})curTextStyle.{{propertyNameLast}},
+                                                                    _ => new {{propertyType}}()
+                                                                    {
+                                                                        X = curTextStyle!.BaseStyle.{{stylePropNameX}},
+                                                                        Y = curTextStyle!.BaseStyle.{{stylePropNameY}},
+                                                                    }
+                                                                };
+                                                                
+                                                                var tag = index switch
+                                                                {
+                                                                    {{(isBase ? $"0 => AssConstants.OverrideTags.{propertyName}," : "")}}
+                                                                    1 => AssConstants.OverrideTags.{{(isBase ? propertyName : propertyName.TrimEnd('X'))}}X,
+                                                                    2 => AssConstants.OverrideTags.{{(isBase ? propertyName : propertyName.TrimEnd('X'))}}Y,
+                                                                    _ => string.Empty
+                                                                };
+                                                                
                                                                 if (IsEmptyOrWhiteSpace(span))
                                                                 {
-                                                                   if (span.Length > 0)
-                                                                   {
-                                                                       logger?.ZLogWarning($"Extra whitespace: {AssConstants.OverrideTags.{{propertyName}}}{span.ToString()}");
-                                                                   }
-                                                                   if (inTransformation)
-                                                                   {
-                                                                       curTextStyleTrans!.TransTextStyle!.{{propertyNameLast}} = {{defaultValue}};
-                                                                   }
-                                                                   else
-                                                                   {
-                                                                       curTextStyle!.{{propertyNameLast}} = {{defaultValue}};
-                                                                   }
+                                                                    if (span.Length > 0)
+                                                                    {
+                                                                        logger?.ZLogWarning($"Extra whitespace: {tag}{span.ToString()}");
+                                                                    }
                                                                 }
                                                                 else
                                                                 {
                                                                     if (!double.TryParse(span, out var v))
                                                                     {
-                                                                        logger?.ZLogWarning($"Invalid value: {AssConstants.OverrideTags.{{propertyName}}}{span.ToString()}");
+                                                                        logger?.ZLogWarning($"Invalid value: {tag}{span.ToString()}");
                                                                     }
-                                                                    if (inTransformation)
+                                                                    v = v < 0 ? 0 : v;
+                                                                    
+                                                                    switch (index)
                                                                     {
-                                                                        curTextStyleTrans!.TransTextStyle!.{{propertyNameLast}} = {{assignValue}};
+                                                                        case 0:
+                                                                            value.X = v;
+                                                                            value.Y = v;
+                                                                            break;
+                                                                        case 1:
+                                                                            value.X = v;
+                                                                            break;
+                                                                        case 2:
+                                                                            value.Y = v;
+                                                                            break;
                                                                     }
-                                                                    else
-                                                                    {
-                                                                        curTextStyle!.{{propertyNameLast}} = {{assignValue}};
-                                                                    }
+                                                                }
+                                                                
+                                                                if (inTransformation)
+                                                                {
+                                                                    curTextStyleTrans!.TransTextStyle.{{propertyNameLast}} = value;
+                                                                }
+                                                                else
+                                                                {
+                                                                    curTextStyle!.{{propertyNameLast}} = value;
                                                                 }
                                                             }
                                                         """);
-                        }
-                        
-                        break;
-                    
-                    case "AssTextBorder":
-                    case "AssTextShadow":
-                    case "AssTextScale":
+                            break;
+                    }
+                }
 
-                        var stylePropNameX = propertyType == "AssTextScale" ? $"{stylePropName}X" : stylePropName;
-                        var stylePropNameY = propertyType == "AssTextScale" ? $"{stylePropName}Y" : stylePropName;
-                        var isBase = !(propertyName.AsSpan().EndsWith("X".AsSpan()) ||
-                                      propertyName.AsSpan().EndsWith("Y".AsSpan()));
-                        
-                        sbGeneralParse.AppendLine($$"""
-                                                        private void {{parseMethod}}(ReadOnlySpan<char> span, int index)
-                                                        {
-                                                            var value = inTransformation switch
-                                                            {
-                                                                true when curTextStyleTrans!.TransTextStyle.{{propertyNameLast}} is not null => ({{propertyType}})curTextStyleTrans.TransTextStyle.{{propertyNameLast}},
-                                                                false when curTextStyle!.{{propertyNameLast}} is not null => ({{propertyType}})curTextStyle.{{propertyNameLast}},
-                                                                _ => new {{propertyType}}()
-                                                                {
-                                                                    X = curTextStyle!.BaseStyle.{{stylePropNameX}},
-                                                                    Y = curTextStyle!.BaseStyle.{{stylePropNameY}},
-                                                                }
-                                                            };
-                                                            
-                                                            var tag = index switch
-                                                            {
-                                                                {{(isBase ? $"0 => AssConstants.OverrideTags.{propertyName}," : "")}}
-                                                                1 => AssConstants.OverrideTags.{{(isBase ? propertyName : propertyName.TrimEnd('X'))}}X,
-                                                                2 => AssConstants.OverrideTags.{{(isBase ? propertyName : propertyName.TrimEnd('X'))}}Y,
-                                                                _ => string.Empty
-                                                            };
-                                                            
-                                                            if (IsEmptyOrWhiteSpace(span))
-                                                            {
-                                                                if (span.Length > 0)
-                                                                {
-                                                                    logger?.ZLogWarning($"Extra whitespace: {tag}{span.ToString()}");
-                                                                }
-                                                            }
-                                                            else
-                                                            {
-                                                                if (!double.TryParse(span, out var v))
-                                                                {
-                                                                    logger?.ZLogWarning($"Invalid value: {tag}{span.ToString()}");
-                                                                }
-                                                                v = v < 0 ? 0 : v;
-                                                                
-                                                                switch (index)
-                                                                {
-                                                                    case 0:
-                                                                        value.X = v;
-                                                                        value.Y = v;
-                                                                        break;
-                                                                    case 1:
-                                                                        value.X = v;
-                                                                        break;
-                                                                    case 2:
-                                                                        value.Y = v;
-                                                                        break;
-                                                                }
-                                                            }
-                                                            
-                                                            if (inTransformation)
-                                                            {
-                                                                curTextStyleTrans!.TransTextStyle.{{propertyNameLast}} = value;
-                                                            }
-                                                            else
-                                                            {
-                                                                curTextStyle!.{{propertyNameLast}} = value;
-                                                            }
-                                                        }
-                                                    """);
-                        break;
+                sbTryGetProp.AppendLine($$"""
+                              public bool TryGet{{propertyNameLast}}(out {{propertyType}} lastValue)
+                              {
+                                  var value = Get{{propertyNameLast}}();
+                                  if (value is not null)
+                                  {
+                                     lastValue = ({{propertyType}})value;
+                                     return true;
+                                  }
+                          """);
+
+                if (stylePropName != "null")
+                {
+                    switch (propertyType)
+                    {
+                        case "AssTextBorder" or "AssTextShadow":
+                            sbTryGetProp.AppendLine($$"""
+                                                              lastValue = new {{propertyType}}()
+                                                              {
+                                                                  X = baseStyle.{{stylePropName}},
+                                                                  Y = baseStyle.{{stylePropName}},
+                                                              };
+                                                      """);
+                            break;
+                        case "AssTextScale":
+                            sbTryGetProp.AppendLine($$"""
+                                                              lastValue = new {{propertyType}}()
+                                                              {
+                                                                  X = baseStyle.{{stylePropName}}X,
+                                                                  Y = baseStyle.{{stylePropName}}Y,
+                                                              };
+                                                      """);
+                            break;
+                        default:
+                            sbTryGetProp.AppendLine($"        lastValue = baseStyle.{stylePropName};");
+                            break;
+                    }
+                }
+                else
+                {
+                    sbTryGetProp.AppendLine($"        lastValue = 0;");
+                }
+
+                sbTryGetProp.AppendLine("""
+                                                  return false;
+                                              }
+                                          """);
+                
+                if (stylePropName != "null")
+                {
+
                 }
             }
 
@@ -363,6 +427,10 @@ public class OverrideTagsSourceGenerator : ISourceGenerator
             }
         }
 
+        sbDef.AppendLine();
+        sbDef.Append(sbGetProp);
+        sbDef.AppendLine();
+        sbDef.Append(sbTryGetProp);
         sbDef.AppendLine("}");
         def = sbDef.ToString();
 
