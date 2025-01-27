@@ -5,7 +5,7 @@ namespace Mobsub.SubtitleParse.AssTypes;
 
 public partial class AssTextStyle(AssStyle baseStyle)
 {
-    public readonly AssStyle BaseStyle = baseStyle;
+    public AssStyle BaseStyle => baseStyle;
 
     public void Reset(AssStyle style)
     {
@@ -58,6 +58,77 @@ public partial class AssTextStyle(AssStyle baseStyle)
         }
 
         return textStyle;
+    }
+    
+    public bool TryGetColors(out AssTextColor lastValue)
+    {
+        var value = GetColors();
+        if (value is not null)
+        {
+            lastValue = (AssTextColor)value;
+            return true;
+        }
+        lastValue = new AssTextColor()
+        {
+            Primary = baseStyle.PrimaryColour,
+            Secondary = baseStyle.SecondaryColour,
+            Outline = baseStyle.OutlineColour,
+            Back = baseStyle.BackColour,
+        };
+        return false;
+    }
+
+    public bool TryGetFontWeight(out int lastValue)
+    {
+        var value = GetFontWeight();
+        if (value is not null)
+        {
+            lastValue = (int)value;
+            return true;
+        }
+        lastValue = baseStyle.Bold ? 1 : 0;
+        return false;
+    }
+
+    public bool TryGetPosition(out AssTextPosition lastValue, (int w, int h)? resolution)
+    {
+        var value = GetPosition();
+        if (value is not null)
+        {
+            lastValue = (AssTextPosition)value;
+            return true;
+        }
+
+        if (resolution is null)
+        {
+            lastValue = new AssTextPosition();
+        }
+        else
+        {
+            // resolution mod2?
+            TryGetAlignment(out var alignment);
+            var marginLeft = baseStyle.MarginL;
+            var marginRight = baseStyle.MarginR;
+            var marginVertical = baseStyle.MarginV;
+            var width = resolution.Value.w;
+            var height = resolution.Value.h;
+
+            lastValue = alignment switch
+            {
+                1 => new AssTextPosition(marginLeft, height - marginVertical),
+                2 => new AssTextPosition((int)(width * 0.5) + marginLeft - marginRight, height - marginVertical),
+                3 => new AssTextPosition(marginRight, height - marginVertical),
+                4 => new AssTextPosition(marginLeft, (int)(height * 0.5)),
+                5 => new AssTextPosition((int)(width * 0.5) + marginLeft - marginRight, (int)(height * 0.5)),
+                6 => new AssTextPosition(marginRight, (int)(height * 0.5)),
+                7 => new AssTextPosition(marginLeft, marginVertical),
+                8 => new AssTextPosition((int)(width * 0.5) + marginLeft - marginRight, marginVertical),
+                9 => new AssTextPosition(marginRight, marginVertical),
+                _ => new AssTextPosition()
+            };
+        }
+        
+        return false;
     }
 }
 

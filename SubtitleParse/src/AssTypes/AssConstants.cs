@@ -85,6 +85,7 @@ public static partial class AssConstants
         
         [AssOverrideTag(typeof(int), "ParseTagAlignment", "false")]
         [AssTagKind(AssTagKind.LineOnlyRenderFirst)]
+        [AssTagGeneralParse("Alignment", false, false)]
         public const string Alignment = "an";
         
         [AssOverrideTag(typeof(int), "ParseTagAlignment", "true", "Alignment")]
@@ -140,10 +141,12 @@ public static partial class AssConstants
         
         [AssOverrideTag(typeof(int), "ParseTagFontEncoding", "")]
         [AssTagKind(AssTagKind.BlockOnlyRenderLatest)]
+        [AssTagGeneralParse("Encoding", false, false)]
         public const string FontEncoding = "fe";
         
         [AssOverrideTag(typeof(string), "ParseTagFontName", "")]
         [AssTagKind(AssTagKind.BlockOnlyRenderLatest)]
+        [AssTagGeneralParse("Fontname", false, false)]
         public const string FontName = "fn";
         
         // [AssOverrideTag(typeof(double[]), "ParseFontRotation", "0", "Rotations")]
@@ -253,7 +256,7 @@ public static partial class AssConstants
 #pragma warning disable CS9113
 [AttributeUsage(AttributeTargets.Field, AllowMultiple = false)]
 public class AssOverrideTagAttribute(Type? propertyType, string parseMethod, string methodParams, string? mapPropName = null) : Attribute;
-public class AssTagGeneralParseAttribute(string stylePropertyName, bool limit = false) : Attribute;
+public class AssTagGeneralParseAttribute(string stylePropertyName, bool limit = false, bool parse = true) : Attribute;
 public class AssTagKindAttribute(AssTagKind kind) : Attribute;
 #pragma warning restore CS9113
 
