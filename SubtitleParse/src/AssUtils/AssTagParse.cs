@@ -1,6 +1,7 @@
 ﻿using System.Buffers;
 using System.Diagnostics;
 using System.Globalization;
+using System.Numerics;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using ZLogger;
@@ -260,14 +261,14 @@ public partial class AssTagParse(AssStyles styles, AssScriptInfo scriptInfo, ILo
                 return;
             }
 
-            var r1 = double.TryParse(span[ranges[0]], out var p1);
-            var r2 = double.TryParse(span[ranges[1]], out var p2);
+            var r1 = float.TryParse(span[ranges[0]], out var p1);
+            var r2 = float.TryParse(span[ranges[1]], out var p2);
             if (!r1 || !r2)
             {
                 logger?.ZLogWarning($"Useless position: {AssConstants.OverrideTags.Position}{AssConstants.StartValueBlock}{span.ToString()}{AssConstants.EndValueBlock}");
             }
 
-            curTextStyle!.Position = new AssTextPosition(p1, p2);
+            curTextStyle!.Position = new Vector2(p1, p2);
         }
     }
     
