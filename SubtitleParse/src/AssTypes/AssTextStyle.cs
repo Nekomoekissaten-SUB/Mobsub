@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using System.Numerics;
+using Microsoft.Extensions.Logging;
 using ZLogger;
 
 namespace Mobsub.SubtitleParse.AssTypes;
@@ -90,18 +91,18 @@ public partial class AssTextStyle(AssStyle baseStyle)
         return false;
     }
 
-    public bool TryGetPosition(out AssTextPosition lastValue, (int w, int h)? resolution)
+    public bool TryGetPosition(out Vector2 lastValue, (int w, int h)? resolution)
     {
         var value = GetPosition();
         if (value is not null)
         {
-            lastValue = (AssTextPosition)value;
+            lastValue = (Vector2)value;
             return true;
         }
 
         if (resolution is null)
         {
-            lastValue = new AssTextPosition();
+            lastValue = Vector2.Zero;
         }
         else
         {
@@ -115,16 +116,16 @@ public partial class AssTextStyle(AssStyle baseStyle)
 
             lastValue = alignment switch
             {
-                1 => new AssTextPosition(marginLeft, height - marginVertical),
-                2 => new AssTextPosition((int)(width * 0.5) + marginLeft - marginRight, height - marginVertical),
-                3 => new AssTextPosition(marginRight, height - marginVertical),
-                4 => new AssTextPosition(marginLeft, (int)(height * 0.5)),
-                5 => new AssTextPosition((int)(width * 0.5) + marginLeft - marginRight, (int)(height * 0.5)),
-                6 => new AssTextPosition(marginRight, (int)(height * 0.5)),
-                7 => new AssTextPosition(marginLeft, marginVertical),
-                8 => new AssTextPosition((int)(width * 0.5) + marginLeft - marginRight, marginVertical),
-                9 => new AssTextPosition(marginRight, marginVertical),
-                _ => new AssTextPosition()
+                1 => new Vector2(marginLeft, height - marginVertical),
+                2 => new Vector2((int)(width * 0.5) + marginLeft - marginRight, height - marginVertical),
+                3 => new Vector2(marginRight, height - marginVertical),
+                4 => new Vector2(marginLeft, (int)(height * 0.5)),
+                5 => new Vector2((int)(width * 0.5) + marginLeft - marginRight, (int)(height * 0.5)),
+                6 => new Vector2(marginRight, (int)(height * 0.5)),
+                7 => new Vector2(marginLeft, marginVertical),
+                8 => new Vector2((int)(width * 0.5) + marginLeft - marginRight, marginVertical),
+                9 => new Vector2(marginRight, marginVertical),
+                _ => Vector2.Zero
             };
         }
         
@@ -186,10 +187,4 @@ public struct AssTextScale
 {
     public double X;
     public double Y;
-}
-
-public struct AssTextPosition(double x, double y)
-{
-    public double X = x;
-    public double Y = y;
 }

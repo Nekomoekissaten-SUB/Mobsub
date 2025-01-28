@@ -35,6 +35,8 @@ public class OverrideTagsSourceGenerator : ISourceGenerator
         var sbDef = new StringBuilder();
         sbDef.AppendLine("#nullable enable");
         sbDef.AppendLine();
+        sbDef.AppendLine("using System.Numerics;");
+        sbDef.AppendLine();
         sbDef.AppendLine("namespace Mobsub.SubtitleParse.AssTypes;");
         sbDef.AppendLine();
         sbDef.AppendLine("public partial class AssTextStyle");

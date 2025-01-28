@@ -1,3 +1,5 @@
+using System.Numerics;
+
 namespace Mobsub.SubtitleParse.AssTypes;
 
 public static partial class AssConstants
@@ -198,7 +200,7 @@ public static partial class AssConstants
         // [AssOverrideTag(typeof(double[]), "ParseOriginRotation", "")]
         // public const string OriginRotation = "org";
         
-        [AssOverrideTag(typeof(AssTextPosition), "ParseTagPosition", "")]
+        [AssOverrideTag(typeof(Vector2), "ParseTagPosition", "")]
         [AssTagKind(AssTagKind.LineOnlyRenderFirst | AssTagKind.ShouldBeFunction)]
         public const string Position = "pos";
         
