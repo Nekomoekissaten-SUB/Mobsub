@@ -135,71 +135,81 @@ public partial class AssTagParse(AssStyles styles, AssScriptInfo scriptInfo, ILo
             Debug.WriteLine(evt.lineNumber);
             if (evt.WillSkip()){ continue; }
 
-            styles.TryGetStyleWithFallback(evt.Style.AsSpan(), out var style);
-            baseTextStyle = new AssTextStyle(style!);
-
-            if (evt.TextRanges.Length == 0)
-            {
-                evt.UpdateTextRanges();
-            }
-
-            Dictionary<AssTextStyle, List<Rune>> dict = [];
-            var i = 0;
-            foreach (var range in evt.TextRanges)
-            {
-                i += 1;
-                var sp = evt.Text.AsSpan()[range];
-                Debug.WriteLine(sp.ToString());
-                List<Rune> curRunes = [];
-                
-                if (drawingMode)
-                {
-                    drawingText.Append(sp);
-                    continue;
-                }
-                
-                if (AssEvent.IsOverrideBlock(sp))
-                {
-                    if (i == evt.TextRanges.Length) { continue; }
-                    Parse(sp);
-                }
-                else
-                {
-                    if (AssEvent.IsEventSpecialCharPair(sp))
-                    {
-                        switch (sp[1])
-                        {
-                            case 'h':
-                                curRunes.Add(new Rune(AssConstants.NoBreakSpaceUtf16));
-                                break;
-                        }
-                    }
-                    else
-                    {
-                        DecodeCharsToRunes(sp, curRunes);
-                    }
-
-                    var textStyle = GetTextStylesDeepCopy() ?? baseTextStyle;
-                    if (!dict.TryAdd(textStyle, curRunes))
-                    {
-                        dict[textStyle].AddRange(curRunes);
-                    }
-                    ResetNewBlock();
-                }
-            }
-
-            if (drawingMode)
-            {
-                ParseDrawingText();
-                var textStyle = GetTextStylesDeepCopy() ?? baseTextStyle;
-                dict.TryAdd(textStyle, new List<Rune>());
-            }
-
-            yield return dict;
+            yield return ParseEvent(evt);
             ResetNewLine();
         }
     }
 
+    public Dictionary<AssTextStyle, List<Rune>> ParseEvent(AssEvent evt)
+    {
+        if (evt.TextRanges.Length == 0)
+        {
+            evt.UpdateTextRanges();
+        }
+
+        return ParseEvent(evt.Text, evt.TextRanges, evt.Style);
+    }
+
+    public Dictionary<AssTextStyle, List<Rune>> ParseEvent(ReadOnlySpan<char> text, Range[] textRanges, ReadOnlySpan<char> styleName)
+    {
+        styles.TryGetStyleWithFallback(styleName, out var style);
+        baseTextStyle = new AssTextStyle(style!);
+
+        Dictionary<AssTextStyle, List<Rune>> dict = [];
+        var i = 0;
+        foreach (var range in textRanges)
+        {
+            i += 1;
+            var sp = text[range];
+            Debug.WriteLine(sp.ToString());
+            List<Rune> curRunes = [];
+            
+            if (drawingMode)
+            {
+                drawingText.Append(sp);
+                continue;
+            }
+            
+            if (AssEvent.IsOverrideBlock(sp))
+            {
+                if (i == textRanges.Length) { continue; }
+                Parse(sp);
+            }
+            else
+            {
+                if (AssEvent.IsEventSpecialCharPair(sp))
+                {
+                    switch (sp[1])
+                    {
+                        case 'h':
+                            curRunes.Add(new Rune(AssConstants.NoBreakSpaceUtf16));
+                            break;
+                    }
+                }
+                else
+                {
+                    DecodeCharsToRunes(sp, curRunes);
+                }
+
+                var textStyle = GetTextStylesDeepCopy() ?? baseTextStyle;
+                if (!dict.TryAdd(textStyle, curRunes))
+                {
+                    dict[textStyle].AddRange(curRunes);
+                }
+                ResetNewBlock();
+            }
+        }
+
+        if (drawingMode)
+        {
+            ParseDrawingText();
+            var textStyle = GetTextStylesDeepCopy() ?? baseTextStyle;
+            dict.TryAdd(textStyle, new List<Rune>());
+        }
+
+        return dict;
+    }
+    
     #region Parse Tags (special)
 
     #region Position
