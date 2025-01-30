@@ -105,18 +105,29 @@ public struct AssRGB8(byte red, byte green, byte blue, byte alpha)
         return this;
     }
     
-    public readonly string ConvertToString(bool alpha)
+    public readonly string ConvertToString(bool withAlpha = false, bool onlyAlpha = false)
     {
-        var bytel = new List<byte>();
-        if (alpha)
+        var count = withAlpha ? 4 : 3;
+        var startIndex = withAlpha ? 1 : 0;
+        if (onlyAlpha) count = 1;
+        var byteArray = new byte[count];
+        
+        if (onlyAlpha)
         {
-            bytel.Add(A);
+            byteArray[0] = A;
+            return Convert.ToHexString(byteArray);
         }
-        bytel.Add(B);
-        bytel.Add(G);
-        bytel.Add(R);
-
-        var str = Convert.ToHexString(bytel.ToArray());
+        
+        if (withAlpha)
+        {
+            byteArray[0] = A;
+        }
+        
+        byteArray[startIndex] = B;
+        byteArray[startIndex + 1] = G;
+        byteArray[startIndex + 2] = R;
+        
+        var str = Convert.ToHexString(byteArray);
 
         return str;
     }

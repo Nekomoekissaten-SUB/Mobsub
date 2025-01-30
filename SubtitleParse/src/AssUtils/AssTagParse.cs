@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Numerics;
 using System.Text;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Primitives;
 using ZLogger;
 using Mobsub.SubtitleParse.AssTypes;
 
@@ -26,7 +27,7 @@ public partial class AssTagParse(AssStyles styles, AssScriptInfo scriptInfo, ILo
     private StringBuilder drawingText = new ();
     
     private HashSet<string> curLineTags = [];
-    private HashSet<string> curBlockTags = [];
+    private List<string> curBlockTags = [];
     private HashSet<string> curTransTags = [];
     private HashSet<string> preTransTags = [];
 
@@ -36,6 +37,9 @@ public partial class AssTagParse(AssStyles styles, AssScriptInfo scriptInfo, ILo
     private AssTextStyle? curTextStyle;
     private AssTagTransform? curTextStyleTrans;
     // private List<AssTextStyleTrans> transTextStyles = [];
+    
+    public bool recordBlock = false;
+    public StringBuilder? BlockStringBuilder { get; set; }
     
     public void Parse(ReadOnlySpan<char> block, AssStyle style)
     {
@@ -111,8 +115,9 @@ public partial class AssTagParse(AssStyles styles, AssScriptInfo scriptInfo, ILo
     {
         if (curBlockTags.Count != 0)
         {
-            curLineTags.UnionWith(curBlockTags);
+            curLineTags.UnionWith(curBlockTags.Distinct());
         }
+        
         curBlockTags.Clear();
     }
     public void ResetNewLine()
@@ -194,9 +199,10 @@ public partial class AssTagParse(AssStyles styles, AssScriptInfo scriptInfo, ILo
             ResetNewLine();
         }
     }
-    
-    
-    // Position
+
+    #region Parse Tags (special)
+
+    #region Position
     private void ParseTagAlignment(ReadOnlySpan<char> span, bool isLegacy)
     {
         if (IsEmptyOrWhiteSpace(span))
@@ -272,7 +278,9 @@ public partial class AssTagParse(AssStyles styles, AssScriptInfo scriptInfo, ILo
         }
     }
     
-    // Font
+    #endregion
+    
+    #region Font
     private void ParseTagFontName(ReadOnlySpan<char> span)
     {
         if (IsEmptyOrWhiteSpace(span) || span.Trim() == "0")
@@ -358,7 +366,9 @@ public partial class AssTagParse(AssStyles styles, AssScriptInfo scriptInfo, ILo
     }
     // ParseTagItalic()
     
-    // Typesetting
+    #endregion
+
+    #region Typesetting
     // ParseTagFontSize()
     // ParseTagStrikeout()
     // ParseTagUnderline()
@@ -390,8 +400,9 @@ public partial class AssTagParse(AssStyles styles, AssScriptInfo scriptInfo, ILo
             }
         }
     }
+    #endregion
     
-    // Effect
+    #region Effect
     // ParseTagBlueEdges()
     // ParseTagBlurEdgesGaussian()
     private void ParseTagColor(ReadOnlySpan<char> span, int index, bool isAlpha)
@@ -523,7 +534,9 @@ public partial class AssTagParse(AssStyles styles, AssScriptInfo scriptInfo, ILo
     // ParseTagShadow()
     // ParseTagFontSizeScale()
     
-    // Drawing
+    #endregion
+    
+    #region Drawing
     private void ParseTagPolygon(ReadOnlySpan<char> span)
     {
         if (IsEmptyOrWhiteSpace(span))
@@ -563,6 +576,10 @@ public partial class AssTagParse(AssStyles styles, AssScriptInfo scriptInfo, ILo
     {
         
     }
+    
+    #endregion
+    
+    #endregion
     
     // Transform
     private void ParseTagTransform(ReadOnlySpan<char> span)
@@ -640,6 +657,18 @@ public partial class AssTagParse(AssStyles styles, AssScriptInfo scriptInfo, ILo
         }
     }
     
+    // Write
+    public void WriteToStringBuilder()
+    {
+        // now ingore \t
+        BlockStringBuilder ??= new StringBuilder();
+        foreach (var tag in curBlockTags)
+        {
+            BlockStringBuilder.Append(AssConstants.BackSlash);
+            curTextStyle!.WriteByTagName(tag, BlockStringBuilder);
+        }
+    }
+    
     // Utilities
     private static bool IsEmptyOrWhiteSpace(ReadOnlySpan<char> span) => span.IsEmpty || span.IsWhiteSpace();
     private static bool StartOrEndIsWhiteSpace(ReadOnlySpan<char> span) =>
@@ -672,7 +701,8 @@ public partial class AssTagParse(AssStyles styles, AssScriptInfo scriptInfo, ILo
             return TagDuplicate.InvalidDefinedArea | TagDuplicate.None;
         }
 
-        var blk = curBlockTags.Add(tag);
+        var blk = !curBlockTags.Contains(tag);
+        if (!blk) curBlockTags.Add(tag);
         if (AssConstants.OverrideTagsLineOnlyRenderFirst.Contains(tag))
         {
             if (curLineTags.Contains(tag) || !blk)

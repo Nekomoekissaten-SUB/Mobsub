@@ -36,6 +36,7 @@ public class OverrideTagsSourceGenerator : ISourceGenerator
         sbDef.AppendLine("#nullable enable");
         sbDef.AppendLine();
         sbDef.AppendLine("using System.Numerics;");
+        sbDef.AppendLine("using System.Text;");
         sbDef.AppendLine();
         sbDef.AppendLine("namespace Mobsub.SubtitleParse.AssTypes;");
         sbDef.AppendLine();
@@ -84,6 +85,12 @@ public class OverrideTagsSourceGenerator : ISourceGenerator
 
         var sbGetProp = new StringBuilder();
         var sbTryGetProp = new StringBuilder();
+        var sbGetByNameProp = new StringBuilder($$"""
+                                                      public void WriteByTagName(ReadOnlySpan<char> tag, StringBuilder sb)
+                                                      {
+                                                          switch (tag)
+                                                          {
+                                                  """);
         
         foreach (var member in syntax.Members)
         {
@@ -135,7 +142,7 @@ public class OverrideTagsSourceGenerator : ISourceGenerator
             sbParse.AppendLine($"else {{ curBlockTags.Add(AssConstants.OverrideTags.{propertyName}); }}");
             sbParse.Append((char)0x20, 8);
             sbParse.AppendLine("}");
-
+                                             
             var isAnimateable = false;
             var isVsfMod = false;
             if (contListAttr != null)
@@ -427,12 +434,142 @@ public class OverrideTagsSourceGenerator : ISourceGenerator
             {
                 sbDefTrans.AppendLine($"    public {propertyType}? {propertyNameLast} = style.{propertyNameLast};");
             }
+            
+            
+            // write
+            if (propertyName == "Reset") continue;
+            
+            sbGetByNameProp.AppendLine();
+            sbGetByNameProp.AppendLine($"            case AssConstants.OverrideTags.{propertyName}:");
+
+            if (propertyName == "AlignmentLegacy")
+            {
+                sbGetByNameProp.AppendLine($"                sb.Append(AssConstants.OverrideTags.Alignment);");
+                sbGetByNameProp.AppendLine($"                if (AssConstants.OverrideTagsShouldBeFunction.Contains(AssConstants.OverrideTags.Alignment)) sb.Append(AssConstants.StartValueBlock);");
+                sbGetByNameProp.Append(     "                sb.Append(");
+            }
+            else if (propertyName == "Border" || propertyName == "Shadow")
+            {
+                sbGetByNameProp.AppendLine($$"""
+                                                           var _value{{propertyName}} = ({{propertyType}})Get{{propertyNameLast}}()!;
+                                                           if (_value{{propertyName}}.X == _value{{propertyName}}.Y)
+                                                           {
+                                                               sb.Append(AssConstants.OverrideTags.{{propertyName}});
+                                                               sb.Append(_value{{propertyName}}.X);
+                                                           }
+                                                           else
+                                                           {
+                                                               sb.Append(AssConstants.OverrideTags.{{propertyName}}X);
+                                                               sb.Append(_value{{propertyName}}.X);
+                                                               sb.Append(AssConstants.BackSlash);
+                                                               sb.Append(AssConstants.OverrideTags.{{propertyName}}Y);
+                                                               sb.Append(_value{{propertyName}}.Y);
+                                                           }
+                                           """);
+            }
+            else if (propertyName == "Position")
+            {
+                sbGetByNameProp.AppendLine($$"""
+                                                             var _valuePos = ({{propertyType}})Get{{propertyNameLast}}()!;
+                                                             sb.Append(AssConstants.OverrideTags.{{propertyName}});
+                                                             sb.Append(AssConstants.StartValueBlock);
+                                                             sb.Append(_valuePos.X);
+                                                             sb.Append(',');
+                                                             sb.Append(_valuePos.Y);
+                                                             sb.Append(AssConstants.EndValueBlock);
+                                             """);
+            }
+            else
+            {
+                sbGetByNameProp.AppendLine($"                sb.Append(AssConstants.OverrideTags.{propertyName});");
+                sbGetByNameProp.AppendLine($"                if (AssConstants.OverrideTagsShouldBeFunction.Contains(AssConstants.OverrideTags.{propertyName})) sb.Append(AssConstants.StartValueBlock);");
+                sbGetByNameProp.Append(     "                sb.Append(");
+            }
+            
+            switch (propertyType)
+            {
+                case "bool":
+                    sbGetByNameProp.Append($"(bool)Get{propertyNameLast}()! ? 1 : 0");
+                    sbGetByNameProp.AppendLine(");");
+                    break;
+                
+                case "AssTextColor":
+                    sbGetByNameProp.AppendLine("\"&H\");");
+                    sbGetByNameProp.Append(     "                sb.Append(");
+                    sbGetByNameProp.Append($"Get{propertyNameLast}()!");
+                    switch (parseMethodParams[2])
+                    {
+                        case '0':
+                        case '1':
+                            sbGetByNameProp.Append(".Primary");
+                            break;
+                        case '2':
+                            sbGetByNameProp.Append(".Secondary");
+                            break;
+                        case '3':
+                            sbGetByNameProp.Append(".Outline");
+                            break;
+                        case '4':
+                            sbGetByNameProp.Append(".Back");
+                            break;
+                    }
+
+                    if (propertyName.StartsWith("Color"))
+                    {
+                        sbGetByNameProp.Append(".ConvertToString(withAlpha: false)");
+                    }
+                    else if (propertyName.StartsWith("Alpha"))
+                    {
+                        sbGetByNameProp.Append(".ConvertToString(onlyAlpha: true)");
+                    }
+                    
+                    sbGetByNameProp.AppendLine(");");
+                    sbGetByNameProp.AppendLine(     "                sb.Append(\"&\");");
+                    break;
+                
+                case "AssTextBorder" or "AssTextShadow" or "AssTextScale":
+                    switch (parseMethodParams[2])
+                    {
+                        case '0':
+                            break;
+                        case '1':
+                            sbGetByNameProp.Append($"(({propertyType})Get{propertyNameLast}()!).X");
+                            sbGetByNameProp.AppendLine(");");
+                            break;
+                        case '2':
+                            sbGetByNameProp.Append($"(({propertyType})Get{propertyNameLast}()!).Y");
+                            sbGetByNameProp.AppendLine(");");
+                            break;
+                    }
+                    break;
+                
+                case "Vector2":
+                    break;
+                
+                default:
+                    sbGetByNameProp.Append($"Get{propertyNameLast}()");
+                    sbGetByNameProp.AppendLine(");");
+                    break;
+            }
+            
+            if (propertyName != "Border" && propertyName != "Shadow")
+                sbGetByNameProp.AppendLine($"                if (AssConstants.OverrideTagsShouldBeFunction.Contains(AssConstants.OverrideTags.{propertyName})) sb.Append(AssConstants.EndValueBlock);");
+            sbGetByNameProp.AppendLine(    $"                break;");
+            
+            
         }
 
+        sbGetByNameProp.AppendLine("""
+                                           }
+                                       }
+                                   """);
+        
         sbDef.AppendLine();
         sbDef.Append(sbGetProp);
         sbDef.AppendLine();
         sbDef.Append(sbTryGetProp);
+        sbDef.AppendLine();
+        sbDef.Append(sbGetByNameProp);
         sbDef.AppendLine("}");
         def = sbDef.ToString();
 
