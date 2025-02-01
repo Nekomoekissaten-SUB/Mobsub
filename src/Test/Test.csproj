@@ -10,7 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\SubtitleParse\SubtitleParse.csproj"></ProjectReference>
+    <ProjectReference Include="..\SubtitleParse\Mobsub.SubtitleParse.csproj"></ProjectReference>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <PackageReference Include="MSTest.TestAdapter" Version="3.6.0" />
     <PackageReference Include="MSTest.TestFramework" Version="3.6.0" />

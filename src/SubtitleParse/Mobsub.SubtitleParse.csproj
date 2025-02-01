@@ -1,25 +1,29 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <Version>0.4.4-beta3</Version>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <Version>0.0.1</Version>
     <IsAotCompatible>true</IsAotCompatible>
-    <PackageId>Mobsub.$(AssemblyName)</PackageId>
     <Authors>MIR</Authors>
-    <Description>Mobsub helper</Description>
-    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <Description>Parse common subtitles</Description>
     <PackageProjectUrl>https://github.com/Nekomoekissaten-SUB/Mobsub</PackageProjectUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageTags>ass;srt;subtitle</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Diagnostics" Version="8.3.2" />
-    <PackageReference Include="OTFontFile" Version="1.0.1-beta" />
-    <PackageReference Include="Vortice.Win32.Graphics.DirectWrite" Version="2.2.6" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.3.2" />
+    <PackageReference Include="ZLogger" Version="2.5.7" />
     <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Helper\Mobsub.Helper.csproj" />
+    <ProjectReference Include="..\SubtitleParse.SourceGen\Mobsub.SubtitleParse.SourceGen.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
 </Project>

@@ -1,16 +1,13 @@
-*/obj/*
-*/*/obj/*
-*/bin/*
-*/*/bin/*
-test_file/*
-.vs/*
-.idea/*
-*.vscode/*
-*/Properties/*
-*/*/Properties/*
+**/.idea/
+**/.vs/
+**/.vscode/
 
-/Test/files/*
+**/obj/
+**/bin/
+**/Properties/
+
+**/Test/files/
+**/Test/test_result/
 
 debug.log
 *.user
-/Test/test_result

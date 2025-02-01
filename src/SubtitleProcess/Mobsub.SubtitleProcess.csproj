@@ -9,7 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\SubtitleParse\SubtitleParse.csproj"/>
+    <ProjectReference Include="..\SubtitleParse\Mobsub.SubtitleParse.csproj"/>
     <ProjectReference Include="..\ZhConvert\ZhConvert.csproj"/>
   </ItemGroup>
 
