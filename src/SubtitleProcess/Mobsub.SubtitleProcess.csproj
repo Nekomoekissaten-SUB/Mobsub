@@ -10,7 +10,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\SubtitleParse\Mobsub.SubtitleParse.csproj"/>
-    <ProjectReference Include="..\ZhConvert\ZhConvert.csproj"/>
   </ItemGroup>
 
   <ItemGroup>

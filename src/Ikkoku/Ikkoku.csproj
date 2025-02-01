@@ -20,7 +20,6 @@
     <ProjectReference Include="..\SubtitleParse\Mobsub.SubtitleParse.csproj"/>
     <ProjectReference Include="..\SubtitleProcessNotAot\Mobsub.SubtitleProcessNotAot.csproj" />
     <ProjectReference Include="..\SubtitleProcess\Mobsub.SubtitleProcess.csproj" />
-    <ProjectReference Include="..\ZhConvert\ZhConvert.csproj"/>
   </ItemGroup>
 
   <ItemGroup>

@@ -5,7 +5,7 @@
 using OpenCCSharp.Conversion;
 using TriesSharp.Collections;
 
-namespace Mobsub.ZhConvert;
+namespace Mobsub.Helper.ZhConvert;
 
 public partial class OpenCCSharpUtils
 {

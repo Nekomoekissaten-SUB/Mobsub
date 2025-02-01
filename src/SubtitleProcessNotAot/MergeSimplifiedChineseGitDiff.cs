@@ -1,6 +1,6 @@
 ﻿using LibGit2Sharp;
 using Mobsub.SubtitleParse.AssTypes;
-using Mobsub.ZhConvert;
+using Mobsub.Helper.ZhConvert;
 using OpenCCSharp.Conversion;
 using System.Text;
 using Mobsub.SubtitleProcess;

@@ -1,6 +1,6 @@
 ﻿using Mobsub.Ikkoku.SubtileProcess;
 using Mobsub.SubtitleParse.AssTypes;
-using Mobsub.ZhConvert;
+using Mobsub.Helper.ZhConvert;
 using OpenCCSharp.Conversion;
 using System.CommandLine;
 using System.Text;

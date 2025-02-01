@@ -23,7 +23,6 @@
     <ItemGroup>
       <ProjectReference Include="..\..\SubtitleParse\Mobsub.SubtitleParse.csproj" />
       <ProjectReference Include="..\..\SubtitleProcessNotAot\Mobsub.SubtitleProcessNotAot.csproj" />
-      <ProjectReference Include="..\..\ZhConvert\ZhConvert.csproj" />
       <ProjectReference Include="..\..\Helper.Avalonia\Mobsub.Helper.Avalonia.csproj" />
     </ItemGroup>
 </Project>

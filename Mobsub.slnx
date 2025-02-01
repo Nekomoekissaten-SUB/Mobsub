@@ -9,5 +9,4 @@
   <Project Path="src\SubtitleProcessNotAot\Mobsub.SubtitleProcessNotAot.csproj" Type="Classic C#" />
   <Project Path="src\SubtitleProcess\Mobsub.SubtitleProcess.csproj" Type="Classic C#" />
   <Project Path="src\Test\Test.csproj" />
-  <Project Path="src\ZhConvert\ZhConvert.csproj" />
 </Solution>
