@@ -18,6 +18,6 @@
     <ItemGroup>
       <ProjectReference Include="..\Helper.Avalonia\Mobsub.Helper.Avalonia.csproj" />
       <ProjectReference Include="..\Native\Mobsub.Native.csproj" />
-      <ProjectReference Include="..\SubtitleParse\SubtitleParse.csproj" />
+      <ProjectReference Include="..\SubtitleParse\Mobsub.SubtitleParse.csproj" />
     </ItemGroup>
 </Project>

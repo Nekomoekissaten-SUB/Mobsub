@@ -4,7 +4,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="clr-namespace:Mobsub.RainCurtain.ViewModels"
         xmlns:converter="clr-namespace:Mobsub.RainCurtain.ViewModels.Converter"
-        xmlns:ass="clr-namespace:Mobsub.SubtitleParse.AssTypes;assembly=SubtitleParse"
+        xmlns:ass="clr-namespace:Mobsub.SubtitleParse.AssTypes;assembly=Mobsub.SubtitleParse"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="Mobsub.RainCurtain.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
