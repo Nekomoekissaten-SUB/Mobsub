@@ -6,6 +6,8 @@
   <Project Path="SimpleTools\Mobsub.SubtitlesPublic\Mobsub.SubtitlesPublic.csproj" Type="Classic C#" />
   <Project Path="SubtitleParse.SourceGen\SubtitleParse.SourceGen.csproj" Type="Classic C#" />
   <Project Path="SubtitleParse\SubtitleParse.csproj" />
+  <Project Path="SubtitleProcessNotAot\Mobsub.SubtitleProcessNotAot.csproj" Type="Classic C#" />
+  <Project Path="SubtitleProcess\Mobsub.SubtitleProcess.csproj" Type="Classic C#" />
   <Project Path="Test\Test.csproj" />
   <Project Path="ZhConvert\ZhConvert.csproj" />
 </Solution>
