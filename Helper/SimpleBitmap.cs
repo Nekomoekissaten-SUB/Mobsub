@@ -16,6 +16,11 @@ public class SimpleBitmap
         stride = width * 4;
         pixelData = new byte[stride * height];
     }
+    
+    public int GetWidth() => width;
+    public int GetHeight() => height;
+    public int GetStride() => stride;
+    public byte[]? GetPixelData() => pixelData;
 
     public void SetPixel(int x, int y, ARGB8b argb)
     {

@@ -63,6 +63,43 @@ public class PGSData
             }
         }
     }
+    
+    public static IEnumerable<SimpleBitmap?> DecodeBitmapData(string filename)
+    {
+        using var fs = new FileStream(filename, FileMode.Open, FileAccess.Read);
+        using var reader = new BigEndianBinaryReader(fs);
+        var pgs = new Parse(reader, ParseFlag.DecodeImages | ParseFlag.WithoutSaveFile);
+
+        while (reader.PeekChar() != -1)
+        {
+            var header = pgs.ParseHeader();
+            switch (header.Type)
+            {
+                case SegmentType.PresentationCompositionSegment:
+                    pgs.ParsePCS(header, out _);
+                    break;
+                case SegmentType.WindowDefinitionSegment:
+                    pgs.ParseWDS(header, out _);
+                    break;
+                case SegmentType.PaletteDefinitionSegment:
+                    pgs.ParsePDS(header, out _);
+                    break;
+                case SegmentType.ObjectDefinitionSegment:
+                    pgs.ParseODS(header, out _);
+                    if (pgs.Standalone)
+                    {
+                        yield return pgs.GetBitmap();
+                        pgs.Standalone = false;
+                    }
+                    break;
+                case SegmentType.EndOfDisplaySetSegment:
+                    Parse.CheckSize(header.Size, 0);
+                    break;
+                default:
+                    throw new InvalidDataException();
+            }
+        }
+    }
 
     public struct DisplaySet
     {

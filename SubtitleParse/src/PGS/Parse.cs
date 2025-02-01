@@ -1,4 +1,5 @@
-﻿using CommunityToolkit.Diagnostics;
+﻿using System.Diagnostics;
+using CommunityToolkit.Diagnostics;
 using Mobsub.Helper;
 using Mobsub.SubtitleParse.PGS.DataTypes;
 using static Mobsub.Helper.ColorConv;
@@ -8,9 +9,10 @@ namespace Mobsub.SubtitleParse.PGS;
 [Flags]
 public enum ParseFlag
 {
-    None = 0,
-    OnlyRead = 1,
-    DecodeImages = 2,
+    None = 0b_0000_0000,
+    OnlyRead = 0b_0000_0001,
+    DecodeImages = 0b_0000_0010,
+    WithoutSaveFile = 0b_0000_0100,
     //DecodeTimestamps = 2,
 }
 
@@ -22,10 +24,12 @@ public class Parse(BigEndianBinaryReader reader, ParseFlag flag = ParseFlag.Only
     private int col = 0;
     private PresentationCompositionSegment curPCS;
     private Dictionary<byte, PaletteDefinitionSegment> curPalettes = [];
-    private uint lastestObjectDataLength = 0;
+    private uint previousObjectDataLength = 0;
     private int imageIndex = 0;
     private SimpleBitmap? image;
     internal string? saveDir;
+    
+    public bool Standalone = true;
 
 
     internal SegmentHeader ParseHeader()
@@ -185,17 +189,20 @@ public class Parse(BigEndianBinaryReader reader, ParseFlag flag = ParseFlag.Only
         
         if (parseFlag.HasFlag(ParseFlag.DecodeImages))
         {
-            if (saveDir is null) { ThrowHelper.ThrowArgumentNullException(nameof(saveDir)); }
+            if (!parseFlag.HasFlag(ParseFlag.WithoutSaveFile) && saveDir is null) { ThrowHelper.ThrowArgumentNullException(nameof(saveDir)); }
             reader.BaseStream.Position = start;
             row = col = 0;
-
-            if ((uint)ods.ObjectDataLength != lastestObjectDataLength)
+            
+            if ((uint)ods.ObjectDataLength != previousObjectDataLength)
             {
-                lastestObjectDataLength = (uint)ods.ObjectDataLength;
+                Standalone = true;
+                previousObjectDataLength = (uint)ods.ObjectDataLength;
 
                 image = new SimpleBitmap(ods.Width, ods.Height);
                 DecodeImage((uint)ods.ObjectDataLength - 4);
-                var imgPath = Path.Combine(saveDir, $"{imageIndex}.bmp");
+
+                if (parseFlag.HasFlag(ParseFlag.WithoutSaveFile)) return;
+                var imgPath = Path.Combine(saveDir!, $"{imageIndex}.bmp");
                 image.Save(imgPath);
                 imageIndex++;
             }
@@ -287,4 +294,6 @@ public class Parse(BigEndianBinaryReader reader, ParseFlag flag = ParseFlag.Only
     {
         if (headerSize != segSize) { throw new InvalidDataException(); }
     }
+
+    public SimpleBitmap? GetBitmap() => image;
 }
