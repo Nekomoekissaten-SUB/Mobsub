@@ -30,7 +30,7 @@ jobs:
     runs-on: ${{ matrix.env.os }}
 
     steps:
-    
+
     - name: Install linux arm64 prereqs
       # copy from https://github.com/dn-vm/dnvm
       if: matrix.env.identifier == 'linux' && matrix.arch == 'arm64'
@@ -48,7 +48,12 @@ jobs:
 
     - name: Checkout
       uses: actions/checkout@v4
-    
+
+    - name: Login GitHub packages
+      run: |
+        dotnet nuget add source --username MIRIMIRIM --password ${{ secrets.GITHUB_TOKEN }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/MIRIMIRIM/index.json"
+        dotnet restore
+
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
