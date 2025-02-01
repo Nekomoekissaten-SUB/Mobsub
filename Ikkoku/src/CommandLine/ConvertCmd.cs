@@ -94,6 +94,10 @@ internal class ConvertCmd
                     case ".bmp":
                         PGSData.DecodeImages(fromFile.FullName, optDir.FullName);
                         break;
+                    case ".txt":
+                        var optFile = Utils.ChangeSuffix(fromFile, optDir, convertSuffix);
+                        ConvertImageSubtitle.OcrPgsSup(fromFile.FullName, optFile.FullName);
+                        break;
                     default:
                         throw new NotImplementedException($"Unsupported: {fromFile.Extension} convert to {convertSuffix}.");
                 }
