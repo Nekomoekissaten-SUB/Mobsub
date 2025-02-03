@@ -37,13 +37,21 @@ public static class ConvertImageSubtitle
                     if (result is null || result.Length == 0) continue;
                     if (result.Length > 1)
                     {
+                        var i = 0;
                         foreach (var line in result)
                         {
                             // 30 ruby, 60 text?
-                            if (line.Y3 - line.Y1 >= 40)
+                            if (line.Y3 - line.Y1 >= 30)
                             {
                                 sb.Append(line.Text);
+
+                                if (i < result.Length - 1)
+                                {
+                                    sb.Append("\\N");
+                                }
                             }
+
+                            i++;
                         }
                         sb.AppendLine();
                     }
