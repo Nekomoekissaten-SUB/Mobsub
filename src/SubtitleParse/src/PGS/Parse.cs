@@ -30,7 +30,7 @@ public class Parse(BigEndianBinaryReader reader, ParseFlag flag = ParseFlag.Only
     internal string? saveDir;
     
     public bool Standalone = true;
-
+    public byte ImageBinarizeThreshold = 0;
 
     internal SegmentHeader ParseHeader()
     {
@@ -200,7 +200,8 @@ public class Parse(BigEndianBinaryReader reader, ParseFlag flag = ParseFlag.Only
 
                 image = new SimpleBitmap(ods.Width, ods.Height);
                 DecodeImage((uint)ods.ObjectDataLength - 4);
-
+                if (ImageBinarizeThreshold > 0) image.Binarize(ImageBinarizeThreshold);
+                
                 if (parseFlag.HasFlag(ParseFlag.WithoutSaveFile)) return;
                 var imgPath = Path.Combine(saveDir!, $"{imageIndex}.bmp");
                 image.Save(imgPath);

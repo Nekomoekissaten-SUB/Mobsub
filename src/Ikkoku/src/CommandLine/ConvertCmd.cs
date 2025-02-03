@@ -19,32 +19,37 @@ internal class ConvertCmd
             description: "Format which will convert to"
         )
         { IsRequired = true };
+        var imageBinarizeThreshold = new Option<byte?>(
+            name: "--image-binarize-threshold",
+            description: "Image Binarize Threshold when input is .sup, range is 0-255, 0 is disabled. Default: 0 (convert to .bmp) / 128 (convert to .txt)",
+            getDefaultValue: () => null);
+        
         var convSubtitleCommand = new Command("convert", "Convert subtitle format")
         {
-            path, optPath, convertSuffix, inputSuffix
+            path, optPath, convertSuffix, inputSuffix, imageBinarizeThreshold
         };
-        convSubtitleCommand.SetHandler(Execute, path, optPath, convertSuffix, inputSuffix);
+        convSubtitleCommand.SetHandler(Execute, path, optPath, convertSuffix, inputSuffix, imageBinarizeThreshold);
         return convSubtitleCommand;
     }
 
-    internal static void Execute(FileSystemInfo path, FileSystemInfo? optPath, string convertSuffix, string inputSuffix)
+    internal static void Execute(FileSystemInfo path, FileSystemInfo? optPath, string convertSuffix, string inputSuffix, byte? imageBinarizeThreshold)
     {
         switch (path)
         {
             case FileInfo f:
-                ConvertSubtitle(f, optPath, convertSuffix);
+                ConvertSubtitle(f, optPath, convertSuffix, imageBinarizeThreshold);
                 break;
             case DirectoryInfo d:
                 var files = Utils.Traversal(d, inputSuffix);
                 foreach (var f in files)
                 {
-                    ConvertSubtitle(f, optPath, convertSuffix);
+                    ConvertSubtitle(f, optPath, convertSuffix, imageBinarizeThreshold);
                 }
                 break;
         }
     }
 
-    internal static void ConvertSubtitle(FileInfo fromFile, FileSystemInfo? optPath, string convertSuffix)
+    internal static void ConvertSubtitle(FileInfo fromFile, FileSystemInfo? optPath, string convertSuffix, byte? imageBinarizeThreshold)
     {
         if (fromFile.Extension == convertSuffix)
         {
@@ -92,11 +97,13 @@ internal class ConvertCmd
                 switch (convertSuffix)
                 {
                     case ".bmp":
-                        PGSData.DecodeImages(fromFile.FullName, optDir.FullName);
+                        imageBinarizeThreshold ??= 0;
+                        PGSData.DecodeImages(fromFile.FullName, optDir.FullName, (byte)imageBinarizeThreshold);
                         break;
                     case ".txt":
+                        imageBinarizeThreshold ??= 128;
                         var optFile = Utils.ChangeSuffix(fromFile, optDir, convertSuffix);
-                        ConvertImageSubtitle.OcrPgsSup(fromFile.FullName, optFile.FullName);
+                        ConvertImageSubtitle.OcrPgsSup(fromFile.FullName, optFile.FullName, (byte)imageBinarizeThreshold);
                         break;
                     default:
                         throw new NotImplementedException($"Unsupported: {fromFile.Extension} convert to {convertSuffix}.");

@@ -7,16 +7,15 @@ namespace Mobsub.SubtitleProcess;
 
 public static class ConvertImageSubtitle
 {
-    public static void OcrPgsSup(string sub, string outputFile)
+    public static void OcrPgsSup(string sub, string outputFile, byte imageBinarizeThreshold)
     {
         var ocrEngine = new Ocr();
         ocrEngine.CreatePipelineAndProcessOptions();
         var sb = new StringBuilder();
         
-        foreach (var pic in PGSData.DecodeBitmapData(sub))
+        foreach (var pic in PGSData.DecodeBitmapData(sub, imageBinarizeThreshold))
         {
             if (pic == null) continue;
-
             unsafe
             {
                 fixed (byte* p = pic.GetPixelData())

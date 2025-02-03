@@ -30,4 +30,11 @@
     <DefineConstants>NotAot</DefineConstants>
   </PropertyGroup>
 
+  <ItemGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <Content Include="..\..\dep_files\**\*.*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+
 </Project>

@@ -8,7 +8,6 @@ public class SimpleBitmap
     private int height;
     private int stride;
     private byte[]? pixelData;
-
     public SimpleBitmap(int w, int h)
     {
         width = w;
@@ -91,6 +90,35 @@ public class SimpleBitmap
         for (int y = height - 1; y >= 0; y--)
         {
             writer.Write(pixelData, y * stride, stride);
+        }
+    }
+
+    public unsafe void Binarize(byte threshold = 128)
+    {
+        fixed (byte* p = pixelData)
+        {
+            var pixel = p;
+            for (var y = 0; y < height; y++)
+            {
+                for (var x = 0; x < width; x++)
+                {
+                    var r = pixel[0];
+                    var g = pixel[1];
+                    var b = pixel[2];
+
+                    // byte gray = (byte)(0.2989 * r + 0.587 * g + 0.114 * b);
+                    var gray = (r * 299 + g * 587 + b * 114 + 500) / 1000;
+
+                    var binary = gray > threshold ? (byte)255 : (byte)0;
+
+                    pixel[0] = binary;
+                    pixel[1] = binary;
+                    pixel[2] = binary;
+                    pixel[3] = 255;
+
+                    pixel += 4;
+                }
+            }
         }
     }
 }

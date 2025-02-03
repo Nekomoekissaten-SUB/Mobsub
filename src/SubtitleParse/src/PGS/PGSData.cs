@@ -10,18 +10,18 @@ public class PGSData
         return Decode(filename, ParseFlag.OnlyRead).ToList();
     }
 
-    public static void DecodeImages(string filename, string saveDir)
+    public static void DecodeImages(string filename, string saveDir, byte imageBinarizeThreshold)
     {
-        foreach (var _ in Decode(filename, ParseFlag.DecodeImages, saveDir)) { }
+        foreach (var _ in Decode(filename, ParseFlag.DecodeImages, saveDir, imageBinarizeThreshold)) { }
     }
 
-    public static Task DecodeImagesAsync(string filename, string saveDir)
+    public static Task DecodeImagesAsync(string filename, string saveDir, byte imageBinarizeThreshold)
     {
-        foreach (var _ in Decode(filename, ParseFlag.DecodeImages, saveDir)) { }
+        foreach (var _ in Decode(filename, ParseFlag.DecodeImages, saveDir, imageBinarizeThreshold)) { }
         return Task.CompletedTask;
     }
 
-    private static IEnumerable<DisplaySet> Decode(string filename, ParseFlag flag, string? saveDir = null)
+    private static IEnumerable<DisplaySet> Decode(string filename, ParseFlag flag, string? saveDir = null, byte imageBinarizeThreshold = 0)
     {
         if (flag.HasFlag(ParseFlag.DecodeImages))
         {
@@ -30,7 +30,7 @@ public class PGSData
 
         using var fs = new FileStream(filename, FileMode.Open, FileAccess.Read);
         using var reader = new BigEndianBinaryReader(fs);
-        var pgs = new Parse(reader, flag) { saveDir = saveDir };
+        var pgs = new Parse(reader, flag) { saveDir = saveDir, ImageBinarizeThreshold = imageBinarizeThreshold };
 
         var ds = new DisplaySet();
         while (reader.PeekChar() != -1)
@@ -64,11 +64,11 @@ public class PGSData
         }
     }
     
-    public static IEnumerable<SimpleBitmap?> DecodeBitmapData(string filename)
+    public static IEnumerable<SimpleBitmap?> DecodeBitmapData(string filename, byte imageBinarizeThreshold = 128)
     {
         using var fs = new FileStream(filename, FileMode.Open, FileAccess.Read);
         using var reader = new BigEndianBinaryReader(fs);
-        var pgs = new Parse(reader, ParseFlag.DecodeImages | ParseFlag.WithoutSaveFile);
+        var pgs = new Parse(reader, ParseFlag.DecodeImages | ParseFlag.WithoutSaveFile) { ImageBinarizeThreshold = imageBinarizeThreshold};
 
         while (reader.PeekChar() != -1)
         {
