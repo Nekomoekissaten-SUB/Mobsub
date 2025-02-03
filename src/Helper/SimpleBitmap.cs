@@ -121,4 +121,37 @@ public class SimpleBitmap
             }
         }
     }
+    
+    public unsafe SimpleBitmap ResizeNearest(int scale)
+    {
+        var newImages = new SimpleBitmap(width * scale, height * scale);
+
+        fixed (byte* pSrc = pixelData, pDst = newImages.pixelData)
+        {
+            for (var origY = 0; origY < height; origY++)
+            {
+                var srcLine = pSrc + origY * stride;
+                var newYStart = origY * scale;
+                
+                for (var dy = 0; dy < scale; dy++)
+                {
+                    var dstLine = pDst + (newYStart + dy) * newImages.stride;
+                    
+                    for (var origX = 0; origX < width; origX++)
+                    {
+                        var pixel = *(uint*)(srcLine + origX * 4);
+                        var newXStart = origX * scale;
+                        
+                        var dstPixel = (uint*)(dstLine + newXStart * 4);
+                        for (var dx = 0; dx < scale; dx++)
+                        {
+                            dstPixel[dx] = pixel;
+                        }
+                    }
+                }
+            }
+        }
+
+        return newImages;
+    }
 }

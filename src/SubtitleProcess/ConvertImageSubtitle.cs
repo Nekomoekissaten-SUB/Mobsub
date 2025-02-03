@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Text;
+using Mobsub.Helper;
 using Mobsub.SubtitleParse.PGS;
 using SnippingToolOcrCore;
 
@@ -16,19 +17,21 @@ public static class ConvertImageSubtitle
         foreach (var pic in PGSData.DecodeBitmapData(sub, imageBinarizeThreshold))
         {
             if (pic == null) continue;
+            var newPic = ProcessImage(pic);
+            
             unsafe
             {
-                fixed (byte* p = pic.GetPixelData())
+                fixed (byte* p = newPic.GetPixelData())
                 {
                     var ptr = (IntPtr)p;
                 
                     var img = new Img()
                     {
                         t = 3,
-                        col = pic.GetWidth(),
-                        row = pic.GetHeight(),
+                        col = newPic.GetWidth(),
+                        row = newPic.GetHeight(),
                         _unk = 0,
-                        step = pic.GetStride(),
+                        step = newPic.GetStride(),
                         data_ptr = ptr
                     };
                 
@@ -66,5 +69,13 @@ public static class ConvertImageSubtitle
         ocrEngine.Dispose();
 
         File.WriteAllText(outputFile, sb.ToString(), Encoding.UTF8);
+    }
+
+    private static SimpleBitmap ProcessImage(SimpleBitmap pic)
+    {
+        if (pic.GetWidth() >= 50 && pic.GetHeight() >= 50) return pic;
+
+        var scale = pic.GetWidth() >= 25 && pic.GetHeight() >= 25 ? 2 : 4;
+        return pic.ResizeNearest(scale);
     }
 }
