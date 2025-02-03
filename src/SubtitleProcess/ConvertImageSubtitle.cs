@@ -56,6 +56,12 @@ public static class ConvertImageSubtitle
 
                             i++;
                         }
+                        
+                        if (sb.Length > 0 && sb[^1] == 'N' && sb[^2] == '\\')
+                        {
+                            sb.Remove(sb.Length - 2, 2);
+                        }
+                        
                         sb.AppendLine();
                     }
                     else
