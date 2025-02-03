@@ -26,6 +26,7 @@ jobs:
           #   identifier: linux
         arch: ['x64', 'arm64']
         dotnet_version: ['9.x']
+        target: ['net9.0']
 
     name: build-${{ matrix.env.os }}-${{ matrix.arch }}
     runs-on: ${{ matrix.env.os }}
@@ -64,7 +65,7 @@ jobs:
       run: |
         cd ./src/Ikkoku
         dotnet restore
-        dotnet publish -f net9.0 -c Release -r "${{ matrix.env.identifier }}-${{ matrix.arch }}"
+        dotnet publish -f ${{ matrix.target }} -c Release -r "${{ matrix.env.identifier }}-${{ matrix.arch }}"
         # /p:PublishAot=false /p:PublishSingleFile=true /p:DefineConstants=NotAot
 
     - name: Set short version
@@ -78,8 +79,8 @@ jobs:
       with:
         name: Ikkoku_g${{ env.VERSION }}_${{ matrix.env.identifier }}-${{ matrix.arch }}
         path: |
-          src/Ikkoku/bin/Release/net8.0/${{ matrix.env.identifier }}-${{ matrix.arch }}/publish/
-          !src/Ikkoku/bin/Release/net8.0/${{ matrix.env.identifier }}-${{ matrix.arch }}/publish/*.pdb
-          !src/Ikkoku/bin/Release/net8.0/${{ matrix.env.identifier }}-${{ matrix.arch }}/publish/*.dbg
-          !src/Ikkoku/bin/Release/net8.0/${{ matrix.env.identifier }}-${{ matrix.arch }}/publish/*.dwarf
-          !src/Ikkoku/bin/Release/net8.0/${{ matrix.env.identifier }}-${{ matrix.arch }}/publish/*.dsym
+          src/Ikkoku/bin/Release/${{ matrix.target }}/${{ matrix.env.identifier }}-${{ matrix.arch }}/publish/
+          !src/Ikkoku/bin/Release/${{ matrix.target }}/${{ matrix.env.identifier }}-${{ matrix.arch }}/publish/*.pdb
+          !src/Ikkoku/bin/Release/${{ matrix.target }}/${{ matrix.env.identifier }}-${{ matrix.arch }}/publish/*.dbg
+          !src/Ikkoku/bin/Release/${{ matrix.target }}/${{ matrix.env.identifier }}-${{ matrix.arch }}/publish/*.dwarf
+          !src/Ikkoku/bin/Release/${{ matrix.target }}/${{ matrix.env.identifier }}-${{ matrix.arch }}/publish/*.dsym
