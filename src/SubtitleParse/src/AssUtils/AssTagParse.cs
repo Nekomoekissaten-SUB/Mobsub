@@ -293,7 +293,7 @@ public partial class AssTagParse(AssStyles styles, AssScriptInfo scriptInfo, ILo
     #region Font
     private void ParseTagFontName(ReadOnlySpan<char> span)
     {
-        if (IsEmptyOrWhiteSpace(span) || span.Trim() == "0")
+        if (IsEmptyOrWhiteSpace(span) || span.Trim() is "0")
         {
             if (span.Length > 0)
             {
@@ -682,7 +682,7 @@ public partial class AssTagParse(AssStyles styles, AssScriptInfo scriptInfo, ILo
     // Utilities
     private static bool IsEmptyOrWhiteSpace(ReadOnlySpan<char> span) => span.IsEmpty || span.IsWhiteSpace();
     private static bool StartOrEndIsWhiteSpace(ReadOnlySpan<char> span) =>
-        char.IsWhiteSpace(span[0]) || char.IsWhiteSpace(span[1]);
+        char.IsWhiteSpace(span[0]) || char.IsWhiteSpace(span[^1]);
 
     private TagDuplicate CheckDuplicateTag(string tag)
     {
