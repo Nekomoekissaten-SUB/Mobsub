@@ -4,11 +4,11 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:viewModels="clr-namespace:Mobsub.IkkokuMergeBaseDiff.ViewModels"
         xmlns:converter="clr-namespace:Mobsub.IkkokuMergeBaseDiff.ViewModels.Converter"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        mc:Ignorable="d" d:DesignWidth="1920" d:DesignHeight="300"
+        Width="1920" Height="300"
         x:Class="Mobsub.IkkokuMergeBaseDiff.Views.MainWindow"
         x:DataType="viewModels:MainWindowViewModel"
-        Icon="/Assets/avalonia-logo.ico"
-        Title="IkkokuMergeBaseDiff">
+        Title="IkkokuMergeBaseDiff" WindowStartupLocation="CenterOwner">
 
     <Design.DataContext>
         <!-- This only sets the DataContext for the previewer in an IDE,
@@ -21,14 +21,14 @@
     </Window.Resources>
     
     <DockPanel>
-        <Grid RowDefinitions="45, 45, 45, *" ShowGridLines="True">
-            <WrapPanel>
+        <Grid RowDefinitions="*,*,*" ShowGridLines="True">
+            <WrapPanel VerticalAlignment="Center">
                 <TextBlock Margin="10" VerticalAlignment="Center" Text="Path:" Width="50"></TextBlock>
                 <TextBox Margin="5" VerticalAlignment="Center" Width="400" AcceptsReturn="False" Text="{Binding WorkDirectory}"></TextBox>
                 <Button Margin="5" VerticalAlignment="Center" FontSize="10" Command="{Binding SelectWorkDirectoryCommand}">...</Button>
                 <TextBlock Margin="10" Text="{Binding GitRepositoryPath}"></TextBlock>
             </WrapPanel>
-            <WrapPanel Grid.Row="1">
+            <WrapPanel Grid.Row="1" VerticalAlignment="Center">
                 <TextBlock Margin="10" VerticalAlignment="Center" Text="Start:" Width="50"></TextBlock>
                 <ComboBox Margin="5" SelectedIndex="0"
                           ItemsSource="{Binding StartCommits}" SelectedItem="{Binding StartCommit}">
@@ -52,11 +52,11 @@
                 <!-- <Button Margin="10" FontSize="10" Command="{Binding DisplayPatchChangesCommand}">View Changes</Button> -->
             </WrapPanel>
             
-            <WrapPanel Grid.Row="2">
+            <WrapPanel Grid.Row="2" VerticalAlignment="Center">
                 <TextBlock Margin="10" VerticalAlignment="Center" Text="Config:" Width="50"></TextBlock>
                 <TextBox Margin="5" VerticalAlignment="Center" Width="400" AcceptsReturn="False" Text="{Binding ZhConvertConfig}"></TextBox>
                 <Button Margin="5" VerticalAlignment="Center" FontSize="10" Command="{Binding SelectZhConvertConfigCommand}">...</Button>
-                <Button Margin="5" VerticalAlignment="Center" FontSize="10" Command="{Binding MergePatchCommand}">Merge</Button>
+                <Button Margin="5" VerticalAlignment="Center" FontSize="12" Command="{Binding MergePatchCommand}">Merge</Button>
             </WrapPanel>
             
         </Grid>
