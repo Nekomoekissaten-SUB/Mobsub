@@ -145,7 +145,7 @@ internal class MergeCmd
                     var minLength = confVar[0].Length - _sepIndex - 1;
                     for (var i = _epStart; i <= _epEnd; i++)
                     {
-                        mergeConf.Merge(i.ToString().PadLeft(CountDigits(_epEnd, minLength)), confVar[1], baseDir.FullName, optPath.FullName, mergeSection);
+                        mergeConf.Merge(i.ToString().PadLeft(CountDigits(_epEnd, minLength), '0'), confVar[1], baseDir.FullName, optPath.FullName, mergeSection);
                     }
                 }
                 else
