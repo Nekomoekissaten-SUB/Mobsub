@@ -2,6 +2,7 @@ namespace Mobsub.SubtitleParse.AssTypes;
 
 public enum AssSection
 {
+    None,
     ScriptInfo,
     StylesV4P,
     StylesV4,

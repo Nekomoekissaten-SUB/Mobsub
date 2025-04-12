@@ -28,7 +28,7 @@ public class AssData(ILogger? logger = null)
         using var sr = new StreamReader(fs);
         string? line;
         var lineNumber = 0;
-        var parseFunc = AssSection.ScriptInfo;
+        var sectionType = AssSection.None;
         Utils.GuessEncoding(fs, out CharEncoding, out CarriageReturn);
         _logger?.ZLogInformation($"File use {CharEncoding.EncodingName} and {(CarriageReturn ? "CRLF" : "LF")}");
         _logger?.ZLogInformation($"Start parse ass");
@@ -43,65 +43,7 @@ public class AssData(ILogger? logger = null)
                 throw new Exception("Please check first line");
             }
 
-            if (sp.Length == 0)
-            {
-                continue;
-            }
-
-            if (sp[0] == '[')
-            {
-                _logger?.ZLogInformation($"Start parse section {line}");
-                parseFunc = line switch
-                {
-                    AssScriptInfo.sectionName => AssSection.ScriptInfo,
-                    AssStyles.sectionNameV4 => AssSection.StylesV4,
-                    AssStyles.sectionNameV4P => AssSection.StylesV4P,
-                    AssStyles.sectionNameV4PP => AssSection.StylesV4PP,
-                    AssEvents.sectionName => AssSection.Events,
-                    sectionNameFonts => AssSection.Fonts,
-                    sectionNameGraphics => AssSection.Graphics,
-                    sectionNameAegisubProjectGarbage => AssSection.AegisubProjectGarbage,
-                    sectionNameAegisubExtradata => AssSection.AegisubExtradata,
-                    _ => throw new Exception($"Unknown section: {line}."),
-                };
-
-                if (!Sections.Add(parseFunc))
-                {
-                    throw new Exception($"Duplicate section: {line}");
-                }
-                continue;
-            }
-            
-            switch (parseFunc)
-            {
-                case AssSection.ScriptInfo:
-                    ScriptInfo.Read(sp, lineNumber);
-                    break;
-                case AssSection.StylesV4:
-                case AssSection.StylesV4P:
-                case AssSection.StylesV4PP:
-                    Styles.Read(sp, lineNumber);
-                    break;
-                case AssSection.Events:
-                    Events.Read(sp, ScriptInfo.ScriptType, lineNumber);
-                    break;
-                case AssSection.AegisubProjectGarbage:
-                    Utils.TrySplitKeyValue(sp, out var k, out var v);
-                    AegisubProjectGarbage.TryAdd(k, v);
-                    break;
-                case AssSection.AegisubExtradata:
-                    Utils.TrySplitKeyValue(sp, out var k1, out var v1);
-                    AegiusbExtradata.Add(k1 == string.Empty ? line : v1);
-                    break;
-                case AssSection.Fonts:
-                    Fonts = AssEmbedded.ParseFontsFromAss(sp, lineNumber, _logger);
-                    break;
-                case AssSection.Graphics:
-                    Graphics = AssEmbedded.ParseGraphicsFromAss(sp, lineNumber, _logger);
-                    break;
-                default:
-                    break;
-            }
+            ParseContent(sp, lineNumber, ref sectionType);
         }
         _logger?.ZLogInformation($"Ass parsing completed");
         return this;
@@ -113,15 +55,91 @@ public class AssData(ILogger? logger = null)
         return ReadAssFile(fs);
     }
 
+    private void ParseContent(ReadOnlySpan<char> sp, int lineNumber, ref AssSection sectionType)
+    {
+        if (sp.Length == 0)
+        {
+            return;
+        }
+
+        if (sp[0] == '[')
+        {
+            _logger?.ZLogInformation($"Start parse section {sp.ToString()}");
+            sectionType = sp switch
+            {
+                AssScriptInfo.sectionName => AssSection.ScriptInfo,
+                AssStyles.sectionNameV4 => AssSection.StylesV4,
+                AssStyles.sectionNameV4P => AssSection.StylesV4P,
+                AssStyles.sectionNameV4PP => AssSection.StylesV4PP,
+                AssEvents.sectionName => AssSection.Events,
+                sectionNameFonts => AssSection.Fonts,
+                sectionNameGraphics => AssSection.Graphics,
+                sectionNameAegisubProjectGarbage => AssSection.AegisubProjectGarbage,
+                sectionNameAegisubExtradata => AssSection.AegisubExtradata,
+                _ => throw new Exception($"Unknown section: {sp.ToString()}."),
+            };
+
+            if (!Sections.Add(sectionType))
+            {
+                throw new Exception($"Duplicate section: {sp.ToString()}");
+            }
+            return;
+        }
+
+        switch (sectionType)
+        {
+            case AssSection.ScriptInfo:
+                ScriptInfo.Read(sp, lineNumber);
+                break;
+            case AssSection.StylesV4:
+            case AssSection.StylesV4P:
+            case AssSection.StylesV4PP:
+                Styles.Read(sp, lineNumber);
+                break;
+            case AssSection.Events:
+                Events.Read(sp, ScriptInfo.ScriptType, lineNumber);
+                break;
+            case AssSection.AegisubProjectGarbage:
+                Utils.TrySplitKeyValue(sp, out var k, out var v);
+                AegisubProjectGarbage.TryAdd(k, v);
+                break;
+            case AssSection.AegisubExtradata:
+                Utils.TrySplitKeyValue(sp, out var k1, out var v1);
+                AegiusbExtradata.Add(k1 == string.Empty ? sp.ToString() : v1);
+                break;
+            case AssSection.Fonts:
+                Fonts = AssEmbedded.ParseFontsFromAss(sp, lineNumber, _logger);
+                break;
+            case AssSection.Graphics:
+                Graphics = AssEmbedded.ParseGraphicsFromAss(sp, lineNumber, _logger);
+                break;
+            default:
+                break;
+        }
+    }
+
     public void WriteAssFile(string filePath, bool forceEnv, bool ctsRounding)
     {
         _logger?.ZLogInformation($"File will write to {filePath}");
-        var newline = forceEnv ? [.. Environment.NewLine] : (CarriageReturn ? new char[] { '\r', '\n' } : ['\n']);
         var charEncoding = forceEnv ? Utils.EncodingRefOS() : CharEncoding;
 
         using FileStream fileStream = new(filePath, FileMode.Create, FileAccess.Write);
         using var memStream = new MemoryStream();
         using var sw = new StreamWriter(memStream, charEncoding);
+        WriteAssStream(sw, forceEnv, ctsRounding);
+
+        memStream.Seek(0, SeekOrigin.Begin);
+        memStream.CopyTo(fileStream);
+        fileStream.Close();
+        _logger?.ZLogInformation($"File write completed");
+    }
+    public void WriteAssFile(string filePath) => WriteAssFile(filePath, false, false);
+
+    private void WriteAssStream(StreamWriter sw, bool forceEnv, bool ctsRounding)
+    {
+        _logger?.ZLogInformation($"Begin write ass");
+        var newline = forceEnv ? [.. Environment.NewLine] : (CarriageReturn ? new char[] { '\r', '\n' } : ['\n']);
+
         foreach (var s in Sections)
         {
             switch (s)
@@ -188,12 +206,5 @@ public class AssData(ILogger? logger = null)
         }
         sw.Flush();
         _logger?.ZLogInformation($"Sections write completed");
-
-        memStream.Seek(0, SeekOrigin.Begin);
-        memStream.CopyTo(fileStream);
-        fileStream.Close();
-        _logger?.ZLogInformation($"File write completed");
     }
-    public void WriteAssFile(string filePath) => WriteAssFile(filePath, false, false);
-
 }
