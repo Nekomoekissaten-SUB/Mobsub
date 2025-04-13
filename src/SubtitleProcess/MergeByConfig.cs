@@ -47,7 +47,19 @@ public class MergeByConfig(string configPath)
         // }
         
         if (!Directory.Exists(optPath)) { Directory.CreateDirectory(optPath); }
-        var optFileName = Path.Combine(optPath, baseFileName);
+
+        string optFileName;
+        if (ConfigDataBase.OutputName is not null)
+        {
+            sb.Clear();
+            sb.Append(ConfigDataBase.OutputName.Replace("{{ep}}", episode).Replace("{{lang}}", lang));
+            sb.Append(".ass");
+            optFileName = Path.Combine(optPath, sb.ToString());
+        }
+        else
+        {
+            optFileName = Path.Combine(optPath, baseFileName);
+        }
         
         var baseData = new AssData();
         var bf = Path.Combine(baseDir, baseFileName);
@@ -68,7 +80,7 @@ public class MergeByConfig(string configPath)
                     throw new Exception("Merge: Please check your configuration file shift_fr, it may be wrong.");
                 }
 
-                var mf = Path.Combine(baseDir, $"{ConfigDataBase.Namef[kvpEp.Key].Replace("{{lang}}", lang)}.ass");
+                var mf = Path.Combine(baseDir, $"{ConfigDataBase.Namef[kvpEp.Key].Replace("{{ep}}", episode).Replace("{{lang}}", lang)}.ass");
                 if (!File.Exists(mf))
                 {
                     throw new FileNotFoundException($"File {mf} not found.");

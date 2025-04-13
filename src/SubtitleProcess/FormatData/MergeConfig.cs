@@ -153,6 +153,7 @@ public class ShiftMergeYamlV2
     public Dictionary<string, int> TplFr = [];
     public Dictionary<string, Dictionary<string, int[]>> ShiftFr = [];
     public bool ConvertFromV1 = false;
+    public string? OutputName;
 }
 
 [YamlStaticContext]
