@@ -2,7 +2,6 @@ using Microsoft.Extensions.Logging;
 using ZLogger;
 using System.Diagnostics;
 using System.Text;
-using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Mobsub.SubtitleParse.AssTypes;
 
@@ -60,27 +59,30 @@ public class AssEvents(ILogger? logger = null)
     }
 }
 
-public partial class AssEvent(ILogger? logger = null) : ObservableObject
+public partial class AssEvent(ILogger? logger = null)
 {
-    
     public int lineNumber;
     public bool StartSemicolon = false;
     public string? Untouched = string.Empty;
-    [ObservableProperty] private bool _isDialogue = true;
-    [ObservableProperty] private int _layer;
+    [AssProperty] private bool _isDialogue = true;
+    [AssProperty] private int _layer;
     public readonly int Marked = 0;
-    [ObservableProperty] private AssTime _start;
-    [ObservableProperty] private AssTime _end;
-    [ObservableProperty] private string _style = "Default";
-    [ObservableProperty] private string _name = string.Empty;
-    [ObservableProperty] private int _marginL;
-    [ObservableProperty] private int _marginR;
-    [ObservableProperty] private int _marginV;
-    [ObservableProperty] private int _marginT;
-    [ObservableProperty] private int _marginB;
-    [ObservableProperty] private string? _effect;
-    [ObservableProperty] private string? _text;
-    public Range[] TextRanges = [];
+    [AssProperty] private AssTime _start;
+    [AssProperty] private AssTime _end;
+    [AssProperty] private string _style = "Default";
+    [AssProperty] private string _name = string.Empty;
+    [AssProperty] private int _marginL;
+    [AssProperty] private int _marginR;
+    [AssProperty] private int _marginV;
+    [AssProperty] private int _marginT;
+    [AssProperty] private int _marginB;
+    [AssProperty] private string? _effect;
+    [AssProperty(InvalidatesProperties = new[] { nameof(TextRanges) })]
+    private string? _text;
+
+    [AssCachedProperty(CalculationMethod = nameof(CalculateTextRanges))]
+    private Range[] TextRangesCache = [];
+    private Range[] CalculateTextRanges() => SplitEventText(_text.AsSpan());
 
     public bool Read(ReadOnlySpan<char> sp, int lineNum, string[] formats) => Read(sp, sp.IndexOf(':'), lineNum, formats);
 
@@ -217,7 +219,7 @@ public partial class AssEvent(ILogger? logger = null) : ObservableObject
         
         return ranges.ToArray();
     }
-    public void UpdateTextRanges() => TextRanges = SplitEventText(Text.AsSpan());
+    public void UpdateTextRanges() => InvalidateTextRanges();
 
     public void Write(StreamWriter sw, string[] fmts, bool ctsRounding)
     {
