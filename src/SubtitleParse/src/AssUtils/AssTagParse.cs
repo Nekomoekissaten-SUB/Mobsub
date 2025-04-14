@@ -420,8 +420,8 @@ public partial class AssTagParse(AssStyles styles, AssScriptInfo scriptInfo, ILo
         NormalizeTagColor(span, out _, out var value, isAlpha);
         var colors = inTransformation switch
         {
-            true when curTextStyleTrans!.TransTextStyle.Colors is not null => curTextStyleTrans.TransTextStyle.Colors,
-            false when curTextStyle!.Colors is not null => curTextStyle.Colors,
+            true when curTextStyleTrans!.TransTextStyle.Colors is not null => (AssTextColor)curTextStyleTrans.TransTextStyle.Colors,
+            false when curTextStyle!.Colors is not null => (AssTextColor)curTextStyle.Colors,
             _ => new AssTextColor(curTextStyle!.BaseStyle)
         };
 

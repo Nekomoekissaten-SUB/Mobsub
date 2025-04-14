@@ -479,7 +479,7 @@ public class OverrideTagsSourceGenerator : ISourceGenerator
                 case "AssTextColor":
                     sbGetByNameProp.AppendLine("\"&H\");");
                     sbGetByNameProp.Append(     "                sb.Append(");
-                    sbGetByNameProp.Append($"Get{propertyNameLast}()!");
+                    sbGetByNameProp.Append($"(({propertyType})Get{propertyNameLast}()!)");
                     switch (parseMethodParams[2])
                     {
                         case '0':
