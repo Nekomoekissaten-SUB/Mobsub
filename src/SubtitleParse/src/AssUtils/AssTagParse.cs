@@ -422,13 +422,7 @@ public partial class AssTagParse(AssStyles styles, AssScriptInfo scriptInfo, ILo
         {
             true when curTextStyleTrans!.TransTextStyle.Colors is not null => curTextStyleTrans.TransTextStyle.Colors,
             false when curTextStyle!.Colors is not null => curTextStyle.Colors,
-            _ => new AssTextColor()
-            {
-                Primary = curTextStyle!.BaseStyle.PrimaryColour,
-                Secondary = curTextStyle!.BaseStyle.SecondaryColour,
-                Outline = curTextStyle!.BaseStyle.OutlineColour,
-                Back = curTextStyle!.BaseStyle.BackColour,
-            }
+            _ => new AssTextColor(curTextStyle!.BaseStyle)
         };
 
         if (!isAlpha)

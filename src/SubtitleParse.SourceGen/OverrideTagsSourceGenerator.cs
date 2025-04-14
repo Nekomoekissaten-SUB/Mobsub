@@ -317,11 +317,7 @@ public class OverrideTagsSourceGenerator : ISourceGenerator
                                                                 {
                                                                     true when curTextStyleTrans!.TransTextStyle.{{propertyNameLast}} is not null => ({{propertyType}})curTextStyleTrans.TransTextStyle.{{propertyNameLast}},
                                                                     false when curTextStyle!.{{propertyNameLast}} is not null => ({{propertyType}})curTextStyle.{{propertyNameLast}},
-                                                                    _ => new {{propertyType}}()
-                                                                    {
-                                                                        X = curTextStyle!.BaseStyle.{{stylePropNameX}},
-                                                                        Y = curTextStyle!.BaseStyle.{{stylePropNameY}},
-                                                                    }
+                                                                    _ => new {{propertyType}}(curTextStyle!.BaseStyle)
                                                                 };
                                                                 
                                                                 var tag = index switch
@@ -391,22 +387,9 @@ public class OverrideTagsSourceGenerator : ISourceGenerator
                 {
                     switch (propertyType)
                     {
-                        case "AssTextBorder" or "AssTextShadow":
+                        case "AssTextBorder" or "AssTextShadow" or "AssTextScale":
                             sbTryGetProp.AppendLine($$"""
-                                                              lastValue = new {{propertyType}}()
-                                                              {
-                                                                  X = baseStyle.{{stylePropName}},
-                                                                  Y = baseStyle.{{stylePropName}},
-                                                              };
-                                                      """);
-                            break;
-                        case "AssTextScale":
-                            sbTryGetProp.AppendLine($$"""
-                                                              lastValue = new {{propertyType}}()
-                                                              {
-                                                                  X = baseStyle.{{stylePropName}}X,
-                                                                  Y = baseStyle.{{stylePropName}}Y,
-                                                              };
+                                                              lastValue = new {{propertyType}}(baseStyle);
                                                       """);
                             break;
                         default:

@@ -12,35 +12,17 @@ public partial class AssTextStyle(AssStyle baseStyle)
     {
         FontName = style.Fontname;
         FontSize = style.Fontsize;
-        Colors = new AssTextColor()
-        {
-            Primary = style.PrimaryColour,
-            Secondary = style.SecondaryColour,
-            Outline = style.OutlineColour,
-            Back = style.BackColour,
-        };
+        Colors = new AssTextColor(style);
         FontWeight = style.Bold ? 1 : 0;
         FontItalic = style.Italic;
         TextUnderline = style.Underline;
         TextStrikeOut = style.StrikeOut;
-        TextScale = new AssTextScale()
-        {
-            X = style.ScaleX,
-            Y = style.ScaleY,
-        };
+        TextScale = new AssTextScale(style);
         TextSpacing = style.Spacing;
         // Angle
         // BorderStyle
-        Borders = new AssTextBorder()
-        {
-            X = style.Outline,
-            Y = style.Outline,
-        };
-        Shadows = new AssTextShadow()
-        {
-            X = style.Shadow,
-            Y = style.Shadow,
-        };
+        Borders = new AssTextBorder(style);
+        Shadows = new AssTextShadow(style);
         // Alignment ??= style.Alignment;
         // MarginL
         // MarginR
@@ -69,13 +51,7 @@ public partial class AssTextStyle(AssStyle baseStyle)
             lastValue = (AssTextColor)value;
             return true;
         }
-        lastValue = new AssTextColor()
-        {
-            Primary = baseStyle.PrimaryColour,
-            Secondary = baseStyle.SecondaryColour,
-            Outline = baseStyle.OutlineColour,
-            Back = baseStyle.BackColour,
-        };
+        lastValue = new AssTextColor(baseStyle);
         return false;
     }
 
@@ -165,26 +141,26 @@ public class AssTagTransform(ILogger? logger)
     }
 }
 
-public class AssTextColor
+public struct AssTextColor(AssStyle style)
 {
-    public AssRGB8 Primary;
-    public AssRGB8 Secondary;
-    public AssRGB8 Outline;
-    public AssRGB8 Back;
+    public AssRGB8 Primary = style.PrimaryColour;
+    public AssRGB8 Secondary = style.SecondaryColour;
+    public AssRGB8 Outline = style.OutlineColour;
+    public AssRGB8 Back = style.BackColour;
 }
 
-public struct AssTextBorder
+public struct AssTextBorder(AssStyle style)
 {
-    public double X;
-    public double Y;
+    public double X = style.Outline;
+    public double Y = style.Outline;
 }
-public struct AssTextShadow
+public struct AssTextShadow(AssStyle style)
 {
-    public double X;
-    public double Y;
+    public double X = style.Shadow;
+    public double Y = style.Shadow;
 }
-public struct AssTextScale
+public struct AssTextScale(AssStyle style)
 {
-    public double X;
-    public double Y;
+    public double X = style.ScaleX;
+    public double Y = style.ScaleY;
 }
