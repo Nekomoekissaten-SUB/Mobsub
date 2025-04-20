@@ -55,6 +55,38 @@ public class AssData(ILogger? logger = null)
         return ReadAssFile(fs);
     }
 
+    public async Task<AssData> ReadAssFileAsync(FileStream fs)
+    {
+        using var sr = new StreamReader(fs);
+        string? line;
+        var lineNumber = 0;
+        var sectionType = AssSection.None;
+        Utils.GuessEncoding(fs, out CharEncoding, out CarriageReturn);
+        _logger?.ZLogInformation($"File use {CharEncoding.EncodingName} and {(CarriageReturn ? "CRLF" : "LF")}");
+        _logger?.ZLogInformation($"Start parse ass");
+
+        while ((line = await sr.ReadLineAsync()) != null)
+        {
+            lineNumber++;
+            var sp = line.AsSpan();
+
+            if (lineNumber == 1 && !sp.SequenceEqual("[Script Info]".AsSpan()))
+            {
+                throw new Exception("Please check first line");
+            }
+
+            ParseContent(sp, lineNumber, ref sectionType);
+        }
+        _logger?.ZLogInformation($"Ass parsing completed");
+        return this;
+    }
+    public async Task<AssData> ReadAssFileAsync(string filePath)
+    {
+        using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read);
+        _logger?.ZLogInformation($"Open ass file: {filePath}");
+        return await ReadAssFileAsync(fs);
+    }
+
     private void ParseContent(ReadOnlySpan<char> sp, int lineNumber, ref AssSection sectionType)
     {
         if (sp.Length == 0)

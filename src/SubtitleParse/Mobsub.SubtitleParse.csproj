@@ -12,11 +12,12 @@
     <PackageTags>ass;srt;subtitle</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
+    <LangVersion>13.0</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="CommunityToolkit.Diagnostics" Version="8.3.2" />
-    <PackageReference Include="ZLogger" Version="2.5.7" />
+    <PackageReference Include="CommunityToolkit.Diagnostics" Version="8.4.0" />
+    <PackageReference Include="ZLogger" Version="2.5.10" />
     <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
