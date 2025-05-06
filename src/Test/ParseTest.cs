@@ -39,7 +39,7 @@ public partial class ParseTest
     {
         var evt = new AssEvent();
         string[] sources = [
-            "*Default", "\tDefault", "  Default", " Default", "", "   ", "      ", "deFauLt"
+            "*Default", "", "deFauLt"
             ];
         ReadOnlySpan<char> target;
         foreach (var source in sources)
@@ -48,7 +48,7 @@ public partial class ParseTest
             Assert.IsTrue(target.SequenceEqual("Default"));
         }
 
-        string[] sources2 = ["\\Default", "/Default", "_Default", "   \\t1Default"];
+        string[] sources2 = ["\\Default", "/Default", "_Default", "* Default"];
         foreach (var source in sources2)
         {
             target = GetEventStyleName(evt, source);

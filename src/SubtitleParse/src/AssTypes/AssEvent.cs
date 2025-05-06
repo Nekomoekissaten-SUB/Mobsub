@@ -132,7 +132,7 @@ public partial class AssEvent(ILogger? logger = null)
                 throw new FormatException($"Invalid line: '{sp.ToString()}'");
             }
             
-            var v = sp[startIndex..nextSep];
+            var v = sp[startIndex..nextSep].TrimStart();
 
             switch (fmts[segCount])
             {
@@ -317,7 +317,9 @@ public partial class AssEvent(ILogger? logger = null)
 
     private static ReadOnlySpan<char> GetEventStyleName(ReadOnlySpan<char> sp)
     {
-        var spFixed = sp.TrimStart("\t *");
+        // https://sourceforge.net/p/guliverkli2/code/HEAD/tree/src/subtitles/STS.cpp#l1524
+        // https://sourceforge.net/p/guliverkli2/code/HEAD/tree/src/subtitles/STS.cpp#l1490
+        var spFixed = sp.TrimStart('*');
         if (spFixed.Length == 0 || MemoryExtensions.Equals(spFixed, "default", StringComparison.OrdinalIgnoreCase))
         {
             return "Default";
