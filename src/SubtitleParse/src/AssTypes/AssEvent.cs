@@ -132,14 +132,22 @@ public partial class AssEvent(ILogger? logger = null)
                 throw new FormatException($"Invalid line: '{sp.ToString()}'");
             }
             
-            var v = sp[startIndex..nextSep].ToString();
+            var v = sp[startIndex..nextSep];
 
             switch (fmts[segCount])
             {
                 case "Marked":
                     break;
+                case "Style":
+                    var target = GetEventStyleName(v);
+                    if (!target.SequenceEqual(v))
+                    {
+                        logger?.ZLogWarning($"The style of line {lineNumber} will be fixed from '{v.ToString()}' to '{target.ToString()}'.");
+                    }
+                    Style = target.ToString();
+                    break;
                 default:
-                    Utils.SetProperty(this, typeof(AssEvent), fmts[segCount], v);
+                    Utils.SetProperty(this, typeof(AssEvent), fmts[segCount], v.ToString());
                     break;
             }
 
@@ -306,4 +314,14 @@ public partial class AssEvent(ILogger? logger = null)
         ca[1] is AssConstants.LineBreaker or AssConstants.WordBreaker or AssConstants.NoBreakSpace;
     public static bool IsTextBlock(ReadOnlySpan<char> block) => !(IsOverrideBlock(block) || IsEventSpecialCharPair(block));
     public bool WillSkip() => StartSemicolon || !IsDialogue || Text is null || Text.Length == 0;
+
+    private static ReadOnlySpan<char> GetEventStyleName(ReadOnlySpan<char> sp)
+    {
+        var spFixed = sp.TrimStart("\t *");
+        if (spFixed.Length == 0 || MemoryExtensions.Equals(spFixed, "default", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Default";
+        }
+        return spFixed;
+    }
 }

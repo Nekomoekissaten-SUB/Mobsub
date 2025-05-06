@@ -3,6 +3,7 @@ using Mobsub.SubtitleParse.AssTypes;
 using Mobsub.SubtitleParse.AssUtils;
 using Microsoft.Extensions.Logging;
 using ZLogger;
+using System.Runtime.CompilerServices;
 
 namespace Mobsub.Test;
 
@@ -32,4 +33,29 @@ public partial class ParseTest
     //     var atp = new AssTagParse(assStyles, GetScriptInfo());
     //     atp.Parse(block, assStyles.Collection.First());
     // }
+
+    [TestMethod]
+    public void ParseEventStyleName()
+    {
+        var evt = new AssEvent();
+        string[] sources = [
+            "*Default", "\tDefault", "  Default", " Default", "", "   ", "      ", "deFauLt"
+            ];
+        ReadOnlySpan<char> target;
+        foreach (var source in sources)
+        {
+            target = GetEventStyleName(evt, source);
+            Assert.IsTrue(target.SequenceEqual("Default"));
+        }
+
+        string[] sources2 = ["\\Default", "/Default", "_Default", "   \\t1Default"];
+        foreach (var source in sources2)
+        {
+            target = GetEventStyleName(evt, source);
+            Assert.IsFalse(target.SequenceEqual("Default"));
+        }
+
+        [UnsafeAccessor(UnsafeAccessorKind.StaticMethod, Name = "GetEventStyleName")]
+        extern static ReadOnlySpan<char> GetEventStyleName(AssEvent c, ReadOnlySpan<char> sp);
+    }
 }
