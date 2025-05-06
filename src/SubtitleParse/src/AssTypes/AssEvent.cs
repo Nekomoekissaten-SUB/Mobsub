@@ -147,7 +147,7 @@ public partial class AssEvent(ILogger? logger = null)
                     Style = target.ToString();
                     break;
                 default:
-                    Utils.SetProperty(this, typeof(AssEvent), fmts[segCount], v.ToString());
+                    Utils.SetProperty(this, typeof(AssEvent), fmts[segCount], v);
                     break;
             }
 

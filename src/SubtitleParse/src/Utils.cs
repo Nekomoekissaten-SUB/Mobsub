@@ -56,7 +56,7 @@ public class Utils
         fs.Seek(0, SeekOrigin.Begin);
     }
 
-    public static void SetProperty(object obj, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] Type T, string propertyName, string value)
+    public static void SetProperty(object obj, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] Type T, string propertyName, ReadOnlySpan<char> value)
     {
         var property = T.GetProperty(propertyName);
         if (property == null)
@@ -79,18 +79,29 @@ public class Utils
             }
             else
             {
-                typedValue = value.AsSpan().SequenceEqual("yes".AsSpan());
+                typedValue = value.SequenceEqual("yes".AsSpan());
             }
         }
         else if (property.PropertyType == typeof(AssTime))
         {
-            typedValue = AssTime.ParseFromAss(value.AsSpan());
+            typedValue = AssTime.ParseFromAss(value);
+        }
+        else if (property.PropertyType == typeof(int))
+        {
+            if (int.TryParse(value, out var target))
+            {
+                typedValue = target;
+            }
+        }
+        else if (property.PropertyType == typeof(string))
+        {
+            typedValue = value.ToString();
         }
         else
         {
             try
             {
-                typedValue = Convert.ChangeType(value, property.PropertyType);
+                typedValue = Convert.ChangeType(value.ToString(), property.PropertyType);
             }
             catch (InvalidCastException)
             {
