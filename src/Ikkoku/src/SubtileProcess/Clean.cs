@@ -15,10 +15,16 @@ public class Clean
         internal bool addLayoutRes;
         internal bool deleteFanhuaji;
 
+        // Styles
+        internal bool dropDuplicateStyles;
+
         // Events
         internal bool dropUnusedStyles;
         internal bool processEvents;
         internal bool rmMotionGarbage;   // AegisubExtradata
+        
+        // Styles and Events
+        internal bool fixStyleName;
     }
 
     public static void CleanAss(AssData data, ReadOnlySpan<char> assFileName, CleanAssArgs args, out string msg, out bool untouched)

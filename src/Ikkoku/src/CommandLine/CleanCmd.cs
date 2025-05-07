@@ -64,6 +64,8 @@ internal class CleanCmd
                 args.processEvents = true;
                 args.rmMotionGarbage = true;
                 args.deleteFanhuaji = true;
+                args.dropDuplicateStyles = true;
+                args.fixStyleName = true;
                 break;
         }
 
@@ -140,7 +142,17 @@ internal class CleanCmd
         Console.WriteLine(f);
         var fs = new FileStream(f.FullName, FileMode.Open, FileAccess.ReadWrite);
         var fileNoSuffix = f.Name.AsSpan()[..(f.Name.Length - 4)];
-        var data = new AssData();
+
+        AssParseOption assOption = AssParseOption.None;
+        if (args.dropDuplicateStyles)
+        {
+            assOption |= AssParseOption.DropDuplicateStyle;
+        }
+        else if (args.fixStyleName)
+        {
+            assOption |= AssParseOption.FixStyleName;
+        }
+        var data = new AssData() { ParseOptions = assOption };
         data.ReadAssFile(fs);
 
         if (binDir is not null)
