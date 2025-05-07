@@ -17,6 +17,8 @@ public class AssData(ILogger? logger = null)
     public List<AssEmbedded.Font> Fonts = [];
     public List<AssEmbedded.Graphic> Graphics = [];
 
+    public AssParseOption ParseOptions = AssParseOption.None;
+
     private readonly ILogger? _logger = logger;
     private const string sectionNameFonts = "[Fonts]";
     private const string sectionNameGraphics = "[Graphics]";
@@ -87,7 +89,7 @@ public class AssData(ILogger? logger = null)
         return await ReadAssFileAsync(fs);
     }
 
-    private void ParseContent(ReadOnlySpan<char> sp, int lineNumber, ref AssSection sectionType, AssParseOption option = AssParseOption.None)
+    private void ParseContent(ReadOnlySpan<char> sp, int lineNumber, ref AssSection sectionType)
     {
         if (sp.Length == 0)
         {
@@ -126,10 +128,10 @@ public class AssData(ILogger? logger = null)
             case AssSection.StylesV4:
             case AssSection.StylesV4P:
             case AssSection.StylesV4PP:
-                Styles.Read(sp, lineNumber, option);
+                Styles.Read(sp, lineNumber, ParseOptions);
                 break;
             case AssSection.Events:
-                Events.Read(sp, ScriptInfo.ScriptType, lineNumber, option);
+                Events.Read(sp, ScriptInfo.ScriptType, lineNumber, ParseOptions);
                 break;
             case AssSection.AegisubProjectGarbage:
                 Utils.TrySplitKeyValue(sp, out var k, out var v);
