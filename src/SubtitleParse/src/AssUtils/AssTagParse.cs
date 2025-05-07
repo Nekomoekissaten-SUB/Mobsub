@@ -181,6 +181,12 @@ public partial class AssTagParse(AssStyles styles, AssScriptInfo scriptInfo, ILo
                 {
                     switch (sp[1])
                     {
+                        case 'n':
+                            if (curTextStyle!.TryGetTextWrapStyle(out var wrap) && wrap != 2)
+                            {
+                                curRunes.Add(new Rune(AssConstants.SpaceUtf16));
+                            }
+                            break;
                         case 'h':
                             curRunes.Add(new Rune(AssConstants.NoBreakSpaceUtf16));
                             break;

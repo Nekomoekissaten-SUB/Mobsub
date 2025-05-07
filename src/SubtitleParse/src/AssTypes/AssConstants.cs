@@ -15,6 +15,7 @@ public static partial class AssConstants
     public const char EndValueBlock = ')';
     public const char FunctionParamSeparator = ',';
     public const int NoBreakSpaceUtf16 = 0x00A0;
+    public const int SpaceUtf16 = 0x0020;
 
     public class ScriptInfo
     {
@@ -214,6 +215,7 @@ public static partial class AssConstants
         public const string Polygon = "p";
         
         [AssOverrideTag(typeof(int), "ParseTagWrapStyle", "", "TextWrapStyle")]
+        [AssTagGeneralParse("WrapStyle", true, false)]
         [AssTagKind(AssTagKind.LineOnlyRenderLatest)]
         public const string WrapStyle = "q";
         
