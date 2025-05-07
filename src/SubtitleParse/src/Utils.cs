@@ -181,6 +181,28 @@ public class Utils
         return true;
     }
 
+    internal static string[] SplitBySeparator(ReadOnlySpan<char> sp)
+    {
+        var ranges = SplitBySeparatorInternal(sp, out var splitCount);
+        var arr = new string [splitCount];
+        var i = 0;
+        foreach (var range in ranges)
+        {
+            arr[i] = sp[range].ToString();
+            i++;
+        }
+
+        return arr;
+    }
+
+    internal static Span<Range> SplitBySeparatorInternal(ReadOnlySpan<char> sp, out int splitCount)
+    {
+        var count = sp.Count(',') + 1;
+        Span<Range> ranges = new Range[count];
+        splitCount = sp.Split(ranges, ',', StringSplitOptions.TrimEntries);
+        return ranges;
+    }
+
     internal static ReadOnlySpan<char> AssParseStyleName(ReadOnlySpan<char> sp)
     {
         // https://sourceforge.net/p/guliverkli2/code/HEAD/tree/src/subtitles/STS.cpp#l1524

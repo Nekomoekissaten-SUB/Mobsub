@@ -34,23 +34,39 @@ public class AssStyles(ILogger? logger = null)
 
         if (sp[..sepIndex].SequenceEqual("Format".AsSpan()))
         {
-            Formats = sp[(sepIndex + 1)..].ToString().Split(',').Select(s => s.Trim()).ToArray();
+            Formats = Utils.SplitBySeparator(sp[(sepIndex + 1)..]);
             logger?.ZLogDebug($"Line {lineNumber} is a format line, parse completed");
         }
         else if (sp[..sepIndex].SequenceEqual("Style".AsSpan()))
         {
             var syl = new AssStyle(logger);
-            var va = sp[(sepIndex + 1)..].ToString().Split(',').Select(s => s.Trim()).ToArray();
+            var line = sp[(sepIndex + 1)..];
+            var ranges = Utils.SplitBySeparatorInternal(line, out var count);
 
-            if (va.Length != Formats.Length)
+            if (count != Formats.Length)
             {
                 throw new Exception($"Please check style line: {sp.ToString()}");
             }
-
-            for (var i = 0; i < va.Length; i++)
+            var i = 0;
+            foreach (var range in ranges)
             {
-                Utils.SetProperty(syl, typeof(AssStyle), Formats[i], va[i]);
+                switch (Formats[i])
+                {
+                    case "Name":
+                        var target = Utils.AssParseStyleName(line[range]);
+                        if (!target.SequenceEqual(line[range]))
+                        {
+                            logger?.ZLogWarning($"Line {lineNumber}: The style will be fixed from '{line[range].ToString()}' to '{target.ToString()}'.");
+                        }
+                        syl.Name = target.ToString();
+                        break;
+                    default:
+                        Utils.SetProperty(syl, typeof(AssStyle), Formats[i], line[range]);
+                        break;
+                }
+                i++;
             }
+
             Collection.Add(syl);
             if (syl.Fontname.Length > 31)
             {
