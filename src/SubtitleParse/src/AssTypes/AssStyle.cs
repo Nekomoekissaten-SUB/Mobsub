@@ -22,7 +22,7 @@ public class AssStyles(ILogger? logger = null)
     public List<AssStyle> Collection = [];
     public HashSet<string> Names = [];
 
-    public void Read(ReadOnlySpan<char> sp, int lineNumber)
+    public void Read(ReadOnlySpan<char> sp, int lineNumber, AssParseOption option = AssParseOption.None)
     {
         if (sp[0] == '/')
         {
@@ -58,7 +58,7 @@ public class AssStyles(ILogger? logger = null)
                         {
                             logger?.ZLogWarning($"Line {lineNumber}: The style will be fixed from '{line[range].ToString()}' to '{target.ToString()}'.");
                         }
-                        syl.Name = target.ToString();
+                        syl.Name = option.HasFlag(AssParseOption.FixStyleName) ? target.ToString() : line[range].ToString();
                         break;
                     default:
                         Utils.SetProperty(syl, typeof(AssStyle), Formats[i], line[range]);
@@ -66,16 +66,21 @@ public class AssStyles(ILogger? logger = null)
                 }
                 i++;
             }
-
-            Collection.Add(syl);
+            
             if (syl.Fontname.Length > 31)
             {
                 logger?.ZLogWarning($"Length ({syl.Fontname.Length}) of style {syl.Name}’s fontname “{syl.Fontname}” exceeds 31 characters, may affect the correct rendering of VSFilter");
             }
             if (!Names.Add(syl.Name))
             {
-                throw new Exception($"Styles: duplicate style {syl.Name}");
+                logger?.ZLogWarning($"Styles: duplicate style {syl.Name} in line {lineNumber}.");
+                if (option.HasFlag(AssParseOption.DropDuplicateStyle))
+                {
+                    Collection.RemoveAll(x => x.Name == syl.Name);
+                }
             }
+
+            Collection.Add(syl);
             logger?.ZLogDebug($"Line {lineNumber} is a style line, parse completed, style name is {syl.Name}");
         }
         else

@@ -16,11 +16,11 @@ public class AssEvents(ILogger? logger = null)
     public List<AssEvent> Collection = [];
     internal const string sectionName = "[Events]";
 
-    public void Read(ReadOnlySpan<char> sp, string scriptType, int lineNumber)
+    public void Read(ReadOnlySpan<char> sp, string scriptType, int lineNumber, AssParseOption option = AssParseOption.None)
     {
         var sepIndex = sp.IndexOf(':');
         var evt = new AssEvent(logger);
-        if (evt.Read(sp, sepIndex, lineNumber, Formats))
+        if (evt.Read(sp, sepIndex, lineNumber, Formats, option))
         {
             Collection.Add(evt);
         }
@@ -84,9 +84,9 @@ public partial class AssEvent(ILogger? logger = null)
     private Range[] TextRangesCache = [];
     private Range[] CalculateTextRanges() => SplitEventText(_text.AsSpan());
 
-    public bool Read(ReadOnlySpan<char> sp, int lineNum, string[] formats) => Read(sp, sp.IndexOf(':'), lineNum, formats);
+    public bool Read(ReadOnlySpan<char> sp, int lineNum, string[] formats, AssParseOption option = AssParseOption.None) => Read(sp, sp.IndexOf(':'), lineNum, formats, option);
 
-    public bool Read(ReadOnlySpan<char> sp, int sepIndex, int lineNum, string[] formats)
+    public bool Read(ReadOnlySpan<char> sp, int sepIndex, int lineNum, string[] formats, AssParseOption option = AssParseOption.None)
     {
         if (sp[0] == ';' || sepIndex < 1)
         {
@@ -107,7 +107,7 @@ public partial class AssEvent(ILogger? logger = null)
             IsDialogue = header.SequenceEqual("Dialogue".AsSpan());
             lineNumber = lineNum;
             sepIndex += (char.IsWhiteSpace(sp[sepIndex + 1])) ? 2 : 1;
-            ReadWithoutHeader(sp[sepIndex..], formats);
+            ReadWithoutHeader(sp[sepIndex..], formats, option);
             return true;
         }
         else
@@ -116,7 +116,7 @@ public partial class AssEvent(ILogger? logger = null)
         }
     }
 
-    public void ReadWithoutHeader(ReadOnlySpan<char> sp, string[] fmts)
+    public void ReadWithoutHeader(ReadOnlySpan<char> sp, string[] fmts, AssParseOption option = AssParseOption.None)
     {
         var startIndex = 0;
         var nextSep = 0;
@@ -144,7 +144,7 @@ public partial class AssEvent(ILogger? logger = null)
                     {
                         logger?.ZLogWarning($"The style of line {lineNumber} will be fixed from '{v.ToString()}' to '{target.ToString()}'.");
                     }
-                    Style = target.ToString();
+                    Style = option.HasFlag(AssParseOption.FixStyleName) ? target.ToString() : v.ToString();
                     break;
                 default:
                     Utils.SetProperty(this, typeof(AssEvent), fmts[segCount], v);

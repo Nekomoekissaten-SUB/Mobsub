@@ -87,7 +87,7 @@ public class AssData(ILogger? logger = null)
         return await ReadAssFileAsync(fs);
     }
 
-    private void ParseContent(ReadOnlySpan<char> sp, int lineNumber, ref AssSection sectionType)
+    private void ParseContent(ReadOnlySpan<char> sp, int lineNumber, ref AssSection sectionType, AssParseOption option = AssParseOption.None)
     {
         if (sp.Length == 0)
         {
@@ -126,10 +126,10 @@ public class AssData(ILogger? logger = null)
             case AssSection.StylesV4:
             case AssSection.StylesV4P:
             case AssSection.StylesV4PP:
-                Styles.Read(sp, lineNumber);
+                Styles.Read(sp, lineNumber, option);
                 break;
             case AssSection.Events:
-                Events.Read(sp, ScriptInfo.ScriptType, lineNumber);
+                Events.Read(sp, ScriptInfo.ScriptType, lineNumber, option);
                 break;
             case AssSection.AegisubProjectGarbage:
                 Utils.TrySplitKeyValue(sp, out var k, out var v);
