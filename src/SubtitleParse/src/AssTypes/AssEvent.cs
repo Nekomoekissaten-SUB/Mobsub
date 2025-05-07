@@ -139,7 +139,7 @@ public partial class AssEvent(ILogger? logger = null)
                 case "Marked":
                     break;
                 case "Style":
-                    var target = GetEventStyleName(v);
+                    var target = Utils.AssParseStyleName(v);
                     if (!target.SequenceEqual(v))
                     {
                         logger?.ZLogWarning($"The style of line {lineNumber} will be fixed from '{v.ToString()}' to '{target.ToString()}'.");
@@ -314,16 +314,4 @@ public partial class AssEvent(ILogger? logger = null)
         ca[1] is AssConstants.LineBreaker or AssConstants.WordBreaker or AssConstants.NoBreakSpace;
     public static bool IsTextBlock(ReadOnlySpan<char> block) => !(IsOverrideBlock(block) || IsEventSpecialCharPair(block));
     public bool WillSkip() => StartSemicolon || !IsDialogue || Text is null || Text.Length == 0;
-
-    private static ReadOnlySpan<char> GetEventStyleName(ReadOnlySpan<char> sp)
-    {
-        // https://sourceforge.net/p/guliverkli2/code/HEAD/tree/src/subtitles/STS.cpp#l1524
-        // https://sourceforge.net/p/guliverkli2/code/HEAD/tree/src/subtitles/STS.cpp#l1490
-        var spFixed = sp.TrimStart('*');
-        if (spFixed.Length == 0 || MemoryExtensions.Equals(spFixed, "default", StringComparison.OrdinalIgnoreCase))
-        {
-            return "Default";
-        }
-        return spFixed;
-    }
 }

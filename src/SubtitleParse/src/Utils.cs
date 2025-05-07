@@ -180,4 +180,16 @@ public class Utils
         }
         return true;
     }
+
+    internal static ReadOnlySpan<char> AssParseStyleName(ReadOnlySpan<char> sp)
+    {
+        // https://sourceforge.net/p/guliverkli2/code/HEAD/tree/src/subtitles/STS.cpp#l1524
+        // https://sourceforge.net/p/guliverkli2/code/HEAD/tree/src/subtitles/STS.cpp#l1490
+        var spFixed = sp.TrimStart('*');
+        if (spFixed.Length == 0 || MemoryExtensions.Equals(spFixed, "default", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Default";
+        }
+        return spFixed;
+    }
 }

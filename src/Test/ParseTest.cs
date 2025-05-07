@@ -37,25 +37,25 @@ public partial class ParseTest
     [TestMethod]
     public void ParseEventStyleName()
     {
-        var evt = new AssEvent();
+        var c = new Utils();
         string[] sources = [
             "*Default", "", "deFauLt"
             ];
         ReadOnlySpan<char> target;
         foreach (var source in sources)
         {
-            target = GetEventStyleName(evt, source);
+            target = GetEventStyleName(c, source);
             Assert.IsTrue(target.SequenceEqual("Default"));
         }
 
         string[] sources2 = ["\\Default", "/Default", "_Default", "* Default"];
         foreach (var source in sources2)
         {
-            target = GetEventStyleName(evt, source);
+            target = GetEventStyleName(c, source);
             Assert.IsFalse(target.SequenceEqual("Default"));
         }
 
-        [UnsafeAccessor(UnsafeAccessorKind.StaticMethod, Name = "GetEventStyleName")]
-        extern static ReadOnlySpan<char> GetEventStyleName(AssEvent c, ReadOnlySpan<char> sp);
+        [UnsafeAccessor(UnsafeAccessorKind.StaticMethod, Name = "AssParseStyleName")]
+        extern static ReadOnlySpan<char> GetEventStyleName(Utils c, ReadOnlySpan<char> sp);
     }
 }
