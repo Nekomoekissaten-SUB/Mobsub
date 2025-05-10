@@ -57,7 +57,7 @@ public class AssData(ILogger? logger = null)
         return ReadAssFile(fs);
     }
 
-    public async Task<AssData> ReadAssFileAsync(FileStream fs)
+    public async Task<AssData> ReadAssFileAsync(FileStream fs, CancellationToken ct = default)
     {
         using var sr = new StreamReader(fs);
         string? line;
@@ -67,7 +67,7 @@ public class AssData(ILogger? logger = null)
         _logger?.ZLogInformation($"File use {CharEncoding.EncodingName} and {(CarriageReturn ? "CRLF" : "LF")}");
         _logger?.ZLogInformation($"Start parse ass");
 
-        while ((line = await sr.ReadLineAsync()) != null)
+        while ((line = await sr.ReadLineAsync(ct)) != null)
         {
             lineNumber++;
             var sp = line.AsSpan();
@@ -82,11 +82,11 @@ public class AssData(ILogger? logger = null)
         _logger?.ZLogInformation($"Ass parsing completed");
         return this;
     }
-    public async Task<AssData> ReadAssFileAsync(string filePath)
+    public async Task<AssData> ReadAssFileAsync(string filePath, CancellationToken ct = default)
     {
         using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read);
         _logger?.ZLogInformation($"Open ass file: {filePath}");
-        return await ReadAssFileAsync(fs);
+        return await ReadAssFileAsync(fs, ct);
     }
 
     private void ParseContent(ReadOnlySpan<char> sp, int lineNumber, ref AssSection sectionType)
