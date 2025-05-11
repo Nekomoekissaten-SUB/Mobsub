@@ -215,7 +215,6 @@ public static partial class AssConstants
         public const string Polygon = "p";
         
         [AssOverrideTag(typeof(int), "ParseTagWrapStyle", "", "TextWrapStyle")]
-        [AssTagGeneralParse("WrapStyle", true, false)]
         [AssTagKind(AssTagKind.LineOnlyRenderLatest)]
         public const string WrapStyle = "q";
         

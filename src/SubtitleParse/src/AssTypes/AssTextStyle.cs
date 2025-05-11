@@ -107,6 +107,18 @@ public partial class AssTextStyle(AssStyle baseStyle)
         
         return false;
     }
+
+    public bool TryGetTextWrapStyle(int scriptInfoWrapStyle, out int lastValue)
+    {
+        var value = GetTextWrapStyle();
+        if (value is not null)
+        {
+            lastValue = (int)value;
+            return true;
+        }
+        lastValue = scriptInfoWrapStyle;
+        return false;
+    }
 }
 
 public class AssTagTransform(ILogger? logger)
