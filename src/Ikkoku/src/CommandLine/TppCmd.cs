@@ -10,66 +10,81 @@ internal class TppCmd
 {
     internal static Command Build(Argument<FileSystemInfo> path, Option<FileSystemInfo> optPath, Option<string> fps)
     {
-        var shiftSpan = new Option<string>(name: "--shift-by",
-            description: "Shift subtitle time. Support int ends with mls (millisecond), cts (centi-second), sec (second), min (minute), frm (frame); pure int use second; if use frm but not specify fps, fps will be 24000/1001.");
-        var shiftStyles = new Option<string[]>(
-            name: "--shift-styles",
-            description: "Experimental. Shift styles. Default is shift all styles or you select styles, first is ! means you will not shift styles.")
-        { AllowMultipleArgumentsPerToken = true };
-        var tcfile = new Option<FileInfo>(
-            name: "--tcfile",
-            description: "You should specify timecodes file (v2) if you want convert vfr subtitles to cfr subtitles.");
+        var shiftSpan = new Option<string>("--shift-by")
+        {
+            Description = "Shift subtitle time. Support int ends with mls (millisecond), cts (centi-second), sec (second), min (minute), frm (frame); pure int use second; if use frm but not specify fps, fps will be 24000/1001."
+        };
+        var shiftStyles = new Option<string[]>("--shift-styles")
+        { 
+            Description = "Experimental. Shift styles. Default is shift all styles or you select styles, first is ! means you will not shift styles.",
+            AllowMultipleArgumentsPerToken = true
+        };
+        var tcfile = new Option<FileInfo>("--tcfile")
+        {
+            Description = "You should specify timecodes file (v2) if you want convert vfr subtitles to cfr subtitles."
+        };
 
         var tppCommand = new Command("tpp", "Subtitle timing post-processor.")
         {
             path, optPath, shiftSpan, shiftStyles, fps, tcfile
         };
-        tppCommand.SetHandler(Execute, path, optPath, shiftSpan, shiftStyles, fps, tcfile);
         
-        tppCommand.AddValidator((result) =>
+        tppCommand.Validators.Add((result) =>
         {
-            switch (result.GetValueForOption(optPath))
+            switch (result.GetValue(optPath))
             {
                 case FileInfo:
-                    switch (result.GetValueForArgument(path))
+                    switch (result.GetValue(path))
                     {
                         case DirectoryInfo:
-                            result.ErrorMessage = "Output path must be directory when input path is a dir!";
+                            result.AddError("Output path must be directory when input path is a dir!");
                             break;
                     }
                     break;
             }
 
-            var shift = result.GetValueForOption(shiftSpan);
-            var tcf = result.GetValueForOption(tcfile);
+            var shift = result.GetValue(shiftSpan);
+            var tcf = result.GetValue(tcfile);
             if (shift is null)
             {
                 if (tcf is null)
                 {
-                    result.ErrorMessage = "--shift-by and --tcfile can’t both null,";
+                    result.AddError("--shift-by and --tcfile can’t both null,");
                 }
                 else if (!tcf.Exists)
                 {
-                    result.ErrorMessage = result.LocalizationResources.FileDoesNotExist(tcf.FullName);
+                    result.AddError($"{tcf.FullName} is not exist");
                 }
             }
             else
             {
                 if (tcf is not null)
                 {
-                    result.ErrorMessage = "You can’t specify --shift-by and --tcfile both.";
+                    result.AddError("You can’t specify --shift-by and --tcfile both.");
                 }
                 else
                 {
                     string[] a = ["mls", "cts", "sec", "min", "frm"];
                     if (!(int.TryParse(shift, out _) || a.Contains(shift[^3..]) || shift.AsSpan().IndexOf('-') <= 0))
                     {
-                        result.ErrorMessage = result.LocalizationResources.ArgumentConversionCannotParseForOption(shift, "--shift-by", typeof(ArgumentException));
+                        result.AddError($"\"--shift-by\" value must use correct format");
                     }
                 }
             }
         }
         );
+
+        tppCommand.SetAction((result) =>
+        {
+            var pathValue = result.GetValue(path);
+            var optPathValue = result.GetValue(optPath);
+            var shiftSpanValue = result.GetValue(shiftSpan);
+            var styles = result.GetValue(shiftStyles);
+            var fpsValue = result.GetValue(fps);
+            var tcfileValue = result.GetValue(tcfile);
+            Execute(pathValue!, optPathValue, shiftSpanValue, styles!, fpsValue!, tcfileValue);
+        });
+
         return tppCommand;
     }
 

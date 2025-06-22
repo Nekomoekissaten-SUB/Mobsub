@@ -11,52 +11,57 @@ partial class Program
         var rootCommand = new RootCommand("Process Your Subtitles by Ikkoku! (Now only support ass)");
 
         // shared argument or option
-        var path = new Argument<FileSystemInfo>(name: "path", description: "The file path to read (support file or directory).");
-        path.AddValidator((result) =>
+        var path = new Argument<FileSystemInfo>("path")
+        {
+            Description = "The file path to read (support file or directory)."
+        };
+
+        path.Validators.Add((result) =>
             {
-                var p = result.GetValueForArgument(path);
+                var p = result.GetValue(path);
                 
-                if (p.Exists)
+                if (p is not null && p.Exists)
                 {
                     switch (p)
                     {
                         case FileInfo f:
                             if (!(f.Name.EndsWith(".ass") || f.Name.EndsWith(".txt") || f.Name.EndsWith(".sup")))
                             {
-                                result.ErrorMessage = "You should input .ass, .txt or .sup file or a directory.";
+                                result.AddError("You should input .ass, .txt or .sup file or a directory.");
                             }
                             break;
                     }
                 }
-                else
-                {
-                    result.ErrorMessage = result.LocalizationResources.FileOrDirectoryDoesNotExist(p.FullName);
-                }
             }
         );
         
-        var optPath = new Option<FileSystemInfo>(name: "--output", description: "The output file path (support file or directory).");
-        optPath.AddAlias("-o");
+        var optPath = new Option<FileSystemInfo>("--output", "-o")
+        {
+            Description = "The output file path (support file or directory)."
+        };
 
-        var verbose = new Option<bool>(name: "--verbose", description: "More Output Info.");
+        var verbose = new Option<bool>("--verbose") { Description = "More Output Info." };
         
-        var fps = new Option<string>(name: "--fps", description: "Specify video fps.",  getDefaultValue: () => "23.976");
-        fps.AddValidator((result) =>
+        var fps = new Option<string>("--fps")
+        {
+            Description = "Specify video fps.",
+            DefaultValueFactory = _ => "23.976",
+        };
+        fps.Validators.Add((result) =>
             {
-                var s = result.GetValueForOption(fps);
+                var s = result.GetValue(fps);
                 string[] valid = ["23.976", "23.98", "29.970", "29.97", "59.940", "59.94"];
                 if (s is null)
                 {
                 }
                 else if (!(valid.Contains(s) || decimal.TryParse(s, out _) || s.Contains('/')))
                 {
-                    result.ErrorMessage = result.LocalizationResources.ArgumentConversionCannotParseForOption(s, "fps", typeof(ArgumentException));
+                    result.AddError("You should check --fps format");
                 }
             }
         );
 
-        var conf = new Option<FileInfo>(name: "--config", description: "Configuration file.");  // { IsRequired = true }
-        conf.AddAlias("-c");
+        var conf = new Option<FileInfo>("--config", "-c") { Description = "Configuration file." };
 
         // clean
         rootCommand.Add(CleanCmd.Build(path, optPath, verbose));
@@ -72,6 +77,6 @@ partial class Program
         // convert
         rootCommand.Add(ConvertCmd.Build(path, optPath));
 
-        return await rootCommand.InvokeAsync(args);
+        return await rootCommand.Parse(args).InvokeAsync();
     }
 }

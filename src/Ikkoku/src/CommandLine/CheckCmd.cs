@@ -7,18 +7,20 @@ internal class CheckCmd
 {
     internal static Command Build(Argument<FileSystemInfo> path, Option<bool> verbose)
     {
-        var tagMode = new Option<string>(
-            name: "--tag",
-            description: "Check tags mode: mod, weird, both.").FromAmong("mod", "weird", "both");
-        var styleCheck = new Option<bool>(
-            name: "--style",
-            description: "Check undefined styles.");
+        var tagMode = new Option<string>("--tag")
+        {
+            Description = "Check tags mode: mod, weird, both."
+        }.AcceptOnlyFromAmong("mod", "weird", "both");
+        var styleCheck = new Option<bool>("--style") { Description = "Check undefined styles." };
 
         var checkCommand = new Command("check", "Check Your ASS!")
         {
             path, tagMode, styleCheck, verbose
         };
-        checkCommand.SetHandler(Execute, path, tagMode, styleCheck, verbose);
+        checkCommand.SetAction(result =>
+        {
+            Execute(result.GetValue(path)!, result.GetValue(tagMode), result.GetValue(styleCheck), result.GetValue(verbose));
+        });
 
         // fonts glyphs subcommand
 

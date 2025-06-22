@@ -10,25 +10,40 @@ internal class ConvertCmd
 {
     internal static Command Build(Argument<FileSystemInfo> path, Option<FileSystemInfo> optPath)
     {
-        var inputSuffix = new Option<string>(
-            name: "--from-format",
-            description: "Format which will convert from"
-        );
-        var convertSuffix = new Option<string>(
-            name: "--to-format",
-            description: "Format which will convert to"
-        )
-        { IsRequired = true };
-        var imageBinarizeThreshold = new Option<byte?>(
-            name: "--image-binarize-threshold",
-            description: "Image Binarize Threshold when input is .sup, range is 0-255, 0 is disabled. Default: 0 (convert to .bmp) / 128 (convert to .txt)",
-            getDefaultValue: () => null);
-        
+        var inputSuffix = new Option<string>("--from-format") { Description = "Format which will convert from" };
+        var convertSuffix = new Option<string>("--to-format") { Description = "Format which will convert to", Required = true };
+        var imageBinarizeThreshold = new Option<byte?>("--image-binarize-threshold")
+        {
+            Description = "Image Binarize Threshold when input is .sup, range is 0-255, 0 is disabled. Default: 0 (convert to .bmp) / 128 (convert to .txt)",
+            DefaultValueFactory = _ => null
+        };
+
+        inputSuffix.Validators.Add(result =>
+        {
+            var p = result.GetValue(path);
+            var s = result.GetValue(inputSuffix);
+            if (p is DirectoryInfo && s is null)
+            {
+                result.AddError("You should specify --from-format when input is a directory.");
+            }
+        });
+
         var convSubtitleCommand = new Command("convert", "Convert subtitle format")
         {
             path, optPath, convertSuffix, inputSuffix, imageBinarizeThreshold
         };
-        convSubtitleCommand.SetHandler(Execute, path, optPath, convertSuffix, inputSuffix, imageBinarizeThreshold);
+
+        convSubtitleCommand.SetAction(result =>
+        {
+            Execute(
+                result.GetValue(path)!,
+                result.GetValue(optPath),
+                result.GetValue(convertSuffix)!,
+                result.GetValue(inputSuffix)!,
+                result.GetValue(imageBinarizeThreshold)
+                );
+        });
+
         return convSubtitleCommand;
     }
 

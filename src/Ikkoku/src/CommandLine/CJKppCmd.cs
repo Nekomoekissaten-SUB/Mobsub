@@ -16,22 +16,37 @@ internal class CJKppCmd
         {
             path, optPath, convConf
         };
-        cjkppCommand.SetHandler(Execute, path, optPath, convConf);
-        cjkppCommand.AddValidator((result) =>
+        cjkppCommand.Validators.Add((result) =>
         {
-            switch (result.GetValueForOption(optPath))
+            switch (result.GetValue(optPath))
             {
                 case FileInfo:
-                    switch (result.GetValueForArgument(path))
+                    switch (result.GetValue(path))
                     {
                         case DirectoryInfo:
-                            result.ErrorMessage = "Output path must be directory when input path is a dir!";
+                            result.AddError("Output path must be directory when input path is a dir!");
                             break;
                     }
                     break;
             }
         }
         );
+
+        cjkppCommand.SetAction(result =>
+        {
+            var pathValue = result.GetValue(path);
+            var optPathValue = result.GetValue(optPath);
+            var configFile = result.GetValue(convConf);
+            if (configFile is null)
+            {
+                throw new ArgumentException("Please specify a conversion config file!");
+            }
+            if (!configFile.Exists)
+            {
+                throw new FileNotFoundException("Conversion config file not found!", configFile.FullName);
+            }
+            Execute(pathValue!, optPathValue!, configFile);
+        });
 
         // subcommand build-dict
         cjkppCommand.Add(BuildSubDict(path, optPath));
@@ -45,22 +60,30 @@ internal class CJKppCmd
         {
             path, optPath
         };
-        convDictCommand.SetHandler(BuildOpenccsharpDict, path, optPath);
-        convDictCommand.AddValidator((result) =>
+        
+        convDictCommand.Validators.Add((result) =>
         {
-            switch (result.GetValueForOption(optPath))
+            switch (result.GetValue(optPath))
             {
                 case FileInfo:
-                    switch (result.GetValueForArgument(path))
+                    switch (result.GetValue(path))
                     {
                         case DirectoryInfo:
-                            result.ErrorMessage = "Output path must be directory when input path is a dir!";
+                            result.AddError("Output path must be directory when input path is a dir!");
                             break;
                     }
                     break;
             }
         }
         );
+
+        convDictCommand.SetAction(async result =>
+        {
+            var pathValue = result.GetValue(path);
+            var optPathValue = result.GetValue(optPath);
+            await BuildOpenccsharpDict(pathValue!, optPathValue!);
+        });
+
         return convDictCommand;
     }
 

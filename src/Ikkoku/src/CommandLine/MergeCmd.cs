@@ -9,49 +9,54 @@ internal class MergeCmd
 {
     internal static Command Build(Argument<FileSystemInfo> path, Option<FileSystemInfo> optPath, Option<FileInfo> conf)
     {
-        var baseFile = new Option<FileInfo>(
-            name: "--base",
-            description: "Basic files in the merge. (Merge mode 1, required).");
-        var mergeFile = new Option<FileInfo[]>(
-            name: "--merge",
-            description: "Files will be merged into the base file by order. (Merge mode 1, required).")
-        { AllowMultipleArgumentsPerToken = true };
+        var baseFile = new Option<FileInfo>("--base") { Description = "Basic files in the merge. (Merge mode 1, required)." };
+        var mergeFile = new Option<FileInfo[]>("--merge")
+        {
+            Description = "Files will be merged into the base file by order. (Merge mode 1, required).",
+            AllowMultipleArgumentsPerToken = true
+        };
 
         // Shift and Merge Config file. (Merge mode 2 base file, required).
 
-        var confVar = new Option<string[]>(name: "--config-var", description: "Values into configuration file. (Merge mode 2, required).")
-        { AllowMultipleArgumentsPerToken = true };
-        confVar.AddAlias("-var");
-        var mergeSection = new Option<string>(name: "--section", description: "Sections to be merged. Can be style, event, all (default).", getDefaultValue: () => "all").FromAmong("style", "event", "all");
+        var confVar = new Option<string[]>("--config-var", "-var")
+        {
+            Description = "Values into configuration file. (Merge mode 2, required).",
+            AllowMultipleArgumentsPerToken = true
+        };
+        var mergeSection = new Option<string>("--section")
+        {
+            Description = "Sections to be merged. Can be style, event, all (default).",
+            DefaultValueFactory = _ => "all"
+        }.AcceptOnlyFromAmong("style", "event", "all");
 
         var mergeCommand = new Command("merge", "Merge subtitles. Output is required.")
         {
             baseFile, mergeFile, optPath, conf, confVar, mergeSection
         };
-        mergeCommand.SetHandler(Execute, baseFile, mergeFile, optPath, conf, confVar, mergeSection);
-        mergeCommand.AddValidator((result) =>
+        
+        mergeCommand.Validators.Add((result) =>
         {
-            var bf = result.GetValueForOption(baseFile);
-            var mf = result.GetValueForOption(mergeFile);
-            var opt = result.GetValueForOption(optPath);
+            var bf = result.GetValue(baseFile);
+            var mf = result.GetValue(mergeFile);
+            var opt = result.GetValue(optPath);
 
-            var confF = result.GetValueForOption(conf);
-            var confv = result.GetValueForOption(confVar);
+            var confF = result.GetValue(conf);
+            var confv = result.GetValue(confVar);
 
             if (opt is null)
             {
-                result.ErrorMessage = "Must specify output";
+                result.AddError("Must specify output");
             }
 
             if (confF is null)
             {
                 if (bf is null || mf is null)
                 {
-                    result.ErrorMessage = "You should specify base and merge files if no configure file.";
+                    result.AddError("You should specify base and merge files if no configure file.");
                 }
                 else if (!bf.Exists)
                 {
-                    result.ErrorMessage = result.LocalizationResources.FileDoesNotExist(bf.FullName);
+                    result.AddError($"{bf.FullName} is not exist");
                 }
                 else
                 {
@@ -59,7 +64,7 @@ internal class MergeCmd
                     {
                         if (!f.Exists)
                         {
-                            result.ErrorMessage = result.LocalizationResources.FileDoesNotExist(f.FullName);
+                            result.AddError($"{f.FullName} is not exist");
                         }
                     }
                 }
@@ -71,25 +76,36 @@ internal class MergeCmd
                     case DirectoryInfo:
                         break;
                     default:
-                        result.ErrorMessage = "--output must be a directory when specify configure file.";
+                        result.AddError("--output must be a directory when specify configure file.");
                         break;
                 }
 
                 if (confv is null)
                 {
-                    result.ErrorMessage = "You should specify --config-var when specify configure file.";
+                    result.AddError("You should specify --config-var when specify configure file.");
                 }
                 else if (confv.Length != 2)
                 {
-                    result.ErrorMessage = "You only can input --config-var 2 values, these will replace ep and lang in configure file.";
+                    result.AddError("You only can input --config-var 2 values, these will replace ep and lang in configure file.");
                 }
                 else if (!confF.Exists)
                 {
-                    result.ErrorMessage = result.LocalizationResources.FileDoesNotExist(confF.FullName);
+                    result.AddError($"{confF.FullName} is not exist");
                 }
             }
         }
         );
+
+        mergeCommand.SetAction(result =>
+        {
+            var baseFileValue = result.GetValue(baseFile);
+            var mergeFileValues = result.GetValue(mergeFile);
+            var outputPath = result.GetValue(optPath);
+            var confFile = result.GetValue(conf);
+            var confVarValues = result.GetValue(confVar);
+            var mergeSectionValue = result.GetValue(mergeSection);
+            Execute(baseFileValue, mergeFileValues, outputPath!, confFile, confVarValues, mergeSectionValue!);
+        });
 
 # if NotAot
         // subcommand base-diff
@@ -100,16 +116,38 @@ internal class MergeCmd
 
     private static Command BuildSubGitDiff(Argument<FileSystemInfo> path, Option<FileInfo> conf)
     {
-        var startCommitId = new Option<string>(name: "--start", description: "The commit before the first commit in subtitle modification history.") { IsRequired = true };
-        var endCommitId = new Option<string>(name: "--end", description: "End git commit id of subtitle modification history.") { IsRequired = true};
-        var subtitleSuffixes = new Option<string[]>(name: "--suffixes", description: "Choose chs and cht subtitles suffix (usually not used unless the preset cannot recognize it).")
-        { AllowMultipleArgumentsPerToken = true };
+        var startCommitId = new Option<string>("--start")
+        {
+            Description = "The commit before the first commit in subtitle modification history.",
+            Required = true
+        };
+        var endCommitId = new Option<string>("--end")
+        {
+            Description = "End git commit id of subtitle modification history.",
+            Required = true
+        };
+        var subtitleSuffixes = new Option<string[]>("--suffixes")
+        { 
+            Description = "Choose chs and cht subtitles suffix (usually not used unless the preset cannot recognize it).",
+            AllowMultipleArgumentsPerToken = true
+        };
 
         var cmd = new Command("base-diff", "Merge chs diff to cht ass file, zhconvert like cjkpp")
         {
             path, startCommitId, endCommitId, conf, subtitleSuffixes
         };
-        cmd.SetHandler(ExecuteBaseDiff, path, startCommitId, endCommitId, conf, subtitleSuffixes);
+
+        cmd.SetAction(result =>
+        {
+            ExecuteBaseDiff(
+                result.GetValue(path)!,
+                result.GetValue(startCommitId)!,
+                result.GetValue(endCommitId)!,
+                result.GetValue(conf)!,
+                result.GetValue(subtitleSuffixes)!
+                );
+        });
+
         return cmd;
     }
 

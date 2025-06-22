@@ -17,13 +17,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\SubtitleParse\Mobsub.SubtitleParse.csproj"/>
+    <ProjectReference Include="..\SubtitleParse\Mobsub.SubtitleParse.csproj" />
     <ProjectReference Include="..\SubtitleProcessNotAot\Mobsub.SubtitleProcessNotAot.csproj" />
     <ProjectReference Include="..\SubtitleProcess\Mobsub.SubtitleProcess.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
+    <PackageReference Include="System.CommandLine" Version="2.0.0-beta5.25306.1" />
   </ItemGroup>
 
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">

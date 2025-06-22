@@ -10,28 +10,35 @@ internal class CleanCmd
 {
     internal static Command Build(Argument<FileSystemInfo> path, Option<FileSystemInfo> optPath, Option<bool> verbose)
     {
-        var extractBinaries = new Option<bool>(
-            name: "--extract-binaries",
-            description: "Extract binaries, such as section Fonts and Graphics.");
-        var keepCommentLines = new Option<bool>(
-            name: "--keep-comments",
-            description: "Keep comment lines (start with ;) in section Script Info.");
-        var addLayoutRes = new Option<bool>(
-            name: "--add-layoutres",
-            description: "Add LayoutResX/Y in Script Info, default value will same as PlayResX/Y");
-        var dropUnusedStyles = new Option<bool>(
-            name: "--drop-unused-styles",
-            description: "Remove unused styles not used in Events");
-        var cleanPreset = new Option<CleanPreset>(
-            name: "--preset",
-            description: "CleanAss preset, default is Basic",
-            getDefaultValue: () => CleanPreset.Basic);
+        var extractBinaries = new Option<bool>("--extract-binaries") { Description = "Extract binaries, such as section Fonts and Graphics." };
+        var keepCommentLines = new Option<bool>("--keep-comments") { Description = "Keep comment lines (start with ;) in section Script Info." };
+        var addLayoutRes = new Option<bool>("--add-layoutres") { Description = "Add LayoutResX/Y in Script Info, default value will same as PlayResX/Y" };
+        var dropUnusedStyles = new Option<bool>("--drop-unused-styles") { Description = "Remove unused styles not used in Events" };
+        var cleanPreset = new Option<CleanPreset>("--preset")
+        {
+            Description = "CleanAss preset, default is Basic",
+            DefaultValueFactory = _ => CleanPreset.Basic,
+        };
 
         var cleanCommand = new Command("clean", "Clean Your ASS! Remove unused script info and sections, check undefined styles.")
         {
             path, optPath, extractBinaries, keepCommentLines, verbose, addLayoutRes, dropUnusedStyles, cleanPreset
         };
-        cleanCommand.SetHandler(Execute, path, optPath, extractBinaries, keepCommentLines, verbose, addLayoutRes, dropUnusedStyles, cleanPreset);
+
+        cleanCommand.SetAction(result =>
+        {
+            Execute(
+                result.GetValue(path)!,
+                result.GetValue(optPath),
+                result.GetValue(extractBinaries),
+                result.GetValue(keepCommentLines),
+                result.GetValue(verbose),
+                result.GetValue(addLayoutRes),
+                result.GetValue(dropUnusedStyles),
+                result.GetValue(cleanPreset)
+                );
+        });
+
         return cleanCommand;
     }
 
