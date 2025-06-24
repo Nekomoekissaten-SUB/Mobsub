@@ -1,11 +1,12 @@
 ﻿using Mobsub.SubtitleParse.AssTypes;
-using System.CommandLine;
-using Mobsub.SubtitleProcessNotAot;
 using Mobsub.SubtitleProcess;
+using Mobsub.SubtitleProcessNotAot;
+using System.CommandLine;
+using System.Reflection.Metadata.Ecma335;
 
 namespace Mobsub.Ikkoku.CommandLine;
 
-internal class MergeCmd
+internal partial class MergeCmd
 {
     internal static Command Build(Argument<FileSystemInfo> path, Option<FileSystemInfo> optPath, Option<FileInfo> conf)
     {
@@ -111,6 +112,10 @@ internal class MergeCmd
         // subcommand base-diff
         mergeCommand.Add(BuildSubGitDiff(path, conf));
 # endif
+
+        // subcommand nijigasaki
+        mergeCommand.Add(BuildNijigasaki(path, optPath, confVar));
+
         return mergeCommand;
     }
 
@@ -174,21 +179,11 @@ internal class MergeCmd
                     throw new ArgumentException("Output must be a directory.");
             }
             
-            var _sepIndex = confVar![0].AsSpan().IndexOf(':');
-
-            if (_sepIndex > -1)
+            if (SplitFirstConfigVariable(confVar![0], out var _epStart, out var _epEnd, out var _length))
             {
-                if (int.TryParse(confVar[0].AsSpan()[.._sepIndex], out int _epStart) && int.TryParse(confVar[0].AsSpan()[(_sepIndex + 1)..], out int _epEnd))
+                for (var i = _epStart; i <= _epEnd; i++)
                 {
-                    var minLength = confVar[0].Length - _sepIndex - 1;
-                    for (var i = _epStart; i <= _epEnd; i++)
-                    {
-                        mergeConf.Merge(i.ToString().PadLeft(CountDigits(_epEnd, minLength), '0'), confVar[1], baseDir.FullName, optPath.FullName, mergeSection);
-                    }
-                }
-                else
-                {
-                    throw new Exception("Please check first confVal");
+                    mergeConf.Merge(i.ToString($"D{_length}"), confVar[1], baseDir.FullName, optPath.FullName, mergeSection);
                 }
             }
             else
@@ -225,24 +220,29 @@ internal class MergeCmd
         }
     }
 
-    private static int CountDigits(int number, int minLength)
+    private static bool SplitFirstConfigVariable(string value, out int epStart, out int epEnd, out int length)
     {
-        if (number == 0)
+        var span = value.AsSpan();
+        var _sepIndex = span.IndexOf(':');
+
+        if (_sepIndex <= -1)
         {
-            return Math.Max(1, minLength);
+            epStart = epEnd = length = -1;
+            return false;
         }
 
-        int digitCount = 0;
-        while (number != 0)
+        if (int.TryParse(span[.._sepIndex], out epStart) && int.TryParse(span[(_sepIndex + 1)..], out epEnd))
         {
-            number /= 10;
-            digitCount++;
+            length = Math.Max(span[(_sepIndex + 1)..].Length, 2);
+            return true;
         }
-
-        return Math.Max(digitCount, minLength);
+        else
+        {
+            throw new Exception("Please check first confVal");
+        }
     }
 
-    
+
     private static void MergeDiffByDirectory(DirectoryInfo dir, string[] subtitleSuffixes, string startCommitId, string endCommitId, string confName)
     {
         try
