@@ -241,4 +241,16 @@ public class AssData(ILogger? logger = null)
         sw.Flush();
         _logger?.ZLogInformation($"Sections write completed");
     }
+
+    public void Like(AssData ass)
+    {
+        CarriageReturn = ass.CarriageReturn;
+        CharEncoding = ass.CharEncoding;
+        ScriptInfo = ass.ScriptInfo.DeepClone();
+        Sections = [
+            AssSection.ScriptInfo,
+            ass.Sections.Contains(AssSection.StylesV4P) ? AssSection.StylesV4P : ass.Sections.Contains(AssSection.StylesV4) ? AssSection.StylesV4 : AssSection.StylesV4PP,
+            AssSection.Events
+            ];
+    }
 }
