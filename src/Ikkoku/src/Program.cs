@@ -1,5 +1,4 @@
 ﻿using Mobsub.Ikkoku.CommandLine;
-using Mobsub.Ikkoku.SubtileProcess;
 using System.CommandLine;
 
 namespace Mobsub.Ikkoku;
@@ -14,7 +13,7 @@ partial class Program
         var path = new Argument<FileSystemInfo>("path")
         {
             Description = "The file path to read (support file or directory)."
-        };
+        }.AcceptExistingOnly();
 
         path.Validators.Add((result) =>
             {
@@ -61,7 +60,7 @@ partial class Program
             }
         );
 
-        var conf = new Option<FileInfo>("--config", "-c") { Description = "Configuration file." };
+        var conf = new Option<FileInfo>("--config", "-c") { Description = "Configuration file." }.AcceptExistingOnly();
 
         // clean
         rootCommand.Add(CleanCmd.Build(path, optPath, verbose));

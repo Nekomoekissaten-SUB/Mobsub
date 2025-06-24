@@ -41,10 +41,6 @@ internal class CJKppCmd
             {
                 throw new ArgumentException("Please specify a conversion config file!");
             }
-            if (!configFile.Exists)
-            {
-                throw new FileNotFoundException("Conversion config file not found!", configFile.FullName);
-            }
             Execute(pathValue!, optPathValue!, configFile);
         });
 
