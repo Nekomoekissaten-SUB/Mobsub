@@ -1,7 +1,6 @@
 using Microsoft.Extensions.Logging;
-using ZLogger;
-using System.Diagnostics;
 using System.Text;
+using ZLogger;
 
 namespace Mobsub.SubtitleParse.AssTypes;
 
@@ -314,4 +313,35 @@ public partial class AssEvent(ILogger? logger = null)
         ca[1] is AssConstants.LineBreaker or AssConstants.WordBreaker or AssConstants.NoBreakSpace;
     public static bool IsTextBlock(ReadOnlySpan<char> block) => !(IsOverrideBlock(block) || IsEventSpecialCharPair(block));
     public bool WillSkip() => StartSemicolon || !IsDialogue || Text is null || Text.Length == 0;
+
+    public override string ToString()
+    {
+        var sb = new StringBuilder();
+        var formats = AssConstants.FormatV4P.Split(',').Select(s => s.Trim()).ToArray();
+        Write(sb, formats, true);
+        return sb.ToString();
+    }
+
+    public AssEvent DeepClone()
+    {
+        return new AssEvent(logger)
+        {
+            Name = Name,
+            Style = Style,
+            Start = Start,
+            End = End,
+            Layer = Layer,
+            MarginL = MarginL,
+            MarginR = MarginR,
+            MarginV = MarginV,
+            MarginT = MarginT,
+            MarginB = MarginB,
+            Effect = Effect,
+            Text = Text,
+            IsDialogue = IsDialogue,
+            StartSemicolon = StartSemicolon,
+            Untouched = Untouched,
+            lineNumber = lineNumber,
+        };
+    }
 }

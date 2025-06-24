@@ -2,7 +2,7 @@ using System.Text;
 
 namespace Mobsub.SubtitleParse.AssTypes;
 
-public class AssYCbCrMatrix
+public class AssYCbCrMatrix : ICloneable
 {
     private string matrix = "601";
     private readonly string[] matrixValid = ["None", "601", "709", "2020", "240M", "FCC"];
@@ -39,6 +39,11 @@ public class AssYCbCrMatrix
             sb.Append(Matrix);
         }
         return sb;
+    }
+
+    public object Clone()
+    {
+        return MemberwiseClone();
     }
 }
 

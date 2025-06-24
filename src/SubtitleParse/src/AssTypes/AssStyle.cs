@@ -185,6 +185,16 @@ public class AssStyles(ILogger? logger = null)
         logger?.ZLogWarning($"Style {sylName.ToString()} not found, fallback to ass default style");
         return false;
     }
+
+    public object DeepClone()
+    {
+        return new AssStyles(logger)
+        {
+            Formats = Formats,
+            Collection = [.. Collection.Select(s => s.DeepClone())],
+            Names = [.. Names]
+        };
+    }
 }
 
 public class AssStyle(ILogger? logger = null)
@@ -420,5 +430,39 @@ public class AssStyle(ILogger? logger = null)
         hash.Add(AlphaLevel);
         hash.Add(RelativeTo);
         return hash.ToHashCode();
+    }
+
+    public AssStyle DeepClone()
+    {
+        return new AssStyle(logger)
+        {
+            Name = Name,
+            Fontname = Fontname,
+            Fontsize = Fontsize,
+            PrimaryColour = PrimaryColour,
+            SecondaryColour = SecondaryColour,
+            OutlineColour = OutlineColour,
+            BackColour = BackColour,
+            Bold = Bold,
+            Italic = Italic,
+            Underline = Underline,
+            StrikeOut = StrikeOut,
+            ScaleX = ScaleX,
+            ScaleY = ScaleY,
+            Spacing = Spacing,
+            Angle = Angle,
+            BorderStyle = BorderStyle,
+            Outline = Outline,
+            Shadow = Shadow,
+            Alignment = Alignment,
+            MarginL = MarginL,
+            MarginR = MarginR,
+            MarginV = MarginV,
+            MarginT = MarginT,
+            MarginB = MarginB,
+            Encoding = Encoding,
+            AlphaLevel = AlphaLevel,
+            RelativeTo = RelativeTo
+        };
     }
 }

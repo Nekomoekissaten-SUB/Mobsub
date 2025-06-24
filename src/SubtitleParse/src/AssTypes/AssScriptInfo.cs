@@ -222,4 +222,32 @@ public class AssScriptInfo(ILogger? logger = null)
         //sw.Write(newline);
         logger?.ZLogDebug($"Section write completed");
     }
+
+    public AssScriptInfo DeepClone()
+    {
+        return new AssScriptInfo(logger)
+        {
+            ScriptType = this.ScriptType,
+            PlayResX = this.PlayResX,
+            PlayResY = this.PlayResY,
+            LayoutResX = this.LayoutResX,
+            LayoutResY = this.LayoutResY,
+            Timer = this.Timer,
+            WrapStyle = this.WrapStyle,
+            ScaledBorderAndShadow = this.ScaledBorderAndShadow,
+            Kerning = this.Kerning,
+            YCbCrMatrix = (AssYCbCrMatrix)this.YCbCrMatrix.Clone(),
+            Title = this.Title,
+            OriginalScript = this.OriginalScript,
+            OriginalTranslation = this.OriginalTranslation,
+            OriginalEditing = this.OriginalEditing,
+            OriginalTiming = this.OriginalTiming,
+            ScriptUpdatedBy = this.ScriptUpdatedBy,
+            UpdateDetails = this.UpdateDetails,
+            Comment = new List<string>(this.Comment),
+            CustomData = new List<string>(this.CustomData),
+            Others = new Dictionary<string, string>(this.Others),
+            Orders = new HashSet<string>(this.Orders)
+        };
+    }
 }
