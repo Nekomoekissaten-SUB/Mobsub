@@ -5,7 +5,7 @@
         <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
         <ApplicationManifest>app.manifest</ApplicationManifest>
         <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
-        <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
+        <TargetFrameworks>net10.0</TargetFrameworks>
         <RootNamespace>Mobsub.IkkokuMergeBaseDiff</RootNamespace>
         <PackageId>Mobsub.IkkokuMergeBaseDiff</PackageId>
         <AssemblyName>IkkokuMergeBaseDiff</AssemblyName>

@@ -13,7 +13,7 @@
     <PublishTrimmed>true</PublishTrimmed>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <TrimmerSingleWarn>false</TrimmerSingleWarn>
-    <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
+    <TargetFrameworks>net10.0</TargetFrameworks>
   </PropertyGroup>
 
   <ItemGroup>
