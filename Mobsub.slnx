@@ -1,12 +1,12 @@
-﻿<Solution>
-  <Project Path="src\Helper.Avalonia\Mobsub.Helper.Avalonia.csproj" Type="Classic C#" />
-  <Project Path="src\Helper\Mobsub.Helper.csproj" Type="Classic C#" />
+<Solution>
+  <Project Path="src\Helper.Avalonia\Mobsub.Helper.Avalonia.csproj" />
+  <Project Path="src\Helper\Mobsub.Helper.csproj" />
   <Project Path="src\Ikkoku\Ikkoku.csproj" />
-  <Project Path="src\SimpleTools\IkkokuMergeBaseDiff\Mobsub.IkkokuMergeBaseDiff.csproj" Type="Classic C#" />
-  <Project Path="src\SimpleTools\Mobsub.SubtitlesPublic\Mobsub.SubtitlesPublic.csproj" Type="Classic C#" />
-  <Project Path="src\SubtitleParse.SourceGen\Mobsub.SubtitleParse.SourceGen.csproj" Type="Classic C#" />
+  <Project Path="src\SimpleTools\IkkokuMergeBaseDiff\Mobsub.IkkokuMergeBaseDiff.csproj" />
+  <Project Path="src\SimpleTools\Mobsub.SubtitlesPublic\Mobsub.SubtitlesPublic.csproj" />
+  <Project Path="src\SubtitleParse.SourceGen\Mobsub.SubtitleParse.SourceGen.csproj" />
   <Project Path="src\SubtitleParse\Mobsub.SubtitleParse.csproj" />
-  <Project Path="src\SubtitleProcessNotAot\Mobsub.SubtitleProcessNotAot.csproj" Type="Classic C#" />
-  <Project Path="src\SubtitleProcess\Mobsub.SubtitleProcess.csproj" Type="Classic C#" />
+  <Project Path="src\SubtitleProcessNotAot\Mobsub.SubtitleProcessNotAot.csproj" />
+  <Project Path="src\SubtitleProcess\Mobsub.SubtitleProcess.csproj" />
   <Project Path="src\Test\Test.csproj" />
 </Solution>
