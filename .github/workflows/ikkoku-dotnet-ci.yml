@@ -25,8 +25,8 @@ jobs:
           # - os: ubuntu-latest
           #   identifier: linux
         arch: ['x64', 'arm64']
-        dotnet_version: ['9.x']
-        target: ['net9.0']
+        dotnet_version: ['10.x']
+        target: ['net10.0']
 
     name: build-${{ matrix.env.os }}-${{ matrix.arch }}
     runs-on: ${{ matrix.env.os }}
@@ -49,10 +49,10 @@ jobs:
         sudo apt install -y clang llvm binutils-aarch64-linux-gnu gcc-aarch64-linux-gnu zlib1g-dev:arm64
 
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Setup .NET
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v5
       with:
         dotnet-version: ${{ matrix.dotnet_version }}
 
