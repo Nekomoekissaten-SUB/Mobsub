@@ -175,7 +175,7 @@ internal class Check
                                                                      ((span.Length > 3 && char.IsDigit(span[2])) ||
                                                                       span.Length == 3);
 
-    internal static readonly char[] EventUnusedChars = ['\u200E', '\u200F', '\u200B'];
+    internal static readonly char[] EventUnusedChars = ['\u200E', '\u200F', '\u200B', '\u200C'];
     internal static readonly char[] EventWeirdSpace = ['\u00A0', '\ufeff'];
 
     internal static void CheckWeirdChars(List<char[]> et, out bool hadUnusedChar, out bool hadWeridSpace)

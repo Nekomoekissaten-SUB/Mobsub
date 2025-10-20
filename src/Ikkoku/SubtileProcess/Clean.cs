@@ -270,6 +270,7 @@ public class Clean
     }
     private static bool RemoveWeirdChars(ReadOnlySpan<char> text, ref bool hadUnusedChar, ref bool hadWeridSpace, StringBuilder sb)
     {
+        sb.Clear();
         var mod = false;
         for (var i = 0; i < text.Length; i++)
         {
