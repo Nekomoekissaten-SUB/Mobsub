@@ -3,7 +3,6 @@
   <Project Path="src\Helper\Mobsub.Helper.csproj" />
   <Project Path="src\Ikkoku\Ikkoku.csproj" />
   <Project Path="src\SimpleTools\IkkokuMergeBaseDiff\Mobsub.IkkokuMergeBaseDiff.csproj" />
-  <Project Path="src\SimpleTools\Mobsub.SubtitlesPublic\Mobsub.SubtitlesPublic.csproj" />
   <Project Path="src\SubtitleParse.SourceGen\Mobsub.SubtitleParse.SourceGen.csproj" />
   <Project Path="src\SubtitleParse\Mobsub.SubtitleParse.csproj" />
   <Project Path="src\SubtitleProcessNotAot\Mobsub.SubtitleProcessNotAot.csproj" />

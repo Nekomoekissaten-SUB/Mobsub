@@ -1,15 +1,75 @@
-﻿using System;
-using System.Collections.Generic;
+#:package LibGit2Sharp@0.31.0
+#:package SharpSevenZip@2.0.32
+#:project ../SubtitleProcess/Mobsub.SubtitleProcess.csproj
+#:property PublishAot=false
+
+// dotnet run subtitles_public.cs -- move_to_public.json "subproject directory name" "japanese name"
+
+using System.Text.Json.Serialization;
 using System.Diagnostics;
-using System.IO;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using LibGit2Sharp;
 using Mobsub.SubtitleProcess;
 using SharpSevenZip;
+using System.Text.Json;
 
-namespace Mobsub.SubtitlesPublic.Models;
+if (args.Length != 3)
+    return;
+
+var configFile = args[0];
+var relativePath = args[1];
+var jpnName = args[2];
+
+var span = File.ReadAllBytes(configFile).AsSpan();
+var config = JsonSerializer.Deserialize(span, BaseConfigContext.Default.BaseConfig);
+
+if (config == null)
+    return;
+
+var gm = new GitManage(config);
+await gm.Execute(relativePath, jpnName);
+
+
+public class ProjectInfo
+{
+    public string? DirectoryName { get; set; }
+    internal string? DirectoryPath { get; set; }
+    public string? ProjectNameEng { get; set; }
+    public string? ProjectNameJpn { get; set; }
+    public SubtitlesLanguage? Language { get; set; }
+    public TimelineType? TimelineType { get; set; }
+    public int Episodes { get; set; }
+    public string? PackageName { get; set; }
+    public string? UsedFonts { get; set; }
+    public string? MergeConfigure { get; set; }
+    public string? PackageEffectName { get; set; }
+}
+
+public enum SubtitlesLanguage
+{
+    Single = 0,
+    Dual = 1,
+}
+
+public enum TimelineType
+{
+    Web = 0,
+    BluRay = 1,
+}
+
+public class BaseConfig
+{
+    public string PrivateRepoPath { get; set; }
+    public string PublicRepoPath { get; set; }
+    public string TempUploadPath { get; set; }
+    public string ListAssFontsBinaryPath { get; set; }
+}
+
+[JsonSourceGenerationOptions(WriteIndented = true, PropertyNamingPolicy = JsonKnownNamingPolicy.SnakeCaseLower)]
+[JsonSerializable(typeof(BaseConfig))]
+public partial class BaseConfigContext : JsonSerializerContext
+{
+}
 
 public class GitManage(BaseConfig config)
 {
@@ -20,7 +80,7 @@ public class GitManage(BaseConfig config)
     private readonly string privateReadme = Path.Combine(config.PrivateRepoPath, "README.md");
 
     internal ProjectInfo? project;
-    
+
     internal string[] GetPrivateDirectories()
     {
         var directories = Directory.GetDirectories(config.PrivateRepoPath);
@@ -37,7 +97,7 @@ public class GitManage(BaseConfig config)
             DirectoryPath = Path.Combine(config.PrivateRepoPath, relativePath),
             ProjectNameJpn = jpnName,
         };
-        
+
         // loop all files and dirs
         var files = Directory.GetFiles(project.DirectoryPath);
         var assFiles = new List<string>();
@@ -53,7 +113,7 @@ public class GitManage(BaseConfig config)
                     assFiles.Add(f);
                     break;
                 case ".7z" when
-                    ((f.Contains(project.DirectoryName) || f.Contains(project.ProjectNameEng!)) && !f.Contains("Font", StringComparison.OrdinalIgnoreCase)):
+                    (f.Contains(project.DirectoryName) || f.Contains(project.ProjectNameEng!)) && !f.Contains("Font", StringComparison.OrdinalIgnoreCase):
                     pkgFiles.Add(f);
                     break;
                 case ".yml" or ".yaml":
@@ -71,7 +131,7 @@ public class GitManage(BaseConfig config)
         project.PackageName = $"{project.DirectoryName}_{(project.TimelineType == TimelineType.BluRay ? "BD" : "Web")}_{(project.Language == SubtitlesLanguage.Dual ? "JPCH" : "zho")}.7z";
         if (project.MergeConfigure is not null)
             project.PackageEffectName = $"{project.DirectoryName}_Effect.7z";
-        
+
         var packageFiles = GetPackageFiles(assFiles, out var effectFiles)!;
         if (pkgFiles.Count == 0)
         {
@@ -86,7 +146,7 @@ public class GitManage(BaseConfig config)
         {
             _ = await CompressAssFiles(effectFiles, project.PackageEffectName!);
         }
-        
+
         // move subs to standalone dir
         var subsDir = Path.Combine(project.DirectoryPath!, "Subs");
         if (!Directory.Exists(subsDir))
@@ -120,14 +180,14 @@ public class GitManage(BaseConfig config)
                 Directory.Delete(f, true);
             }
         }
-        
+
         // update private readme
         _ = AppendPrivateReadme(jpnName);
-        
+
         // create project readme
         var readmePath = Path.Combine(project.DirectoryPath, "README.md");
         await File.WriteAllTextAsync(readmePath, GenerateNewReadmeMarkdown());
-        
+
         // move to public
         Console.WriteLine($"{project.ProjectNameEng}({project.Episodes}, {project.Language}, {project.TimelineType}): {publicRepoUrl}/tree/master/{relativePath}");
         // var publicProjectDir = Path.Combine(config.PublicRepoPath, relativePath);
@@ -138,7 +198,7 @@ public class GitManage(BaseConfig config)
     {
         if (project is null)
             return;
-        
+
         if (project.Language is null)
         {
             var ext = GetLanguageFromFileName(span);
@@ -172,7 +232,7 @@ public class GitManage(BaseConfig config)
                 project.ProjectNameEng = span[(p1 + 2)..(p2 - 1)].ToString();
             }
         }
-        
+
         var epStr = GetEpisodeFromFileName(span);
         if (epStr.Length == 0) { return; }
         if (int.TryParse(epStr, out var ep))
@@ -186,7 +246,7 @@ public class GitManage(BaseConfig config)
         {
             if (float.TryParse(epStr, out _))
             {
-                
+
             }
             else if (epStr.IndexOf('-') > 0 || epStr.StartsWith("MOV", StringComparison.OrdinalIgnoreCase))
             {
@@ -207,12 +267,12 @@ public class GitManage(BaseConfig config)
 
         if (p1 == -1 || p2 == -1)
         {
-            return Span<char>.Empty;
+            return [];
         }
 
         return span[(p1 + 1)..p2];
     }
-    
+
     private static int FindIndex(ReadOnlySpan<char> span, char c, int count)
     {
         Debug.WriteLine(span.ToString());
@@ -237,15 +297,15 @@ public class GitManage(BaseConfig config)
         Debug.WriteLine($"{pos}: {span[(pos - 1)..]}");
         return pos - 1;
     }
-    
+
     internal string? GetLatestCommitsUri(string relativePath)
     {
         using var repo = new Repository(config.PrivateRepoPath);
-        
+
         var branch = repo.Branches["master"];
         if (branch == null)
             return null;
-        
+
         var latestCommit = branch.Commits.FirstOrDefault(
             commit => commit.Parents.Select(
                     parent => repo.Diff.Compare<TreeChanges>(parent.Tree, commit.Tree))
@@ -258,7 +318,7 @@ public class GitManage(BaseConfig config)
     {
         if (project is null)
             return null;
-        
+
         var compressor = new SharpSevenZipCompressor()
         {
             ArchiveFormat = OutArchiveFormat.SevenZip,
@@ -316,7 +376,7 @@ public class GitManage(BaseConfig config)
             eps.Add(ep.ToString());
             langs.Add(GetLanguageFromFileName(name).ToString());
         }
-        
+
         var mergebase = new MergeByConfig(project.MergeConfigure);
         var baseDir = Path.GetDirectoryName(assFiles[0]);
         var optPath = Path.Combine(baseDir!, "tmp");
@@ -334,10 +394,10 @@ public class GitManage(BaseConfig config)
 
         if (effectFileList.Count > 0)
             effectFiles = effectFileList.ToArray();
-        
+
         return targetFiles;
     }
-    
+
     public bool AppendPrivateReadme(string jpnName)
     {
         if (project is null)
@@ -346,7 +406,7 @@ public class GitManage(BaseConfig config)
         if (commitsUri == null)
             return false;
         var text = $"{jpnName} | {project.ProjectNameEng} | [commits]({commitsUri})";
-        
+
         using var fs = new FileStream(privateReadme, FileMode.Open, FileAccess.ReadWrite);
         fs.Seek(-1, SeekOrigin.End);
         var c = (char)fs.ReadByte();
