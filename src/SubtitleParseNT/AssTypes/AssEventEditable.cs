@@ -20,7 +20,7 @@ public sealed class AssEventEditable
     public string Effect { get; set; }
     public string Text { get; set; }
 
-    public AssEventEditable(ILogger? logger)
+    public AssEventEditable(ILogger? logger = null)
     {
         this.logger = logger;
         IsDialogue = true;
