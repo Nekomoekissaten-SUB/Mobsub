@@ -56,64 +56,64 @@ public class Utils
         fs.Seek(0, SeekOrigin.Begin);
     }
 
-    public static void SetProperty(object obj, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] Type T, string propertyName, ReadOnlySpan<char> value)
-    {
-        var property = T.GetProperty(propertyName);
-        if (property == null)
-        {
-            return;
-        }
+    //public static void SetProperty(object obj, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] Type T, string propertyName, ReadOnlySpan<char> value)
+    //{
+    //    var property = T.GetProperty(propertyName);
+    //    if (property == null)
+    //    {
+    //        return;
+    //    }
 
-        object? typedValue = null;
-        if (property.PropertyType == typeof(AssRGB8))
-        {
-            var abgr = new AssRGB8();
-            abgr.Parse(value);
-            typedValue = abgr;
-        }
-        else if (property.PropertyType == typeof(bool))
-        {
-            if (short.TryParse(value, out var shortValue))
-            {
-                typedValue = shortValue == -1;
-            }
-            else
-            {
-                typedValue = value.SequenceEqual("yes".AsSpan());
-            }
-        }
-        else if (property.PropertyType == typeof(AssTime))
-        {
-            typedValue = AssTime.ParseFromAss(value);
-        }
-        else if (property.PropertyType == typeof(int))
-        {
-            if (int.TryParse(value, out var target))
-            {
-                typedValue = target;
-            }
-        }
-        else if (property.PropertyType == typeof(string))
-        {
-            typedValue = value.ToString();
-        }
-        else
-        {
-            try
-            {
-                typedValue = Convert.ChangeType(value.ToString(), property.PropertyType);
-            }
-            catch (InvalidCastException)
-            {
-                // Handle exception
-            }
-        }
+    //    object? typedValue = null;
+    //    if (property.PropertyType == typeof(AssRGB8))
+    //    {
+    //        var abgr = new AssRGB8();
+    //        abgr.Parse(value);
+    //        typedValue = abgr;
+    //    }
+    //    else if (property.PropertyType == typeof(bool))
+    //    {
+    //        if (short.TryParse(value, out var shortValue))
+    //        {
+    //            typedValue = shortValue == -1;
+    //        }
+    //        else
+    //        {
+    //            typedValue = value.SequenceEqual("yes".AsSpan());
+    //        }
+    //    }
+    //    else if (property.PropertyType == typeof(AssTime))
+    //    {
+    //        typedValue = AssTime.ParseFromAss(value);
+    //    }
+    //    else if (property.PropertyType == typeof(int))
+    //    {
+    //        if (int.TryParse(value, out var target))
+    //        {
+    //            typedValue = target;
+    //        }
+    //    }
+    //    else if (property.PropertyType == typeof(string))
+    //    {
+    //        typedValue = value.ToString();
+    //    }
+    //    else
+    //    {
+    //        try
+    //        {
+    //            typedValue = Convert.ChangeType(value.ToString(), property.PropertyType);
+    //        }
+    //        catch (InvalidCastException)
+    //        {
+    //            // Handle exception
+    //        }
+    //    }
 
-        if (typedValue != null)
-        {
-            property.SetValue(obj, typedValue);
-        }
-    }
+    //    if (typedValue != null)
+    //    {
+    //        property.SetValue(obj, typedValue);
+    //    }
+    //}
 
     public static void SetRangeProperty(object obj, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] Type T, string propertyName, Range value)
     {
@@ -228,4 +228,22 @@ public class Utils
     internal static string GetString(ReadOnlyMemory<byte> bytes) => Encoding.UTF8.GetString(bytes.Span);
     internal static string GetString(ReadOnlyMemory<byte> bytes, Range range) =>
         Encoding.UTF8.GetString(bytes.ToArray(), range.Start.Value, range.End.Value - range.Start.Value);
+
+    internal static ReadOnlySpan<byte> TrimSpaces(ReadOnlySpan<byte> span)
+    {
+        int start = 0;
+        int end = span.Length - 1;
+
+        while (start <= end && span[start] == 0x20)
+        {
+            start++;
+        }
+
+        while (end >= start && span[end] == 0x20)
+        {
+            end--;
+        }
+
+        return span.Slice(start, end - start + 1);
+    }
 }
