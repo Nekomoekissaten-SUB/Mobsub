@@ -7,7 +7,6 @@ namespace Mobsub.SubtitleParseNT2.AssTypes;
 public sealed class AssEventView
 {
     public readonly int LineNumber;
-    //public readonly string? Line;
     public readonly ReadOnlyMemory<byte> LineRaw;
 
     public readonly bool StartSemicolon = false;
@@ -26,11 +25,6 @@ public sealed class AssEventView
     public Range Effect { get; init; }
     public Range Text { get; init; }
 
-    //public ReadOnlySpan<char> GetStyleSpan() => Line.AsSpan(Style);
-    //public ReadOnlySpan<char> GetNameSpan() => Line.AsSpan(Name);
-    //public ReadOnlySpan<char> GetEffectSpan() => Line.AsSpan(Effect);
-    //public ReadOnlySpan<char> GetTextSpan() => Line.AsSpan(Text);
-
     public string GetStyle() => Utils.GetString(LineRaw, Style);
     public string GetName() => Utils.GetString(LineRaw, Name);
     public string GetEffect() => Utils.GetString(LineRaw, Effect);
@@ -40,9 +34,6 @@ public sealed class AssEventView
     {
         sb.AppendLine(Utils.GetString(LineRaw));
     }
-
-
-
 
     public AssEventView(ReadOnlyMemory<byte> line, int lineNum, ReadOnlySpan<byte> header, string[] formats, ILogger? logger = null)
     {
@@ -72,7 +63,7 @@ public sealed class AssEventView
         }
         else
         {
-            throw new Exception($"Unknown Events line {line}");
+            throw new Exception($"Unknown Events line '{Utils.GetString(line)}'");
         }
 
         sepIndex += (sp[sepIndex + 1] == 0x20) ? 2 : 1;
@@ -82,7 +73,7 @@ public sealed class AssEventView
         while (segCount < formats.Length - 1)
         {
             nextSep = sp[sepIndex..].IndexOf(((byte)','));
-            if (nextSep == -1) throw new FormatException($"Invalid line: '{line}'");
+            if (nextSep == -1) throw new FormatException($"Invalid line: '{Utils.GetString(line)}'");
             nextSep += sepIndex;
             var value = sp[sepIndex..nextSep];
             switch (formats[segCount])
