@@ -1,5 +1,4 @@
 ﻿using Microsoft.Extensions.Logging;
-using System;
 using System.Text;
 using ZLogger;
 
@@ -26,62 +25,6 @@ public sealed class AssEventView
     public int MarginB { get; init; }
     public Range Effect { get; init; }
     public Range Text { get; init; }
-
-    public AssEventView(ReadOnlySpan<char> sp, int lineNum, ReadOnlySpan<char> header, string[] formats, ILogger? logger = null)
-    {
-        Line = sp.ToString();
-        LineNumber = lineNum;
-
-        var sepIndex = header.Length;
-        switch (header)
-        {
-            case ";":
-                StartSemicolon = true;
-                logger?.ZLogInformation($"Line ${lineNum} is a comment line, will pass parse");
-                break;
-
-            case "Format":
-                break;
-
-            case "Dialogue":
-            case "Comment":
-                IsDialogue = header.SequenceEqual("Dialogue");
-                sepIndex += (char.IsWhiteSpace(sp[sepIndex + 1])) ? 2 : 1;
-
-                var segCount = 0;
-                int nextSep;
-                while (segCount < formats.Length - 1)
-                {
-                    nextSep = sp[sepIndex..].IndexOf(',');
-                    if (nextSep == -1) throw new FormatException($"Invalid line: '{sp}'");
-                    nextSep += sepIndex;
-                    var value = sp[sepIndex..nextSep].TrimStart();
-                    switch (formats[segCount])
-                    {
-                        case "Layer": Layer = int.Parse(value); break;
-                        case "Marked": break;
-                        case "Start": Start = AssTime.ParseFromAss(value); break;
-                        case "End": End = AssTime.ParseFromAss(value); break;
-                        case "Style": Style = new Range(sepIndex, nextSep); break;
-                        case "Name": Name = new Range(sepIndex, nextSep); break;
-                        case "MarginL": MarginL = int.Parse(value); break;
-                        case "MarginR": MarginR = int.Parse(value); break;
-                        case "MarginV": MarginV = int.Parse(value); break;
-                        case "MarginT": MarginT = int.Parse(value); break;
-                        case "MarginB": MarginB = int.Parse(value); break;
-                        case "Effect": Effect = new Range(sepIndex, nextSep); break;
-                    }
-
-                    segCount++;
-                    sepIndex = nextSep + 1;
-                }
-                Text = Range.StartAt(sepIndex);
-                break;
-
-            default:
-                throw new Exception($"Unknown Events line {sp}");
-        }
-    }
 
     //public ReadOnlySpan<char> GetStyleSpan() => Line.AsSpan(Style);
     //public ReadOnlySpan<char> GetNameSpan() => Line.AsSpan(Name);

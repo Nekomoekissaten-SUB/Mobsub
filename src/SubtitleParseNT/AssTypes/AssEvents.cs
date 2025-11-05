@@ -16,34 +16,6 @@ public class AssEvents(ILogger? logger = null)
     }
     public List<AssEventHandle> Collection = [];
 
-    public void Read(ReadOnlySpan<char> sp, ReadOnlySpan<char> scriptType, int lineNumber)
-    {
-        if (sp[0] == ';')
-        {
-            var view = new AssEventView(sp, lineNumber, ";", Formats, logger);
-            Collection.Add(new AssEventHandle(view));
-            return;
-        }
-
-        var sepIndex = sp.IndexOf(':');
-        switch (sp[..sepIndex])
-        {
-            case "Format":
-                if (scriptType.SequenceEqual(AssConstants.ScriptTypeV4PP))
-                    throw new Exception($"Events: {AssConstants.ScriptTypeV4PP} not have format line");
-                Formats = sp[(sepIndex + 1)..].ToString().Split(',').Select(s => s.Trim()).ToArray();
-                if (!Formats[^1].AsSpan().SequenceEqual("Text".AsSpan()))
-                    throw new Exception("Events: Text must be last field.");
-                logger?.ZLogDebug($"Events: Parse format line fine");
-                break;
-            default:
-                var view = new AssEventView(sp, lineNumber, sp[..sepIndex], Formats, logger);
-                Collection.Add(new AssEventHandle(view));
-                break;
-        }
-    }
-
-
     public void Read(ReadOnlyMemory<byte> line, ReadOnlySpan<byte> scriptType, int lineNumber)
     {
         var sp = line.Span;
