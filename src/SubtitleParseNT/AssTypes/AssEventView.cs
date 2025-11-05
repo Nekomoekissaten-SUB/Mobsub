@@ -6,6 +6,7 @@ namespace Mobsub.SubtitleParseNT2.AssTypes;
 
 public sealed class AssEventView
 {
+    internal readonly ILogger? logger;
     public readonly int LineNumber;
     public readonly ReadOnlyMemory<byte> LineRaw;
 
@@ -37,6 +38,7 @@ public sealed class AssEventView
 
     public AssEventView(ReadOnlyMemory<byte> line, int lineNum, ReadOnlySpan<byte> header, string[] formats, ILogger? logger = null)
     {
+        this.logger = logger;
         var sp = line.Span;
         LineRaw = line;
         LineNumber = lineNum;
