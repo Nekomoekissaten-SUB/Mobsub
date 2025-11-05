@@ -12,7 +12,8 @@ public sealed class AssData(ILogger? logger = null)
     public Encoding CharEncoding = Utils.EncodingRefOS();
     public HashSet<AssSection> Sections = [];
 
-    public AssEvents Events { get; set; } = new AssEvents(logger) { };
+    public AssStyles Styles { get; set; } = new(logger) { };
+    public AssEvents Events { get; set; } = new(logger) { };
 
     public async Task<AssData> ReadAssFile(FileStream fs)
     {
@@ -84,11 +85,11 @@ public sealed class AssData(ILogger? logger = null)
             //case AssSection.ScriptInfo:
             //    ScriptInfo.Read(sp, lineNumber);
             //    break;
-            //case AssSection.StylesV4:
-            //case AssSection.StylesV4P:
-            //case AssSection.StylesV4PP:
-            //    Styles.Read(sp, lineNumber, ParseOptions);
-            //    break;
+            case AssSection.StylesV4:
+            case AssSection.StylesV4P:
+            case AssSection.StylesV4PP:
+                Styles.Read(line, lineNumber);
+                break;
             case AssSection.Events:
                 Events.Read(line, "[V4+ Styles]"u8, lineNumber);
                 break;
