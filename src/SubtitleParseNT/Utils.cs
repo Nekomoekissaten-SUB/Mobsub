@@ -56,64 +56,118 @@ public class Utils
         fs.Seek(0, SeekOrigin.Begin);
     }
 
-    //public static void SetProperty(object obj, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] Type T, string propertyName, ReadOnlySpan<char> value)
-    //{
-    //    var property = T.GetProperty(propertyName);
-    //    if (property == null)
-    //    {
-    //        return;
-    //    }
+    public static void SetProperty(object obj, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] Type T, string propertyName, ReadOnlySpan<char> value)
+    {
+        var property = T.GetProperty(propertyName);
+        if (property == null)
+        {
+            return;
+        }
 
-    //    object? typedValue = null;
-    //    if (property.PropertyType == typeof(AssRGB8))
-    //    {
-    //        var abgr = new AssRGB8();
-    //        abgr.Parse(value);
-    //        typedValue = abgr;
-    //    }
-    //    else if (property.PropertyType == typeof(bool))
-    //    {
-    //        if (short.TryParse(value, out var shortValue))
-    //        {
-    //            typedValue = shortValue == -1;
-    //        }
-    //        else
-    //        {
-    //            typedValue = value.SequenceEqual("yes".AsSpan());
-    //        }
-    //    }
-    //    else if (property.PropertyType == typeof(AssTime))
-    //    {
-    //        typedValue = AssTime.ParseFromAss(value);
-    //    }
-    //    else if (property.PropertyType == typeof(int))
-    //    {
-    //        if (int.TryParse(value, out var target))
-    //        {
-    //            typedValue = target;
-    //        }
-    //    }
-    //    else if (property.PropertyType == typeof(string))
-    //    {
-    //        typedValue = value.ToString();
-    //    }
-    //    else
-    //    {
-    //        try
-    //        {
-    //            typedValue = Convert.ChangeType(value.ToString(), property.PropertyType);
-    //        }
-    //        catch (InvalidCastException)
-    //        {
-    //            // Handle exception
-    //        }
-    //    }
+        object? typedValue = null;
+        if (property.PropertyType == typeof(AssRGB8))
+        {
+            typedValue = AssRGB8.Parse(value);
+        }
+        else if (property.PropertyType == typeof(bool))
+        {
+            if (short.TryParse(value, out var shortValue))
+            {
+                typedValue = shortValue == -1;
+            }
+            else
+            {
+                typedValue = value.SequenceEqual("yes".AsSpan());
+            }
+        }
+        else if (property.PropertyType == typeof(AssTime))
+        {
+            typedValue = AssTime.ParseFromAss(value);
+        }
+        else if (property.PropertyType == typeof(int))
+        {
+            if (int.TryParse(value, out var target))
+            {
+                typedValue = target;
+            }
+        }
+        else if (property.PropertyType == typeof(string))
+        {
+            typedValue = value.ToString();
+        }
+        else
+        {
+            try
+            {
+                typedValue = Convert.ChangeType(value.ToString(), property.PropertyType);
+            }
+            catch (InvalidCastException)
+            {
+                // Handle exception
+            }
+        }
 
-    //    if (typedValue != null)
-    //    {
-    //        property.SetValue(obj, typedValue);
-    //    }
-    //}
+        if (typedValue != null)
+        {
+            property.SetValue(obj, typedValue);
+        }
+    }
+    public static void SetProperty(object obj, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] Type T, string propertyName, ReadOnlySpan<byte> value)
+    {
+        var property = T.GetProperty(propertyName);
+        if (property == null)
+        {
+            return;
+        }
+
+        object? typedValue = null;
+        if (property.PropertyType == typeof(AssRGB8))
+        {
+            typedValue = AssRGB8.Parse(value);
+        }
+        else if (property.PropertyType == typeof(bool))
+        {
+            if (short.TryParse(value, out var shortValue))
+            {
+                typedValue = shortValue == -1;
+            }
+            else
+            {
+                typedValue = value.SequenceEqual("yes"u8);
+            }
+        }
+        else if (property.PropertyType == typeof(AssTime))
+        {
+            typedValue = AssTime.ParseFromAss(value);
+        }
+        else if (property.PropertyType == typeof(int))
+        {
+            if (int.TryParse(value, out var target))
+            {
+                typedValue = target;
+            }
+        }
+        else if (property.PropertyType == typeof(string))
+        {
+            typedValue = GetString(value);
+        }
+        else
+        {
+            try
+            {
+                typedValue = Convert.ChangeType(GetString(value), property.PropertyType);
+            }
+            catch (InvalidCastException)
+            {
+                // Handle exception
+            }
+        }
+
+        if (typedValue != null)
+        {
+            property.SetValue(obj, typedValue);
+        }
+    }
 
     public static void SetRangeProperty(object obj, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] Type T, string propertyName, Range value)
     {
@@ -225,9 +279,11 @@ public class Utils
         return spFixed;
     }
 
-    internal static string GetString(ReadOnlyMemory<byte> bytes) => Encoding.UTF8.GetString(bytes.Span);
-    internal static string GetString(ReadOnlyMemory<byte> bytes, Range range) =>
-        Encoding.UTF8.GetString(bytes.ToArray(), range.Start.Value, range.End.Value - range.Start.Value);
+    internal static string GetString(ReadOnlyMemory<byte> bytes) => GetString(bytes.Span);
+    internal static string GetString(ReadOnlyMemory<byte> bytes, Range range, bool trimSpaces = false) => GetString(bytes.Span, range, trimSpaces);
+    internal static string GetString(ReadOnlySpan<byte> bytes) => Encoding.UTF8.GetString(bytes);
+    internal static string GetString(ReadOnlySpan<byte> bytes, Range range, bool trimSpaces = false) =>
+        trimSpaces ? Encoding.UTF8.GetString(TrimSpaces(bytes[range]).ToArray()) : Encoding.UTF8.GetString(bytes[range].ToArray());
 
     internal static ReadOnlySpan<byte> TrimSpaces(ReadOnlySpan<byte> span)
     {
