@@ -60,8 +60,8 @@ public sealed class AssStyleEditable : IAssStyleData
     public AssStyleEditable(AssStyleView view)
     {
         logger = view.logger;
-        Name = view.GetName();
-        Fontname = view.GetFontname();
+        Name = view.Name;
+        Fontname = view.Fontname;
         Fontsize = view.Fontsize;
         PrimaryColour = view.PrimaryColour;
         SecondaryColour = view.SecondaryColour;
