@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace Mobsub.SubtitleParseNT2.AssTypes;
+﻿namespace Mobsub.SubtitleParseNT2.AssTypes;
 
 public static class Helper
 {
@@ -90,6 +86,63 @@ public static class Helper
 
             if (i < formats.Length - 1)
                 writer.Write(',');
+        }
+    }
+
+    public static void Write(TextWriter writer, IAssEventData evt, string[] fmts, bool ctsRounding)
+    {
+        writer.Write(evt.IsDialogue ? "Dialogue: " : "Comment: ");
+
+        for (var i = 0; i < fmts.Length; i++)
+        {
+            // var fmt = fmts[i];
+            switch (fmts[i])
+            {
+                case "Marked":
+                    writer.Write(evt.Marked);
+                    break;
+                case "Layer":
+                    writer.Write(evt.Layer);
+                    break;
+                case "Start":
+                    AssTime.WriteAssTime(writer, evt.Start, ctsRounding);
+                    break;
+                case "End":
+                    AssTime.WriteAssTime(writer, evt.End, ctsRounding);
+                    break;
+                case "Style":
+                    writer.Write(evt.Style);
+                    break;
+                case "Name":
+                    writer.Write(evt.Name);
+                    break;
+                case "MarginL":
+                    writer.Write(evt.MarginL);
+                    break;
+                case "MarginR":
+                    writer.Write(evt.MarginR);
+                    break;
+                case "MarginV":
+                    writer.Write(evt.MarginV);
+                    break;
+                case "MarginT":
+                    writer.Write(evt.MarginT);
+                    break;
+                case "MarginB":
+                    writer.Write(evt.MarginB);
+                    break;
+                case "Effect":
+                    writer.Write(evt.Effect);
+                    break;
+                case "Text":
+                    writer.Write(evt.Text);
+                    break;
+            }
+
+            if (i < fmts.Length - 1)
+            {
+                writer.Write(',');
+            }
         }
     }
 }

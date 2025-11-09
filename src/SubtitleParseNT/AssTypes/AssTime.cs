@@ -175,8 +175,19 @@ public readonly struct AssTime
 
         WriteChar(sb, ctsRounding ? DigitRounding(time.Millisecond) : time.Millisecond, 3);
     }
-    
-    private static void WriteChar(StringBuilder sb, int val, int length)
+    public static void WriteAssTime(TextWriter writer, AssTime time, bool ctsRounding)
+    {
+        writer.Write(time.Hour);
+        writer.Write(':');
+        WriteChar(writer, time.Minute, 2);
+        writer.Write(':');
+        WriteChar(writer, time.Second, 2);
+        writer.Write('.');
+
+        WriteChar(writer, ctsRounding ? DigitRounding(time.Millisecond) : time.Millisecond, 3);
+    }
+
+    private static char[] GetCharArray(int val, int length)
     {
         var ca = new char[length];
         
@@ -192,10 +203,19 @@ public readonly struct AssTime
             val %= divisor;
             divisor /= 10;
         }
-
+        return ca;
+    }
+    private static void WriteChar(StringBuilder sb, int val, int length)
+    {
+        var ca = GetCharArray(val, length);
         sb.Append(ca[0..Math.Min(length, 2)]);
     }
-    
+    private static void WriteChar(TextWriter writer, int val, int length)
+    {
+        var ca = GetCharArray(val, length);
+        writer.Write(ca[0..Math.Min(length, 2)]);
+    }
+
     private static int DigitRounding(int i)
     {
         var last = i % 10;

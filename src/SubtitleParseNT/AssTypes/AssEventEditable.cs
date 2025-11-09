@@ -4,12 +4,13 @@ using System.Text;
 
 namespace Mobsub.SubtitleParseNT2.AssTypes;
 
-public sealed class AssEventEditable
+public sealed class AssEventEditable : IAssEventData
 {
     internal readonly ILogger? logger;
 
     public bool IsDialogue { get; set; }
     public int Layer { get; set; }
+    public int Marked { get; set; }
     public AssTime Start { get; set; }
     public AssTime End { get; set; }
     public string Style { get; set; }
@@ -17,6 +18,8 @@ public sealed class AssEventEditable
     public int MarginL { get; set; }
     public int MarginR { get; set; }
     public int MarginV { get; set; }
+    public int MarginT { get; set; }
+    public int MarginB { get; set; }
     public string Effect { get; set; }
     public string Text { get; set; }
 
@@ -40,77 +43,13 @@ public sealed class AssEventEditable
         Layer = view.Layer;
         Start = view.Start;
         End = view.End;
-        Style = view.GetStyle();
-        Name = view.GetName();
+        Style = view.Style;
+        Name = view.Name;
         MarginL = view.MarginL;
         MarginR = view.MarginR;
         MarginV = view.MarginV;
-        Effect = view.GetEffect();
-        Text = view.GetText();
-    }
-
-    public void Write(StreamWriter sw, string[] fmts, bool ctsRounding)
-    {
-        var sb = new StringBuilder();
-        Write(sb, fmts, ctsRounding);
-        sw.Write(sb.ToString());
-    }
-
-    public void Write(StringBuilder sb, string[] fmts, bool ctsRounding)
-    {
-        sb.Append(IsDialogue ? "Dialogue: " : "Comment: ");
-
-        for (var i = 0; i < fmts.Length; i++)
-        {
-            // var fmt = fmts[i];
-            switch (fmts[i])
-            {
-                //case "Marked":
-                //    sb.Append(Marked);
-                //    break;
-                case "Layer":
-                    sb.Append(Layer);
-                    break;
-                case "Start":
-                    AssTime.WriteAssTime(sb, Start, ctsRounding);
-                    break;
-                case "End":
-                    AssTime.WriteAssTime(sb, End, ctsRounding);
-                    break;
-                case "Style":
-                    sb.Append(Style);
-                    break;
-                case "Name":
-                    sb.Append(Name);
-                    break;
-                case "MarginL":
-                    sb.Append(MarginL);
-                    break;
-                case "MarginR":
-                    sb.Append(MarginR);
-                    break;
-                case "MarginV":
-                    sb.Append(MarginV);
-                    break;
-                //case "MarginT":
-                //    sb.Append(MarginT);
-                //    break;
-                //case "MarginB":
-                //    sb.Append(MarginB);
-                //    break;
-                case "Effect":
-                    sb.Append(Effect);
-                    break;
-                case "Text":
-                    sb.Append(Text);
-                    break;
-            }
-
-            if (i < fmts.Length - 1)
-            {
-                sb.Append(',');
-            }
-        }
+        Effect = view.Effect;
+        Text = view.Text;
     }
 
     public override string ToString() => $"{(IsDialogue ? "Dialogue" : "Comment")}: {Layer},{Start},{End},{Style},{Name},{MarginL},{MarginR},{MarginV},{Effect},{Text}";

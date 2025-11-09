@@ -4,37 +4,39 @@ using ZLogger;
 
 namespace Mobsub.SubtitleParseNT2.AssTypes;
 
-public sealed class AssEventView
+public sealed class AssEventView : IAssEventData
 {
     internal readonly ILogger? logger;
     public readonly int LineNumber;
     public readonly ReadOnlyMemory<byte> LineRaw;
 
     public readonly bool StartSemicolon = false;
-    public readonly bool IsDialogue = true;
+    public bool IsDialogue { get; init; } = true;
     public int Layer { get; init; }
     public int Marked { get; init; } = 0;
     public AssTime Start { get; init; }
     public AssTime End { get; init; }
-    public Range Style { get; init; }
-    public Range Name { get; init; }
+    public Range StyleReadOnly { get; init; }
+    public Range NameReadOnly { get; init; }
     public int MarginL { get; init; }
     public int MarginR { get; init; }
     public int MarginV { get; init; }
     public int MarginT { get; init; }
     public int MarginB { get; init; }
-    public Range Effect { get; init; }
-    public Range Text { get; init; }
+    public Range EffectReadOnly { get; init; }
+    public Range TextReadOnly { get; init; }
 
-    public string GetStyle() => Utils.GetString(LineRaw, Style);
-    public string GetName() => Utils.GetString(LineRaw, Name);
-    public string GetEffect() => Utils.GetString(LineRaw, Effect);
-    public string GetText() => Utils.GetString(LineRaw, Text);
+    public string Style => Utils.GetString(LineRaw, StyleReadOnly);
+    public string Name => Utils.GetString(LineRaw, NameReadOnly);
+    public string Effect => Utils.GetString(LineRaw, EffectReadOnly);
+    public string Text => Utils.GetString(LineRaw, TextReadOnly);
 
     public void Write(StringBuilder sb)
     {
         sb.AppendLine(Utils.GetString(LineRaw));
     }
+
+    // public void Write(bool untouched), such as only modified time; forced?
 
     public AssEventView(ReadOnlyMemory<byte> line, int lineNum, ReadOnlySpan<byte> header, string[] formats, ILogger? logger = null)
     {
@@ -84,19 +86,19 @@ public sealed class AssEventView
                 case "Marked": break;
                 case "Start": Start = AssTime.ParseFromAss(value); break;
                 case "End": End = AssTime.ParseFromAss(value); break;
-                case "Style": Style = new Range(sepIndex, nextSep); break;
-                case "Name": Name = new Range(sepIndex, nextSep); break;
+                case "Style": StyleReadOnly = new Range(sepIndex, nextSep); break;
+                case "Name": NameReadOnly = new Range(sepIndex, nextSep); break;
                 case "MarginL": MarginL = int.Parse(value); break;
                 case "MarginR": MarginR = int.Parse(value); break;
                 case "MarginV": MarginV = int.Parse(value); break;
                 case "MarginT": MarginT = int.Parse(value); break;
                 case "MarginB": MarginB = int.Parse(value); break;
-                case "Effect": Effect = new Range(sepIndex, nextSep); break;
+                case "Effect": EffectReadOnly = new Range(sepIndex, nextSep); break;
             }
 
             segCount++;
             sepIndex = nextSep + 1;
         }
-        Text = Range.StartAt(sepIndex);
+        TextReadOnly = Range.StartAt(sepIndex);
     }
 }
