@@ -3,7 +3,7 @@ using ZLogger;
 
 namespace Mobsub.SubtitleParseNT2.AssTypes;
 
-public sealed class AssStyleEditable
+public sealed class AssStyleEditable : IAssStyleData
 {
     private readonly ILogger? logger;
 
@@ -29,7 +29,11 @@ public sealed class AssStyleEditable
     public int MarginL { get; set; }
     public int MarginR { get; set; }
     public int MarginV { get; set; }
+    public int MarginT { get; set; }
+    public int MarginB { get; set; }
     public int Encoding { get; set; }
+    public int AlphaLevel { get; set; }
+    public int RelativeTo { get; set; }
 
     public AssStyleEditable(ILogger? logger = null)
     {
@@ -81,93 +85,4 @@ public sealed class AssStyleEditable
         Encoding = view.Encoding;
     }
 
-    public void Write(StreamWriter sw, string[] formats)
-    {
-        sw.Write("Style: ");
-        for (var i = 0; i < formats.Length; i++)
-        {
-            switch (formats[i])
-            {
-                case "Name":
-                    sw.Write(Name);
-                    break;
-                case "Fontname":
-                    sw.Write(Fontname);
-                    break;
-                case "Fontsize":
-                    sw.Write(Fontsize);
-                    break;
-                case "PrimaryColour":
-                    sw.Write("&H");
-                    sw.Write(PrimaryColour.ConvertToString(true));
-                    break;
-                case "SecondaryColour":
-                    sw.Write("&H");
-                    sw.Write(SecondaryColour.ConvertToString(true));
-                    break;
-                case "OutlineColour":
-                    sw.Write("&H");
-                    sw.Write(OutlineColour.ConvertToString(true));
-                    break;
-                case "BackColour":
-                    sw.Write("&H");
-                    sw.Write(BackColour.ConvertToString(true));
-                    break;
-                case "Bold":
-                    sw.Write(Bold ? -1 : 0);
-                    break;
-                case "Italic":
-                    sw.Write(Italic ? -1 : 0);
-                    break;
-                case "Underline":
-                    sw.Write(Underline ? -1 : 0);
-                    break;
-                case "StrikeOut":
-                    sw.Write(StrikeOut ? -1 : 0);
-                    break;
-                case "ScaleX":
-                    sw.Write(ScaleX);
-                    break;
-                case "ScaleY":
-                    sw.Write(ScaleY);
-                    break;
-                case "Spacing":
-                    sw.Write(Spacing);
-                    break;
-                case "Angle":
-                    sw.Write(Angle);
-                    break;
-                case "BorderStyle":
-                    sw.Write(BorderStyle);
-                    break;
-                case "Outline":
-                    sw.Write(Outline);
-                    break;
-                case "Shadow":
-                    sw.Write(Shadow);
-                    break;
-                case "Alignment":
-                    sw.Write(Alignment);
-                    break;
-                case "MarginL":
-                    sw.Write(MarginL);
-                    break;
-                case "MarginR":
-                    sw.Write(MarginR);
-                    break;
-                case "MarginV":
-                    sw.Write(MarginV);
-                    break;
-                case "Encoding":
-                    sw.Write(Encoding);
-                    break;
-            }
-
-            if (i < formats.Length - 1)
-            {
-                sw.Write(',');
-            }
-        }
-        logger?.ZLogDebug($"Write {Name} style line fine");
-    }
 }

@@ -4,31 +4,31 @@ using ZLogger;
 
 namespace Mobsub.SubtitleParseNT2.AssTypes;
 
-public sealed class AssStyleView
+public sealed class AssStyleView : IAssStyleData
 {
     internal readonly ILogger? logger;
     public readonly ReadOnlyMemory<byte> LineRaw;
     public readonly bool IsCommentLine = false;
 
-    public Range Name { get; private set; }
-    public Range Fontname { get; private set; } // GDI max 32, last is null
-    public double Fontsize { get; set; }  // ushort; Is negative and float really correct?
+    public Range NameReadOnly { get; private set; }
+    public Range FontnameReadOnly { get; private set; }
+    public double Fontsize { get; set; }
     public AssRGB8 PrimaryColour { get; set; }
     public AssRGB8 SecondaryColour { get; set; }
     public AssRGB8 OutlineColour { get; set; }
     public AssRGB8 BackColour { get; set; }
-    public bool Bold { get; set; }     // ? 0 / 400, 1 / 700
+    public bool Bold { get; set; }
     public bool Italic { get; set; }
-    public bool Underline { get; set; }  // 0 = false, -1 = true
+    public bool Underline { get; set; }
     public bool StrikeOut { get; set; }
     public double ScaleX { get; set; }
     public double ScaleY { get; set; }
     public double Spacing { get; set; }
     public double Angle { get; set; }
-    public short BorderStyle { get; set; }  // 1, 3?
+    public short BorderStyle { get; set; }
     public double Outline { get; set; }
     public double Shadow { get; set; }
-    public short Alignment { get; set; }  // 1-9
+    public short Alignment { get; set; }
     public int MarginL { get; set; }
     public int MarginR { get; set; }
     public int MarginV { get; set; }
@@ -38,13 +38,8 @@ public sealed class AssStyleView
     public int AlphaLevel { get; set; }
     public int RelativeTo { get; set; }
 
-    public string GetName() => Utils.GetString(LineRaw, Name);
-    public string GetFontname() => Utils.GetString(LineRaw, Fontname);
-
-    public void Write(StringBuilder sb)
-    {
-        sb.AppendLine(Utils.GetString(LineRaw));
-    }
+    public string Name => Utils.GetString(LineRaw, NameReadOnly);
+    public string Fontname => Utils.GetString(LineRaw, FontnameReadOnly);
 
     public AssStyleView(ReadOnlyMemory<byte> line, ReadOnlySpan<byte> header, string[] formats, ILogger? logger = null)
     {
@@ -74,8 +69,8 @@ public sealed class AssStyleView
             var value = sp[range];
             switch (formats[segCount])
             {
-                case "Name": Name = range; break;
-                case "Fontname": Fontname = range; break;
+                case "Name": NameReadOnly = range; break;
+                case "Fontname": FontnameReadOnly = range; break;
                 case "Fontsize": Fontsize = double.Parse(value); break;
                 case "PrimaryColour": PrimaryColour = AssRGB8.Parse(value); break;
                 case "SecondaryColour": SecondaryColour = AssRGB8.Parse(value); break;
