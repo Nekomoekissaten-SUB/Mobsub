@@ -31,10 +31,10 @@ public sealed class AssEventView : IAssEventData
     public string Effect => Utils.GetString(LineRaw, EffectReadOnly);
     public string Text => Utils.GetString(LineRaw, TextReadOnly);
 
-    public ReadOnlyMemory<byte> StyleMemory => LineRaw[StyleReadOnly];
-    public ReadOnlyMemory<byte> NameMemory => LineRaw[NameReadOnly];
-    public ReadOnlyMemory<byte> EffectMemory => LineRaw[EffectReadOnly];
-    public ReadOnlyMemory<byte> TextMemory => LineRaw[TextReadOnly];
+    public ReadOnlySpan<byte> StyleSpan => LineRaw.Span[StyleReadOnly];
+    public ReadOnlySpan<byte> NameSpan => LineRaw.Span[NameReadOnly];
+    public ReadOnlySpan<byte> EffectSpan => LineRaw.Span[EffectReadOnly];
+    public ReadOnlySpan<byte> TextSpan => LineRaw.Span[TextReadOnly];
 
     public AssEventView(ReadOnlyMemory<byte> line, int lineNum, ReadOnlySpan<byte> header, string[] formats, ILogger? logger = null)
     {

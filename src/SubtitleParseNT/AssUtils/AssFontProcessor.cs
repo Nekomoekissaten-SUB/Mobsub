@@ -14,7 +14,7 @@ public sealed class AssFontProcessor(byte wrapStyle, AssStyles styles) : IAssTag
     private readonly Dictionary<AssFontInfo, HashSet<Rune>> output = [];
     public bool AnalyzeWithEncoding = false;
 
-    public void InitForLine(ReadOnlyMemory<byte> styleName)
+    public void InitForLine(ReadOnlySpan<byte> styleName)
     {
         baseInfo = new AssFontInfo(GetAssStyleViewByName(styleName));
         current = baseInfo;
@@ -25,9 +25,9 @@ public sealed class AssFontProcessor(byte wrapStyle, AssStyles styles) : IAssTag
         current = info;
     }
 
-    private AssStyleView GetAssStyleViewByName(ReadOnlyMemory<byte> styleName)
+    private AssStyleView GetAssStyleViewByName(ReadOnlySpan<byte> styleName)
     {
-        var syl = Encoding.UTF8.GetString(styleName.Span);
+        var syl = Encoding.UTF8.GetString(styleName);
         if (stylesDict.TryGetValue(syl, out var styleView))
         {
             return styleView;
@@ -61,8 +61,7 @@ public sealed class AssFontProcessor(byte wrapStyle, AssStyles styles) : IAssTag
                 }
                 else
                 {
-                    var styleName = value.AsMemory();
-                    current = new AssFontInfo(GetAssStyleViewByName(styleName));
+                    current = new AssFontInfo(GetAssStyleViewByName(value.AsSpan()));
                 }
                 break;
         }
@@ -153,9 +152,9 @@ public sealed class AssFontProcessor(byte wrapStyle, AssStyles styles) : IAssTag
         {
             var view = evt.GetView();
             if (!view.IsDialogue) continue;
-            InitForLine(view.StyleMemory);
+            InitForLine(view.StyleSpan);
 
-            _ = GetUsedFontInfos(view.TextMemory.Span);
+            _ = GetUsedFontInfos(view.TextSpan);
         }
         return output;
     }

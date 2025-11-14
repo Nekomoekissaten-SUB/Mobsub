@@ -47,7 +47,7 @@ public class AssStyles(ILogger? logger = null)
         foreach (var s in Collection)
         {
             var view = s.GetView();
-            var name = Encoding.UTF8.GetString(view.NameMemory.Span);
+            var name = Encoding.UTF8.GetString(view.NameSpan);
             dict[name] = view;
         }
         return dict;

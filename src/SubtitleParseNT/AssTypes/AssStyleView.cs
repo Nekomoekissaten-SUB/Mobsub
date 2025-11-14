@@ -41,8 +41,8 @@ public sealed class AssStyleView : IAssStyleData
     public string Name => Utils.GetString(LineRaw, NameReadOnly);
     public string Fontname => Utils.GetString(LineRaw, FontnameReadOnly);
 
-    public ReadOnlyMemory<byte> NameMemory => LineRaw[NameReadOnly];
-    public ReadOnlyMemory<byte> FontnameMemory => LineRaw[FontnameReadOnly];
+    public ReadOnlySpan<byte> NameSpan => LineRaw.Span[NameReadOnly];
+    public ReadOnlySpan<byte> FontnameSpan => LineRaw.Span[FontnameReadOnly];
 
     public AssStyleView(ReadOnlyMemory<byte> line, ReadOnlySpan<byte> header, string[] formats, ILogger? logger = null)
     {
