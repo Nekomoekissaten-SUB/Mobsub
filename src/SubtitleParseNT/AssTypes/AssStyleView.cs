@@ -50,7 +50,7 @@ public sealed class AssStyleView : IAssStyleData
         var sepIndex = header.Length;
         var sp = line.Span;
         
-        LineRaw = line;
+        LineRaw = line.ToArray();
 
         if (header.SequenceEqual("/"u8))
         {

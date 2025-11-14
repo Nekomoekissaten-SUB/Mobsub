@@ -40,7 +40,7 @@ public sealed class AssEventView : IAssEventData
     {
         this.logger = logger;
         var sp = line.Span;
-        LineRaw = line;
+        LineRaw = line.ToArray();
         LineNumber = lineNum;
 
         var sepIndex = header.Length;
