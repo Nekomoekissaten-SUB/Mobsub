@@ -17,10 +17,10 @@ public interface IAssStyleData
     public double ScaleY { get; }
     public double Spacing { get; }
     public double Angle { get; }
-    public short BorderStyle { get; }  // 1, 3?
+    public byte BorderStyle { get; }  // 1, 3?
     public double Outline { get; }
     public double Shadow { get; }
-    public short Alignment { get; }  // 1-9
+    public byte Alignment { get; }  // 1-9
     public int MarginL { get; }
     public int MarginR { get; }
     public int MarginV { get; }

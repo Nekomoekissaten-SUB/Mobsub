@@ -25,10 +25,10 @@ public sealed class AssStyleView : IAssStyleData
     public double ScaleY { get; set; }
     public double Spacing { get; set; }
     public double Angle { get; set; }
-    public short BorderStyle { get; set; }
+    public byte BorderStyle { get; set; }
     public double Outline { get; set; }
     public double Shadow { get; set; }
-    public short Alignment { get; set; }
+    public byte Alignment { get; set; }
     public int MarginL { get; set; }
     public int MarginR { get; set; }
     public int MarginV { get; set; }
@@ -41,12 +41,15 @@ public sealed class AssStyleView : IAssStyleData
     public string Name => Utils.GetString(LineRaw, NameReadOnly);
     public string Fontname => Utils.GetString(LineRaw, FontnameReadOnly);
 
+    public ReadOnlyMemory<byte> NameMemory => LineRaw[NameReadOnly];
+    public ReadOnlyMemory<byte> FontnameMemory => LineRaw[FontnameReadOnly];
+
     public AssStyleView(ReadOnlyMemory<byte> line, ReadOnlySpan<byte> header, string[] formats, ILogger? logger = null)
     {
         this.logger = logger;
         var sepIndex = header.Length;
-
-        var sp = line.Span[sepIndex..];
+        var sp = line.Span;
+        
         LineRaw = line;
 
         if (header.SequenceEqual("/"u8))
@@ -63,14 +66,16 @@ public sealed class AssStyleView : IAssStyleData
             throw new Exception($"Unknown Styles line '{Utils.GetString(line)}'");
         }
 
+        sepIndex += (sp[sepIndex + 1] == 0x20) ? 2 : 1;
+        sp = sp[sepIndex..];
         var segCount = 0;
         foreach (var range in sp.Split((byte)','))
         {
             var value = sp[range];
             switch (formats[segCount])
             {
-                case "Name": NameReadOnly = range; break;
-                case "Fontname": FontnameReadOnly = range; break;
+                case "Name": NameReadOnly = new Range(range.Start.Value + sepIndex, range.End.Value + sepIndex); break;
+                case "Fontname": FontnameReadOnly = new Range(range.Start.Value + sepIndex, range.End.Value + sepIndex); break;
                 case "Fontsize": Fontsize = double.Parse(value); break;
                 case "PrimaryColour": PrimaryColour = AssRGB8.Parse(value); break;
                 case "SecondaryColour": SecondaryColour = AssRGB8.Parse(value); break;
@@ -84,10 +89,10 @@ public sealed class AssStyleView : IAssStyleData
                 case "ScaleY": ScaleY = double.Parse(value); break;
                 case "Spacing": Spacing = double.Parse(value); break;
                 case "Angle": Angle = double.Parse(value); break;
-                case "BorderStyle": BorderStyle = short.Parse(value); break;
+                case "BorderStyle": BorderStyle = byte.Parse(value); break;
                 case "Outline": Outline = double.Parse(value); break;
                 case "Shadow": Shadow = double.Parse(value); break;
-                case "Alignment": Alignment = short.Parse(value); break;
+                case "Alignment": Alignment = byte.Parse(value); break;
                 case "MarginL": MarginL = int.Parse(value); break;
                 case "MarginR": MarginR = int.Parse(value); break;
                 case "MarginV": MarginV = int.Parse(value); break;

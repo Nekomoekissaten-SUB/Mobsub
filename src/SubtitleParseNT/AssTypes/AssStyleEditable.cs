@@ -22,10 +22,10 @@ public sealed class AssStyleEditable : IAssStyleData
     public double ScaleY { get; set; }
     public double Spacing { get; set; }
     public double Angle { get; set; }
-    public short BorderStyle { get; set; }
+    public byte BorderStyle { get; set; }
     public double Outline { get; set; }
     public double Shadow { get; set; }
-    public short Alignment { get; set; }
+    public byte Alignment { get; set; }
     public int MarginL { get; set; }
     public int MarginR { get; set; }
     public int MarginV { get; set; }

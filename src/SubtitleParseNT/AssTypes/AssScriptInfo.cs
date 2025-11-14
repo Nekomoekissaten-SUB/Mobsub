@@ -10,7 +10,7 @@ public sealed class AssScriptInfo(ILogger? logger = null)
     private int? layoutResX = null;
     private int? layoutResY = null;
     private float timer = 100.0000f;
-    private int? wrapStyle = null;
+    private byte? wrapStyle = null;
     
     public string ScriptType
     {
@@ -45,7 +45,7 @@ public sealed class AssScriptInfo(ILogger? logger = null)
         get => timer;
         set => timer = (float)Math.Round(value, 4);
     }
-    public int WrapStyle
+    public byte WrapStyle
     {
         get => wrapStyle ?? 0;
         set

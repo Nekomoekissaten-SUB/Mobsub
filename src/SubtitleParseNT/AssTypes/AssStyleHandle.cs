@@ -9,6 +9,7 @@ public class AssStyleHandle(AssStyleView view)
     public bool IsEditing => _state == AssHandleState.Editable;
     public bool IsModified => _state == AssHandleState.ViewModified;
 
+    public AssStyleView GetView() => _view;
     public AssStyleEditable? GetEditable() => _editable;
 
     public void ModifyValue(Action<AssStyleView> modifier)

@@ -9,6 +9,7 @@ public class AssEventHandle(AssEventView view)
     public bool IsEditing => _state == AssHandleState.Editable;
     public bool IsModified => _state == AssHandleState.ViewModified;
 
+    public AssEventView GetView() => _view;
     public AssEventEditable? GetEditable() => _editable;
 
     public void ModifyValue(Action<AssEventView> modifier)

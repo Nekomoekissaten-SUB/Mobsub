@@ -31,12 +31,10 @@ public sealed class AssEventView : IAssEventData
     public string Effect => Utils.GetString(LineRaw, EffectReadOnly);
     public string Text => Utils.GetString(LineRaw, TextReadOnly);
 
-    public void Write(StringBuilder sb)
-    {
-        sb.AppendLine(Utils.GetString(LineRaw));
-    }
-
-    // public void Write(bool untouched), such as only modified time; forced?
+    public ReadOnlyMemory<byte> StyleMemory => LineRaw[StyleReadOnly];
+    public ReadOnlyMemory<byte> NameMemory => LineRaw[NameReadOnly];
+    public ReadOnlyMemory<byte> EffectMemory => LineRaw[EffectReadOnly];
+    public ReadOnlyMemory<byte> TextMemory => LineRaw[TextReadOnly];
 
     public AssEventView(ReadOnlyMemory<byte> line, int lineNum, ReadOnlySpan<byte> header, string[] formats, ILogger? logger = null)
     {

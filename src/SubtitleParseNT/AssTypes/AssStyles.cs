@@ -40,4 +40,17 @@ public class AssStyles(ILogger? logger = null)
             Collection.Add(new AssStyleHandle(view));
         }
     }
+
+    public Dictionary<string, AssStyleView> BuildStyleDictionary()
+    {
+        var dict = new Dictionary<string, AssStyleView>(Collection.Count, StringComparer.Ordinal);
+        foreach (var s in Collection)
+        {
+            var view = s.GetView();
+            var name = Encoding.UTF8.GetString(view.NameMemory.Span);
+            dict[name] = view;
+        }
+        return dict;
+    }
+
 }

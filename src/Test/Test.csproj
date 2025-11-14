@@ -12,6 +12,7 @@
   <ItemGroup>
     <ProjectReference Include="..\SubtitleParseNT\Mobsub.SubtitleParseNT2.csproj" />
     <ProjectReference Include="..\SubtitleParse\Mobsub.SubtitleParse.csproj"></ProjectReference>
+    <PackageReference Include="FluentAssertions" Version="8.8.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <PackageReference Include="MSTest.TestAdapter" Version="3.6.0" />
     <PackageReference Include="MSTest.TestFramework" Version="3.6.0" />

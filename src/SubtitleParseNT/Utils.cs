@@ -287,19 +287,12 @@ public class Utils
 
     internal static ReadOnlySpan<byte> TrimSpaces(ReadOnlySpan<byte> span)
     {
-        int start = 0;
-        int end = span.Length - 1;
-
-        while (start <= end && span[start] == 0x20)
-        {
-            start++;
-        }
-
-        while (end >= start && span[end] == 0x20)
-        {
-            end--;
-        }
-
+        int start = 0, end = span.Length - 1;
+        while (start <= end && IsSpace(span[start])) start++;
+        while (end >= start && IsSpace(span[end])) end--;
         return span.Slice(start, end - start + 1);
+
+        static bool IsSpace(byte b)
+            => b == (byte)' '; // || b == (byte)'\t' || b == (byte)'\r' || b == (byte)'\n'
     }
 }
