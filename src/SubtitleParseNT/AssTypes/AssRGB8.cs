@@ -1,4 +1,5 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace Mobsub.SubtitleParseNT2.AssTypes;
 
@@ -52,51 +53,71 @@ public struct AssRGB8(byte red, byte green, byte blue, byte alpha)
     }
     public static AssRGB8 Parse(ReadOnlySpan<byte> sp)
     {
-        //sp = Utils.TrimSpaces(sp);
-        if (sp.Length < 8 || sp[0] != (byte)'&' || sp[1] != (byte)'H')
-            throw new FormatException("Invalid color format");
+        // Optional: trim ASCII spaces if needed
+        // sp = Utils.TrimSpaces(sp);
 
-        int sign = (sp[^1] == (byte)'&') ? 3 : 2;
-        int hexLen = sp.Length - sign;
+        if (sp.Length < 3) throw new FormatException("Invalid color format");
+        if (sp[0] != (byte)'&' || (sp[1] != (byte)'H' && sp[1] != (byte)'h'))
+            throw new FormatException("Invalid color prefix");
 
-        if (hexLen == 6)
+        // Determine end of hex digits (exclude optional trailing '&')
+        int end = sp[^1] == (byte)'&' ? sp.Length - 1 : sp.Length;
+        if (end <= 2) throw new FormatException("Missing hex digits");
+
+        // Extract raw hex digits
+        ReadOnlySpan<byte> hex = sp.Slice(2, end - 2);
+        if (hex.Length == 0) throw new FormatException("Missing hex digits");
+
+        // Validate hex chars and ensure even count
+        for (int i = 0; i < hex.Length; i++)
         {
-            // &HBBGGRR&
-            byte r = ParseHexPair(sp[^3], sp[^2]);
-            byte g = ParseHexPair(sp[^5], sp[^4]);
-            byte b = ParseHexPair(sp[^7], sp[^6]);
-            return new AssRGB8(r, g, b, 0x00);
+            byte c = hex[i];
+            bool isHex =
+                (c >= (byte)'0' && c <= (byte)'9') ||
+                (c >= (byte)'A' && c <= (byte)'F') ||
+                (c >= (byte)'a' && c <= (byte)'f');
+            if (!isHex)
+            {
+                Debug.WriteLine(Utils.GetString(sp));
+                throw new FormatException("Invalid hex digit");
+            }
         }
-        else if (hexLen == 8)
+        if ((hex.Length & 1) != 0) throw new FormatException("Hex digits must be even");
+
+        // Decide target width: <=6 -> pad to 6 (BBGGRR), 7-8 -> pad to 8 (AABBGGRR)
+        int target = hex.Length <= 6 ? 6 : 8;
+        if (hex.Length > 8) throw new FormatException("Too many hex digits");
+
+        // Pad-left with '0' to target length
+        // We'll parse pairs from the right: RR, GG, BB, (AA if target==8)
+        int pad = target - hex.Length;
+
+        byte rr = 0, gg = 0, bb = 0, aa = 0;
+
+        // Helper to read a pair at absolute index in the padded stream
+        byte ReadPairAtPaddedIndex(ReadOnlySpan<byte> hex, int paddedIndex)
         {
-            // &HAABBGGRR
-            byte r = ParseHexPair(sp[^2], sp[^1]);
-            byte g = ParseHexPair(sp[^4], sp[^3]);
-            byte b = ParseHexPair(sp[^6], sp[^5]);
-            byte a = ParseHexPair(sp[^8], sp[^7]);
-            return new AssRGB8(r, g, b, a);
+            // Map paddedIndex into actual hex index: paddedIndex - pad
+            int idx = paddedIndex - pad;
+            byte hi = idx >= 0 ? hex[idx] : (byte)'0';
+            byte lo = (idx + 1) >= 0 ? (idx + 1 < hex.Length ? hex[idx + 1] : (byte)'0') : (byte)'0';
+            return ParseHexPair(hi, lo);
         }
 
-        throw new FormatException($"Invalid color length");
-    }
-    public static AssRGB8 Parse(long value, bool alpha)
-    {
-        var color = new AssRGB8();
-        if (alpha)
+        // Rightmost RR at positions target-2, target-1
+        rr = ReadPairAtPaddedIndex(hex, target - 2);
+        // Next GG at target-4, target-3
+        gg = ReadPairAtPaddedIndex(hex, target - 4);
+        // Next BB at target-6, target-5
+        bb = ReadPairAtPaddedIndex(hex, target - 6);
+
+        if (target == 8)
         {
-            color.A = (byte)((value & 0xff000000) >> 24);
-            color.B = (byte)((value & 0x00ff0000) >> 16);
-            color.G = (byte)((value & 0x0000ff00) >> 8);
-            color.R = (byte)(value & 0x000000ff);
-        }
-        else
-        {
-            color.B = (byte)((value & 0xff0000) >> 16);
-            color.G = (byte)((value & 0x00ff00) >> 8);
-            color.R = (byte)(value & 0x0000ff);
+            // Optional AA at target-8, target-7
+            aa = ReadPairAtPaddedIndex(hex, target - 8);
         }
 
-        return color;
+        return new AssRGB8(rr, gg, bb, aa);
     }
 
     public readonly string ConvertToString(bool withAlpha = false, bool onlyAlpha = false)

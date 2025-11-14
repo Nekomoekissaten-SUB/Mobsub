@@ -55,6 +55,7 @@ public enum AssTag
 
 public static class AssTagRegistry
 {
+    private struct UnImp { private string v; };
     private static readonly FrozenDictionary<AssTag, AssTagDescriptor> tags = FrozenDictionary.ToFrozenDictionary(
         new Dictionary<AssTag, AssTagDescriptor>
         {
@@ -92,16 +93,16 @@ public static class AssTagRegistry
                 AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable),
             [AssTag.Bold] = new("b"u8.ToArray(), typeof(int),
                 AssTagKind.BlockOnlyRenderLatest),
-            //[AssTag.Clip] = new("clip"u8.ToArray(), typeof(string),
-            //    AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable | AssTagKind.ShouldBeFunction),
-            //[AssTag.InverseClip] = new("iclip"u8.ToArray(), typeof(string),
-            //    AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable | AssTagKind.ShouldBeFunction),
+            [AssTag.Clip] = new("clip"u8.ToArray(), typeof(UnImp),
+                AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable | AssTagKind.ShouldBeFunction),
+            [AssTag.InverseClip] = new("iclip"u8.ToArray(), typeof(UnImp),
+                AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable | AssTagKind.ShouldBeFunction),
             [AssTag.ColorPrimaryAbbreviation] = new("c"u8.ToArray(), typeof(AssRGB8),
                 AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable),
-            //[AssTag.Fade] = new("fade"u8.ToArray(), typeof(string),
-            //    AssTagKind.Ignored),
-            //[AssTag.Fad] = new("fad"u8.ToArray(), typeof(double[]),
-            //    AssTagKind.Ignored),
+            [AssTag.Fade] = new("fade"u8.ToArray(), typeof(UnImp),
+                AssTagKind.Ignored),
+            [AssTag.Fad] = new("fad"u8.ToArray(), typeof(UnImp), // double[]
+                AssTagKind.Ignored),
             [AssTag.FontShiftX] = new("fax"u8.ToArray(), typeof(double),
                 AssTagKind.Ignored),
             [AssTag.FontShiftY] = new("fay"u8.ToArray(), typeof(double),
@@ -136,15 +137,15 @@ public static class AssTagRegistry
                 AssTagKind.Ignored),
             [AssTag.Karaoke] = new("k"u8.ToArray(), typeof(int),
                 AssTagKind.Ignored),
-            //[AssTag.Movement] = new("move"u8.ToArray(), typeof(string),
-            //    AssTagKind.Ignored),
-            //[AssTag.OriginRotation] = new("org"u8.ToArray(), typeof(string),
-            //    AssTagKind.Ignored),
-            //[AssTag.Position] = new("pos"u8.ToArray(), typeof(Vector2),
-            //    AssTagKind.LineOnlyRenderFirst | AssTagKind.ShouldBeFunction),
-            //[AssTag.PolygonBaselineOffset] = new("pbo"u8.ToArray(), typeof(Vector2),
-            //    AssTagKind.BlockOnlyRenderLatest),
-            [AssTag.PolygonBaselineOffset] = new("p"u8.ToArray(), typeof(int),
+            [AssTag.Movement] = new("move"u8.ToArray(), typeof(UnImp),
+                AssTagKind.Ignored),
+            [AssTag.OriginRotation] = new("org"u8.ToArray(), typeof(UnImp),
+                AssTagKind.Ignored),
+            [AssTag.Position] = new("pos"u8.ToArray(), typeof(UnImp), // vector2
+                AssTagKind.LineOnlyRenderFirst | AssTagKind.ShouldBeFunction),
+            [AssTag.PolygonBaselineOffset] = new("pbo"u8.ToArray(), typeof(UnImp),
+                AssTagKind.BlockOnlyRenderLatest),
+            [AssTag.Polygon] = new("p"u8.ToArray(), typeof(int),
                 AssTagKind.BlockOnlyRenderLatest),
             [AssTag.WrapStyle] = new("q"u8.ToArray(), typeof(byte),
                 AssTagKind.LineOnlyRenderLatest),

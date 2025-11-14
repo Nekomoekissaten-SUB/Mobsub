@@ -94,12 +94,9 @@ public sealed class AssFontProcessor(byte wrapStyle, AssStyles styles) : IAssTag
         }
         finally
         {
-            if (charCount > 512)
-                ArrayPool<char>.Shared.Return(buffer.ToArray());
+            if (rented != null)
+                ArrayPool<char>.Shared.Return(rented);
         }
-
-        if (rented != null)
-            ArrayPool<char>.Shared.Return(rented);
     }
 
     public void OnSpecialChars(AssEventSegmentKind kind, short wrapStyle)
@@ -120,12 +117,13 @@ public sealed class AssFontProcessor(byte wrapStyle, AssStyles styles) : IAssTag
     public IReadOnlyDictionary<AssFontInfo, HashSet<Rune>> Results => output;
     public void ResetResults() => output.Clear();
 
-    public IReadOnlyDictionary<AssFontInfo, HashSet<Rune>> GetUsedFontInfos(ReadOnlySpan<byte> line)
+    public IReadOnlyDictionary<AssFontInfo, HashSet<Rune>>? GetUsedFontInfos(ReadOnlySpan<byte> line)
     {
-        var segs = AssEventParser.ParseLine(line);
+        var segs = AssEventParser.ParseLine(line).Span;
         var wrapStyleCurrent = AssEventParser.GetWrapStyle(segs, wrapStyle);
+        if (AssEventParser.HasPolygon(segs)) return null;
 
-        foreach (var seg in segs.Span)
+        foreach (var seg in segs)
         {
             switch (seg.SegmentKind)
             {
