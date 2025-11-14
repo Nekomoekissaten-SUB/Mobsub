@@ -2,7 +2,7 @@
 
 public class AssEventHandle(AssEventView view)
 {
-    private AssEventView _view = view;
+    private readonly AssEventView _view = view;
     private AssEventEditable? _editable;
     private AssHandleState _state = AssHandleState.ViewOriginal;
 

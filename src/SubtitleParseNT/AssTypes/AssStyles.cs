@@ -41,7 +41,7 @@ public class AssStyles(ILogger? logger = null)
         }
     }
 
-    public Dictionary<string, AssStyleView> BuildStyleDictionary()
+    public Dictionary<string, AssStyleView> BuildStyleViewDictionary()
     {
         var dict = new Dictionary<string, AssStyleView>(Collection.Count, StringComparer.Ordinal);
         foreach (var s in Collection)

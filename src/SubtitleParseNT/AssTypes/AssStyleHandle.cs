@@ -2,7 +2,7 @@
 
 public class AssStyleHandle(AssStyleView view)
 {
-    private AssStyleView _view = view;
+    private readonly AssStyleView _view = view;
     private AssStyleEditable? _editable;
     private AssHandleState _state = AssHandleState.ViewOriginal;
 

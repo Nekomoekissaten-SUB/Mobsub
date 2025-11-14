@@ -8,7 +8,7 @@ public sealed class AssFontProcessor(byte wrapStyle, AssStyles styles) : IAssTag
 {
     private readonly byte wrapStyle = wrapStyle;
     private readonly AssStyles styles = styles;
-    private readonly Dictionary<string, AssStyleView> stylesDict = styles.BuildStyleDictionary();
+    private readonly Dictionary<string, AssStyleView> stylesDict = styles.BuildStyleViewDictionary();
     private AssFontInfo baseInfo;
     private AssFontInfo current;
     private readonly Dictionary<AssFontInfo, HashSet<Rune>> output = [];
