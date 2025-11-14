@@ -2,7 +2,6 @@
 using System.Text;
 using ZLogger;
 using Cysharp.IO;
-using System.Threading.Tasks;
 
 namespace Mobsub.SubtitleParseNT2.AssTypes;
 
@@ -16,7 +15,7 @@ public sealed class AssData(ILogger? logger = null)
     public AssStyles Styles { get; set; } = new(logger);
     public AssEvents Events { get; set; } = new(logger);
 
-    public async Task<AssData> ReadAssFile(FileStream fs)
+    public async Task<AssData> ReadAssFileAsync(FileStream fs)
     {
         using var sr = new Utf8StreamReader(fs);
         var lineNumber = 0;
@@ -39,11 +38,11 @@ public sealed class AssData(ILogger? logger = null)
         logger?.ZLogInformation($"Ass parsing completed");
         return this;
     }
-    public async Task<AssData> ReadAssFile(string filePath)
+    public async Task<AssData> ReadAssFileAsync(string filePath)
     {
         using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read);
         logger?.ZLogInformation($"Open ass file: {filePath}");
-        return await ReadAssFile(fs);
+        return await ReadAssFileAsync(fs);
     }
 
     private void ParseContent(ReadOnlyMemory<byte> line, int lineNumber, ref AssSection sectionType)
