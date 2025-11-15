@@ -41,16 +41,15 @@ public class AssStyles(ILogger? logger = null)
         }
     }
 
-    public Dictionary<string, AssStyleView> BuildStyleViewDictionary()
+    public Dictionary<byte[], AssStyleView>.AlternateLookup<ReadOnlySpan<byte>> BuildStyleViewDictionary()
     {
-        var dict = new Dictionary<string, AssStyleView>(Collection.Count, StringComparer.Ordinal);
+        var dict = new Dictionary<byte[], AssStyleView>(Utf8StringEqualityComparer.Default);
         foreach (var s in Collection)
         {
             var view = s.GetView();
-            var name = Encoding.UTF8.GetString(view.NameSpan);
-            dict[name] = view;
+            dict[view.NameSpan.ToArray()] = view;
         }
-        return dict;
+        return dict.GetAlternateLookup<ReadOnlySpan<byte>>();
     }
 
 }
