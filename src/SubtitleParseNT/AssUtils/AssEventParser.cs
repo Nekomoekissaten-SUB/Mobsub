@@ -2,6 +2,7 @@
 using System.Buffers;
 using System.Buffers.Text;
 using System.Runtime.CompilerServices;
+using System.Text;
 
 namespace Mobsub.SubtitleParseNT2.AssUtils;
 
@@ -10,7 +11,7 @@ public static class AssEventParser
     public static ReadOnlyMemory<AssEventSegment> ParseLine(ReadOnlySpan<byte> line)
     {
         var pool = ArrayPool<AssEventSegment>.Shared;
-        AssEventSegment[] buffer = pool.Rent(32);
+        var buffer = pool.Rent(32);
         int count = 0;
 
         int i = 0;
@@ -20,55 +21,33 @@ public static class AssEventParser
         {
             if (line[i] == (byte)'{')
             {
-                // 尝试寻找闭合 '}'
-                int j = i + 1;
-                bool foundClose = false;
-                while (j < line.Length)
-                {
-                    if (line[j] == (byte)'}')
-                    {
-                        foundClose = true;
-                        break;
-                    }
-                    if (line[j] == (byte)'{')
-                    {
-                        // 遇到第二个 '{'，判定为非法
-                        foundClose = false;
-                        break;
-                    }
-                    j++;
-                }
+                var searchSpan = line[(i + 1)..];
+                int k = searchSpan.IndexOfAny((byte)'}', (byte)'{');
 
-                if (foundClose)
+                if (k != -1 && searchSpan[k] == (byte)'}')
                 {
-                    // 先提交前面的文本段
+                    int j = i + 1 + k;
+
                     if (i > runStart)
                     {
                         ParseTextSegment(line[runStart..i], runStart, ref buffer, ref count);
                     }
 
-                    // 解析 tag block
                     var block = line.Slice(i + 1, j - i - 1);
                     var tags = ParseTagBlock(block, i + 1);
 
-                    AddSegment(ref buffer, ref count,
-                        new AssEventSegment(new Range(i, j + 1),
-                                            AssEventSegmentKind.TagBlock,
-                                            tags));
+                    AddSegment(ref buffer, ref count,  new AssEventSegment(new Range(i, j + 1), AssEventSegmentKind.TagBlock, tags));
 
                     i = j + 1;
                     runStart = i;
                 }
                 else
                 {
-                    // 没有闭合，把 '{' 当作普通文本继续
+                    // not found '}' or found another '{' first
                     i++;
                 }
             }
-            else
-            {
-                i++;
-            }
+            else i++;
         }
 
         if (i > runStart)
@@ -83,42 +62,44 @@ public static class AssEventParser
         return result;
     }
 
-    private static void ParseTextSegment(ReadOnlySpan<byte> text, int baseIndex,  ref AssEventSegment[] buffer, ref int count)
+    private static void ParseTextSegment(ReadOnlySpan<byte> text, int baseIndex, ref AssEventSegment[] buffer, ref int count)
     {
         int i = 0;
         int runStart = 0;
 
-        while (i < text.Length)
-        {
-            if (text[i] == (byte)'\\' && i + 1 < text.Length)
-            {
-                if (i > runStart)
-                {
-                    AddSegment(ref buffer, ref count, new AssEventSegment(new Range(baseIndex + runStart, baseIndex + i), AssEventSegmentKind.Text));
-                }
+        int textLength = text.Length;
 
-                if (TextLookup.TryGetValue(text[i + 1], out var kind))
+        while (i < textLength)
+        {
+            int nextBackslash = text.Slice(i).IndexOf((byte)'\\');
+            if (nextBackslash == -1)
+            {
+                i = textLength;
+                break;
+            }
+
+            int backslashPos = i + nextBackslash;
+            if (backslashPos + 1 < textLength && TextLookup.TryGetValue(text[backslashPos + 1], out var kind))
+            {
+                if (backslashPos > runStart)
                 {
-                    AddSegment(ref buffer, ref count,  new AssEventSegment(new Range(baseIndex + i, baseIndex + i + 2), kind));
-                    i += 2;
+                    AddSegment(ref buffer, ref count, new AssEventSegment(new Range(baseIndex + runStart, baseIndex + backslashPos), AssEventSegmentKind.Text));
                 }
-                else i++;
+                AddSegment(ref buffer, ref count, new AssEventSegment(new Range(baseIndex + backslashPos, baseIndex + backslashPos + 2), kind));
+                i = backslashPos + 2;
                 runStart = i;
             }
-            else i++;
+            else
+            {
+                i = backslashPos + 1;
+            }
         }
 
-        if (i > runStart)
+        if (textLength > runStart)
         {
-            AddSegment(ref buffer, ref count,  new AssEventSegment(new Range(baseIndex + runStart, baseIndex + i), AssEventSegmentKind.Text));
+            AddSegment(ref buffer, ref count, new AssEventSegment(new Range(baseIndex + runStart, baseIndex + textLength), AssEventSegmentKind.Text));
         }
     }
-    private static readonly Dictionary<byte, AssEventSegmentKind> TextLookup = new()
-    {
-        [(byte)'N'] = AssEventSegmentKind.HardLineBreaker,
-        [(byte)'n'] = AssEventSegmentKind.SoftLineBreaker,
-        [(byte)'h'] = AssEventSegmentKind.NonBreakingSpace,
-    };
 
     private static ReadOnlyMemory<AssTagSpan> ParseTagBlock(ReadOnlySpan<byte> block, int absoluteStart)
     {
@@ -127,39 +108,74 @@ public static class AssEventParser
         int count = 0;
 
         int i = 0;
-        while (i < block.Length)
-        {
-            if (block[i] != (byte)'\\') { i++; continue; }
+        var remainingBlock = block;
 
+        while (!remainingBlock.IsEmpty)
+        {
+            int tagStartOffset = remainingBlock.IndexOf((byte)'\\');
+            if (tagStartOffset == -1)
+            {
+                break;
+            }
+
+            i = (int)(block.Length - remainingBlock.Length) + tagStartOffset;
             int tagStart = i;
+
             i++; // skip '\'
+            if (i >= block.Length)
+            {
+                break;
+            }
 
             int nameStart = i;
             while (i < block.Length && IsAsciiLetterOrDigit(block[i])) i++;
             int nameLen = i - nameStart;
+            if (nameLen == 0)
+            {
+                remainingBlock = block[i..];
+                continue;
+            }
 
-            //int paramStart = i;
-            while (i < block.Length && block[i] != (byte)'\\') i++;
-            int paramEnd = i;
+            var paramSearchSpan = block[i..];
+            int nextBackslash = paramSearchSpan.IndexOf((byte)'\\');
 
-            if (nameLen == 0) continue;
+            int paramEnd;
+            if (nextBackslash == -1)
+            {
+                paramEnd = block.Length;
+            }
+            else
+            {
+                paramEnd = i + nextBackslash;
+            }
 
             if (AssTagRegistry.TryMatch(block.Slice(nameStart, nameLen), out var tagEnum, out var desc, out var matchedLength))
             {
                 ReadOnlySpan<byte> paramBytes;
-
                 int actualParamStart = nameStart + matchedLength;
 
-                if (desc.TagType.HasFlag(AssTagKind.ShouldBeFunction) &&
-                    actualParamStart < block.Length && block[actualParamStart] == (byte)'(')
+                if (desc.TagType.HasFlag(AssTagKind.ShouldBeFunction) && actualParamStart < block.Length && block[actualParamStart] == (byte)'(')
                 {
                     int j = actualParamStart + 1;
                     int depth = 1;
-                    while (j < block.Length && depth > 0)
+                    var funcSearchSpan = block[j..];
+
+                    while (!funcSearchSpan.IsEmpty && depth > 0)
                     {
+                        int braceIndex = funcSearchSpan.IndexOfAny((byte)'(', (byte)')');
+                        if (braceIndex == -1)
+                        {
+                            j = block.Length;
+                            break;
+                        }
+
+                        j = (int)(block.Length - funcSearchSpan.Length) + braceIndex;
+
                         if (block[j] == (byte)'(') depth++;
                         else if (block[j] == (byte)')') depth--;
+
                         j++;
+                        funcSearchSpan = block[j..];
                     }
                     paramBytes = block[actualParamStart..j];
                     i = j;
@@ -173,20 +189,29 @@ public static class AssEventParser
                 object? value = ParseValue(desc, paramBytes);
                 AddTag(ref buffer, ref count, new AssTagSpan(tagEnum, new Range(absoluteStart + tagStart, absoluteStart + i), value));
             }
+            else
+            {
+                i = paramEnd;
+            }
+            remainingBlock = block.Slice(i);
         }
 
         var result = new AssTagSpan[count];
         Array.Copy(buffer, result, count);
         pool.Return(buffer, clearArray: true);
-
         return result;
     }
 
+    private static readonly Dictionary<byte, AssEventSegmentKind> TextLookup = new()
+    {
+        [(byte)'N'] = AssEventSegmentKind.HardLineBreaker,
+        [(byte)'n'] = AssEventSegmentKind.SoftLineBreaker,
+        [(byte)'h'] = AssEventSegmentKind.NonBreakingSpace,
+    };
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static bool IsAsciiLetterOrDigit(byte b) =>
-        (b >= (byte)'A' && b <= (byte)'Z') ||
-        (b >= (byte)'a' && b <= (byte)'z') ||
-        (b >= (byte)'0' && b <= (byte)'9');
+    private static bool IsAsciiLetterOrDigit(byte b) => _asciiLetterOrDigit.Contains(b);
+    private static readonly SearchValues<byte> _asciiLetterOrDigit =  SearchValues.Create(Encoding.ASCII.GetBytes("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"));
 
     private static void AddTag(ref AssTagSpan[] buffer, ref int count, AssTagSpan tag)
     {
