@@ -121,7 +121,7 @@ public static class AssEventParser
             i = (int)(block.Length - remainingBlock.Length) + tagStartOffset;
             int tagStart = i;
 
-            i++; // skip '\'
+            i++; // skip '\\'
             if (i >= block.Length)
             {
                 break;
@@ -154,7 +154,7 @@ public static class AssEventParser
                 ReadOnlySpan<byte> paramBytes;
                 int actualParamStart = nameStart + matchedLength;
 
-                if (desc.TagType.HasFlag(AssTagKind.ShouldBeFunction) && actualParamStart < block.Length && block[actualParamStart] == (byte)'(')
+                if (((desc.TagType & AssTagKind.ShouldBeFunction) != 0) && actualParamStart < block.Length && block[actualParamStart] == (byte)'(')
                 {
                     int j = actualParamStart + 1;
                     int depth = 1;
@@ -194,6 +194,13 @@ public static class AssEventParser
                 i = paramEnd;
             }
             remainingBlock = block.Slice(i);
+        }
+
+        if (count == 0)
+        {
+            // Return shared buffer and avoid allocating a new zero-length array repeatedly
+            pool.Return(buffer, clearArray: true);
+            return Array.Empty<AssTagSpan>();
         }
 
         var result = new AssTagSpan[count];

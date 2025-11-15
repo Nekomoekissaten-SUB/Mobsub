@@ -48,9 +48,7 @@ public sealed class AssFontProcessor(byte wrapStyle, AssStyles styles) : IAssTag
                 current.Encoding = AnalyzeWithEncoding ? (tag.Value is int fe ? fe : baseInfo.Encoding) : 1;
                 break;
             case AssTag.FontName:
-                current.Name = tag.Value is byte[] fn && fn.Length > 0
-                    ? Encoding.UTF8.GetString(fn)
-                    : baseInfo.Name;
+                current.NameBytes = tag.Value is byte[] fn && fn.Length > 0 ? fn : baseInfo.NameBytes;
                 break;
             case AssTag.Reset:
                 var value = tag.Value is byte[] r && r.Length > 0 ? r : null;

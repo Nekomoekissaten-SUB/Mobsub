@@ -1,10 +1,13 @@
 ﻿using Mobsub.SubtitleParseNT2.AssTypes;
+using System.IO.Hashing;
 
 namespace Mobsub.SubtitleParseNT2.AssUtils;
 
 public record struct AssFontInfo : IEquatable<AssFontInfo>
 {
-    public string Name;
+    public ReadOnlyMemory<byte> NameBytes;
+    private string? _name;
+    public string Name => _name ??= Utils.GetString(NameBytes.Span);
     public int Weight;
     public bool Italic;
     public int Encoding;
@@ -12,7 +15,7 @@ public record struct AssFontInfo : IEquatable<AssFontInfo>
     public AssFontInfo(ReadOnlySpan<char> span)
     {
         var index = span.IndexOf(',');
-        Name = span[..index].ToString();
+        NameBytes = System.Text.Encoding.UTF8.GetBytes(span[..index].ToArray());
 
         span = span[(index + 1)..];
         index = span.IndexOf(',');
@@ -28,18 +31,18 @@ public record struct AssFontInfo : IEquatable<AssFontInfo>
 
     public AssFontInfo(AssStyleView syl)
     {
-        Name = syl.Fontname;
+        NameBytes = syl.FontnameSpan.ToArray();
         Weight = syl.Bold ? 1 : 0;
         Italic = syl.Italic;
         Encoding = syl.Encoding;
     }
 
     public readonly bool Equals(AssFontInfo other) =>
-        Name == other.Name &&
+        NameBytes.Span.SequenceEqual(other.NameBytes.Span) &&
         Weight == other.Weight &&
         Italic == other.Italic &&
         Encoding == other.Encoding;
 
-    public readonly override int GetHashCode() => HashCode.Combine(Name, Weight, Italic, Encoding);
-    public readonly override string ToString() => $"{Name},{Weight},{(Italic ? 1 : 0)},{Encoding}";
+    public readonly override int GetHashCode() => HashCode.Combine(unchecked((int)XxHash3.HashToUInt64(NameBytes.Span)), Weight, Italic, Encoding);
+    public override string ToString() => $"{Name},{Weight},{(Italic ? 1 : 0)},{Encoding}";
 }
