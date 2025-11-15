@@ -1,25 +1,40 @@
-﻿using static Mobsub.Helper.ColorConv;
+﻿using System.Buffers;
+using System.Numerics;
+using System.Runtime.InteropServices;
+using static Mobsub.Helper.ColorConv;
 
 namespace Mobsub.Helper;
 
-public class SimpleBitmap
+public sealed class SimpleBitmap : IDisposable
 {
-    private int width;
-    private int height;
-    private int stride;
-    private byte[]? pixelData;
+    private readonly int width;
+    private readonly int height;
+    private readonly int stride;
+    private byte[] pixelData;
+    private bool disposed;
     public SimpleBitmap(int w, int h)
     {
         width = w;
         height = h;
         stride = width * 4;
-        pixelData = new byte[stride * height];
+        pixelData = ArrayPool<byte>.Shared.Rent(stride * height);
     }
     
     public int GetWidth() => width;
     public int GetHeight() => height;
     public int GetStride() => stride;
     public byte[]? GetPixelData() => pixelData;
+    public Span<byte> GetPixelSpan() => pixelData.AsSpan();
+    public Span<uint> GetPixelSpanUInt() => MemoryMarshal.Cast<byte, uint>(GetPixelSpan());
+
+    public void Dispose()
+    {
+        if (!disposed)
+        {
+            ArrayPool<byte>.Shared.Return(pixelData);
+            disposed = true;
+        }
+    }
 
     public void SetPixel(int x, int y, ARGB8b argb)
     {
@@ -87,9 +102,46 @@ public class SimpleBitmap
         //writer.Write(0x000000FF); // Blue mask
         //writer.Write(0xFF000000); // Alpha mask
 
+        Span<byte> dataSpan = GetPixelSpan();
         for (int y = height - 1; y >= 0; y--)
         {
-            writer.Write(pixelData, y * stride, stride);
+            //writer.Write(pixelData, y * stride, stride);
+            writer.Write(dataSpan.Slice(y * stride, stride));
+        }
+    }
+    public void Save2(string filePath)
+    {
+        using var stream = new FileStream(filePath, FileMode.Create, FileAccess.Write);
+        using var writer = new BinaryWriter(stream);
+
+        int imageSize = stride * height;
+
+        // BITMAPFILEHEADER (14 bytes)
+        writer.Write((byte)'B');
+        writer.Write((byte)'M');
+        writer.Write(54 + imageSize);
+        writer.Write(0);
+        writer.Write(54);
+
+        // BITMAPINFOHEADER (40 bytes)
+        writer.Write(40);
+        writer.Write(width);
+        writer.Write(height);
+        writer.Write((short)1);
+        writer.Write((short)32);
+        writer.Write(0);
+        writer.Write(0);
+        writer.Write(0);
+        writer.Write(0);
+        writer.Write(0);
+        writer.Write(0);
+
+        Span<uint> span = GetPixelSpanUInt();
+        for (int y = height - 1; y >= 0; y--)
+        {
+            int rowStart = y * width;
+            ReadOnlySpan<byte> rowBytes = MemoryMarshal.AsBytes(span.Slice(rowStart, width));
+            writer.Write(rowBytes);
         }
     }
 
@@ -121,7 +173,69 @@ public class SimpleBitmap
             }
         }
     }
-    
+    public void Binarize2(uint threshold = 128)
+    {
+        Span<uint> span = GetPixelSpanUInt();
+        int pixelCount = width * height;
+
+        for (int i = 0; i < pixelCount; i++)
+        {
+            uint pixel = span[i];
+
+            // ARGB 格式：0xAARRGGBB
+            byte b = (byte)(pixel & 0xFF);
+            byte g = (byte)((pixel >> 8) & 0xFF);
+            byte r = (byte)((pixel >> 16) & 0xFF);
+
+            int gray = (r * 77 + g * 150 + b * 29) >> 8;
+            byte binary = (byte)(gray > threshold ? 255 : 0);
+
+            span[i] = (0xFFu << 24) | ((uint)binary << 16) | ((uint)binary << 8) | binary;
+        }
+    }
+
+    public void BinarizeVetor(byte threshold = 128)
+    {
+        Span<byte> span = pixelData.AsSpan();
+        int pixelCount = width * height;
+        int vecSize = Vector<byte>.Count; 
+        for (int i = 0; i < pixelCount; i++)
+        {
+            int idx = i * 4;
+            byte r = span[idx + 2];
+            byte g = span[idx + 1];
+            byte b = span[idx + 0];
+
+            int gray = (r * 77 + g * 150 + b * 29) >> 8;
+            byte binary = (byte)(gray > threshold ? 255 : 0);
+
+            span[idx + 0] = binary;
+            span[idx + 1] = binary;
+            span[idx + 2] = binary;
+            span[idx + 3] = 255;
+        }
+    }
+    public void BinarizeVector2(byte threshold = 128)
+    {
+        Span<uint> span = GetPixelSpanUInt();
+        int pixelCount = width * height;
+
+        for (int i = 0; i < pixelCount; i++)
+        {
+            uint pixel = span[i];
+
+            // ARGB: 0xAARRGGBB
+            byte b = (byte)(pixel & 0xFF);
+            byte g = (byte)((pixel >> 8) & 0xFF);
+            byte r = (byte)((pixel >> 16) & 0xFF);
+
+            int gray = (r * 77 + g * 150 + b * 29) >> 8;
+            byte binary = (byte)(gray > threshold ? 255 : 0);
+
+            span[i] = (0xFFu << 24) | ((uint)binary << 16) | ((uint)binary << 8) | binary;
+        }
+    }
+
     public unsafe SimpleBitmap ResizeNearest(int scale)
     {
         var newImages = new SimpleBitmap(width * scale, height * scale);
@@ -153,5 +267,109 @@ public class SimpleBitmap
         }
 
         return newImages;
+    }
+    public SimpleBitmap ResizeNearest2(int scale)
+    {
+        var newImage = new SimpleBitmap(width * scale, height * scale);
+
+        Span<uint> srcSpan = GetPixelSpanUInt();
+        Span<uint> dstSpan = newImage.GetPixelSpanUInt();
+
+        int newWidth = newImage.GetWidth();
+
+        for (int origY = 0; origY < height; origY++)
+        {
+            int newYStart = origY * scale;
+            for (int dy = 0; dy < scale; dy++)
+            {
+                int dstRowStart = (newYStart + dy) * newWidth;
+                for (int origX = 0; origX < width; origX++)
+                {
+                    uint pixel = srcSpan[origY * width + origX];
+                    int newXStart = origX * scale;
+
+                    for (int dx = 0; dx < scale; dx++)
+                    {
+                        dstSpan[dstRowStart + newXStart + dx] = pixel;
+                    }
+                }
+            }
+        }
+
+        return newImage;
+    }
+
+
+    public unsafe SimpleBitmap ResizeNearestVector(int scale)
+    {
+        var newImages = new SimpleBitmap(width * scale, height * scale);
+
+        Span<uint> srcSpan = MemoryMarshal.Cast<byte, uint>(pixelData.AsSpan());
+        Span<uint> dstSpan = MemoryMarshal.Cast<byte, uint>(newImages.pixelData.AsSpan());
+
+        for (int origY = 0; origY < height; origY++)
+        {
+            int newYStart = origY * scale;
+            for (int dy = 0; dy < scale; dy++)
+            {
+                int dstRowStart = (newYStart + dy) * newImages.GetWidth();
+                for (int origX = 0; origX < width; origX++)
+                {
+                    uint pixel = srcSpan[origY * width + origX];
+                    int newXStart = origX * scale;
+
+                    var vecPixel = new Vector<uint>(pixel);
+                    int step = Vector<uint>.Count;
+                    int i = 0;
+                    for (; i + step <= scale; i += step)
+                    {
+                        vecPixel.CopyTo(dstSpan.Slice(dstRowStart + newXStart + i, step));
+                    }
+                    for (; i < scale; i++)
+                    {
+                        dstSpan[dstRowStart + newXStart + i] = pixel;
+                    }
+                }
+            }
+        }
+        return newImages;
+    }
+    public SimpleBitmap ResizeNearestVector2(int scale)
+    {
+        var newImage = new SimpleBitmap(width * scale, height * scale);
+
+        Span<uint> srcSpan = GetPixelSpanUInt();
+        Span<uint> dstSpan = newImage.GetPixelSpanUInt();
+
+        int newWidth = newImage.GetWidth();
+
+        for (int origY = 0; origY < height; origY++)
+        {
+            int newYStart = origY * scale;
+            for (int dy = 0; dy < scale; dy++)
+            {
+                int dstRowStart = (newYStart + dy) * newWidth;
+                for (int origX = 0; origX < width; origX++)
+                {
+                    uint pixel = srcSpan[origY * width + origX];
+                    int newXStart = origX * scale;
+
+                    var vecPixel = new Vector<uint>(pixel);
+                    int step = Vector<uint>.Count;
+                    int i = 0;
+
+                    for (; i + step <= scale; i += step)
+                    {
+                        vecPixel.CopyTo(dstSpan.Slice(dstRowStart + newXStart + i, step));
+                    }
+                    for (; i < scale; i++)
+                    {
+                        dstSpan[dstRowStart + newXStart + i] = pixel;
+                    }
+                }
+            }
+        }
+
+        return newImage;
     }
 }
