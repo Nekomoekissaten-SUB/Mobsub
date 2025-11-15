@@ -107,4 +107,14 @@ public partial class ParseTest
 
          return true;
      }
+
+    [TestMethod]
+    public void Classical()
+    {
+        var ass = new AssData();
+        ass.ReadAssFile(@"F:\code\_test\parser\large_million_lines_simple.ass");
+
+        var anlz = new AssAnalyze(ass);
+        var infos = anlz.GetUsedFontInfosWithEncoding();
+    }
 }

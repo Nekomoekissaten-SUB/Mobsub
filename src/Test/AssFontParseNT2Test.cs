@@ -4,6 +4,8 @@ using Mobsub.SubtitleParseNT2.AssTypes;
 using Mobsub.SubtitleParseNT2.AssUtils;
 using System;
 using System.Text;
+using NT2AssTypes = Mobsub.SubtitleParseNT2.AssTypes;
+using NT2AssUtils = Mobsub.SubtitleParseNT2.AssUtils;
 
 namespace Mobsub.Test;
 
@@ -55,7 +57,8 @@ public partial class ParseTest
         var ass = new AssData(logger);
         await ass.ReadAssFileAsync(assFile);
         var processor = new AssFontProcessor(ass.ScriptInfo.WrapStyle, ass.Styles) { AnalyzeWithEncoding = true };
-        var infos = processor.GetUsedFontInfos(ass.Events);
+        processor.GetUsedFontInfos(ass.Events!);
+        var infos = processor.Results;
 
         Dictionary<AssFontInfo, int> correctMap = [];
         correctMap.Add(new AssFontInfo("FOT-UDMarugo_Large Pr6N E,0,0,1"), 20);
@@ -73,6 +76,33 @@ public partial class ParseTest
     {
         var processor = new AssFontProcessor(0, new AssStyles()) { AnalyzeWithEncoding = withEncoding };
         processor.InitForLine(baseState);
-        return processor.GetUsedFontInfos(line).ToDictionary();
+        processor.GetUsedFontInfos(line);
+        return processor.Results.ToDictionary();
+    }
+
+    [TestMethod]
+    public async Task test()
+    {
+        var ass = new NT2AssTypes.AssData();
+        ass.ReadAssFileAsync(@"F:\code\_test\parser\large_million_lines_simple.ass").GetAwaiter().GetResult();
+
+        var processor = new NT2AssUtils.AssFontProcessor(ass.ScriptInfo.WrapStyle, ass.Styles) { AnalyzeWithEncoding = true };
+        processor.GetUsedFontInfos(ass.Events!);
+        var infos = processor.Results;
+    }
+
+    [TestMethod]
+    public async Task test22()
+    {
+        var ass = new NT2AssTypes.AssData(target: AssParseTarget.ParseAssFontsInfoWithEncoding);
+        ass.ReadAssFileAsync(@"F:\code\_test\parser\large_million_lines_simple.ass").GetAwaiter().GetResult();
+        var infos = ass.Processor!.GetResults();
+    }
+
+    [TestMethod]
+    public void test2()
+    {
+        var line = @"本字幕由喵萌Production制作 仅供交流试看之用 请勿用于商业用途\N{\fscx90\fscy90}翻译：槐安  ノルチ   微凉　校对：Ronny　时轴：黑金莲的腿环番茄鸡　后期：{MIR　特效：Nemeton"u8;
+        var result = GetUsedFontInfos(line);
     }
 }

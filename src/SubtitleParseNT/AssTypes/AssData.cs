@@ -1,19 +1,43 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using Cysharp.IO;
+using Microsoft.Extensions.Logging;
+using Mobsub.SubtitleParseNT2.AssUtils;
 using System.Text;
 using ZLogger;
-using Cysharp.IO;
 
 namespace Mobsub.SubtitleParseNT2.AssTypes;
 
-public sealed class AssData(ILogger? logger = null)
+public sealed class AssData(ILogger? logger = null, AssParseTarget target = AssParseTarget.Default)
 {
     public bool CarriageReturn = true;
     public Encoding CharEncoding = Utils.EncodingRefOS();
     public HashSet<AssSection> Sections = [];
 
-    public AssScriptInfo ScriptInfo { get; set; } = new(logger);
-    public AssStyles Styles { get; set; } = new(logger);
-    public AssEvents Events { get; set; } = new(logger);
+    public AssScriptInfo ScriptInfo { get; set; } = new();
+    public AssStyles Styles { get; set; } = new();
+    public AssEvents? Events { get; set; }
+
+    public IAssTagProcessor? Processor { get; private set; }
+    internal Action<AssEventView>? EventViewAction { get; private set; }
+    private bool eventInit = false;
+    private void InitEvents()
+    {
+        switch (target)
+        {
+            case AssParseTarget.Default:
+                break;
+            case AssParseTarget.ParseAssFontsInfo:
+                Processor = new AssFontProcessor(ScriptInfo.WrapStyle, Styles);
+                EventViewAction = ev => Processor.Process(ev);
+                break;
+            case AssParseTarget.ParseAssFontsInfoWithEncoding:
+                Processor = new AssFontProcessor(ScriptInfo.WrapStyle, Styles) { AnalyzeWithEncoding = true };
+                EventViewAction = ev => Processor.Process(ev);
+                break;
+        }
+
+        Events = new(logger) { OnEventView = EventViewAction };
+        eventInit = true;
+    }
 
     public async Task<AssData> ReadAssFileAsync(FileStream fs)
     {
@@ -91,7 +115,11 @@ public sealed class AssData(ILogger? logger = null)
                 Styles.Read(line, lineNumber);
                 break;
             case AssSection.Events:
-                Events.Read(line, "[V4+ Styles]"u8, lineNumber);
+                if (!eventInit)
+                {
+                    InitEvents();
+                }
+                Events!.Read(line, "[V4+ Styles]"u8, lineNumber);
                 break;
             //case AssSection.AegisubProjectGarbage:
             //    Utils.TrySplitKeyValue(sp, out var k, out var v);

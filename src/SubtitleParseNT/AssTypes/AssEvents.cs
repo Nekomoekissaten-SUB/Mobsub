@@ -16,13 +16,15 @@ public class AssEvents(ILogger? logger = null)
     }
     public List<AssEventHandle> Collection = [];
 
+    public Action<AssEventView>? OnEventView { get; set; }
+
     public void Read(ReadOnlyMemory<byte> line, ReadOnlySpan<byte> scriptType, int lineNumber)
     {
         var sp = line.Span;
         if (sp[0] == ';')
         {
             var view = new AssEventView(line, lineNumber, ";"u8, Formats, logger);
-            Collection.Add(new AssEventHandle(view));
+            Dispatch(view);
             return;
         }
 
@@ -40,7 +42,19 @@ public class AssEvents(ILogger? logger = null)
         else
         {
             var view = new AssEventView(line, lineNumber, sp[..sepIndex], Formats, logger);
+            Dispatch(view);
+        }
+    }
+
+    private void Dispatch(AssEventView view)
+    {
+        if (OnEventView == null)
+        {
             Collection.Add(new AssEventHandle(view));
+        }
+        else
+        {
+            OnEventView(view);
         }
     }
 }

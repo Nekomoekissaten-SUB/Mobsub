@@ -66,7 +66,6 @@ public sealed class AssFontProcessor(byte wrapStyle, AssStyles styles) : IAssTag
                 break;
         }
     }
-
     public void OnText(ReadOnlySpan<byte> text)
     {
         if (text.Length == 0) return;
@@ -98,7 +97,6 @@ public sealed class AssFontProcessor(byte wrapStyle, AssStyles styles) : IAssTag
                 ArrayPool<char>.Shared.Return(rented);
         }
     }
-
     public void OnSpecialChars(AssEventSegmentKind kind, short wrapStyle)
     {
         switch (kind)
@@ -114,14 +112,17 @@ public sealed class AssFontProcessor(byte wrapStyle, AssStyles styles) : IAssTag
         }
     }
 
+    public void Process(AssEventView ev) => GetUsedFontInfos(ev);
+    public object? GetResults() => Results;
+
     public IReadOnlyDictionary<AssFontInfo, HashSet<Rune>> Results => output;
     public void ResetResults() => output.Clear();
 
-    public IReadOnlyDictionary<AssFontInfo, HashSet<Rune>>? GetUsedFontInfos(ReadOnlySpan<byte> line)
+    public void GetUsedFontInfos(ReadOnlySpan<byte> line)
     {
         var segs = AssEventParser.ParseLine(line).Span;
         var wrapStyleCurrent = AssEventParser.GetWrapStyle(segs, wrapStyle);
-        if (AssEventParser.HasPolygon(segs)) return null;
+        if (AssEventParser.HasPolygon(segs)) return;
 
         foreach (var seg in segs)
         {
@@ -141,20 +142,21 @@ public sealed class AssFontProcessor(byte wrapStyle, AssStyles styles) : IAssTag
                     break;
             }
         }
-        return output;
     }
 
-    public IReadOnlyDictionary<AssFontInfo, HashSet<Rune>> GetUsedFontInfos(AssEvents events)
+    public void GetUsedFontInfos(AssEvents events)
     {
         foreach (var evt in events.Collection)
         {
-            var view = evt.GetView();
-            if (!view.IsDialogue) continue;
-            InitForLine(view.StyleSpan);
-
-            _ = GetUsedFontInfos(view.TextSpan);
+            GetUsedFontInfos(evt.GetView());
         }
-        return output;
+    }
+
+    public void GetUsedFontInfos(AssEventView view)
+    {
+        if (!view.IsDialogue) return;
+        InitForLine(view.StyleSpan);
+        GetUsedFontInfos(view.TextSpan);
     }
 }
 
