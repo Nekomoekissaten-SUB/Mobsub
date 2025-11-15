@@ -164,50 +164,66 @@ public static class AssTagRegistry
             [AssTag.Underline] = new("u"u8.ToArray(), typeof(bool),
                 AssTagKind.BlockOnlyRenderLatest),
         });
-    private static readonly FrozenDictionary<ReadOnlyMemory<byte>, (AssTag tag, AssTagDescriptor desc)>
-        byNameBytes = BuildNameByteIndex();
-    private static FrozenDictionary<ReadOnlyMemory<byte>, (AssTag, AssTagDescriptor)> BuildNameByteIndex()
+
+    public static bool TryGet(AssTag tag, out AssTagDescriptor? desc)
+        => tags.TryGetValue(tag, out desc);
+
+    private class Node
     {
-        var dict = new Dictionary<ReadOnlyMemory<byte>, (AssTag, AssTagDescriptor)>(new RomByteComparer());
+        public Dictionary<byte, Node> Children = new();
+        public AssTagDescriptor? Descriptor;
+        public AssTag? TagEnum;
+    }
+
+    private static readonly Node root = new();
+
+    static AssTagRegistry()
+    {
         foreach (var kv in tags)
         {
-            dict[kv.Value.Name] = (kv.Key, kv.Value);
+            Insert(kv.Value.Name.Span, kv.Key, kv.Value);
         }
-        return FrozenDictionary.ToFrozenDictionary(dict);
     }
 
-    public static bool TryGet(AssTag tag, out AssTagDescriptor desc)
-        => tags.TryGetValue(tag, out desc);
-    public static bool TryGetByNameBytes(ReadOnlySpan<byte> name, out AssTag tag, out AssTagDescriptor desc)
+    private static void Insert(ReadOnlySpan<byte> name, AssTag tag, AssTagDescriptor desc)
     {
-        foreach (var kv in byNameBytes)
+        var node = root;
+        foreach (var b in name)
         {
-            if (name.SequenceEqual(kv.Key.Span))
+            if (!node.Children.TryGetValue(b, out var child))
             {
-                (tag, desc) = kv.Value;
-                return true;
+                child = new Node();
+                node.Children[b] = child;
             }
+            node = child;
         }
+        node.TagEnum = tag;
+        node.Descriptor = desc;
+    }
+    
+    public static bool TryMatch(ReadOnlySpan<byte> span, out AssTag tag, out AssTagDescriptor desc, out int matchedLength)
+    {
+        var node = root;
         tag = default;
         desc = default!;
-        return false;
-    }
+        matchedLength = 0;
 
-    private sealed class RomByteComparer : IEqualityComparer<ReadOnlyMemory<byte>>
-    {
-        public bool Equals(ReadOnlyMemory<byte> x, ReadOnlyMemory<byte> y)
-            => x.Span.SequenceEqual(y.Span);
-
-        public int GetHashCode(ReadOnlyMemory<byte> obj)
+        for (int i = 0; i < span.Length; i++)
         {
-            var s = obj.Span;
-            unchecked
+            if (!node.Children.TryGetValue(span[i], out var child))
+                break;
+
+            node = child;
+            if (node.Descriptor != null)
             {
-                int h = 17;
-                for (int i = 0; i < s.Length; i++) h = h * 31 + s[i];
-                return h;
+                tag = node.TagEnum!.Value;
+                desc = node.Descriptor!;
+                matchedLength = i + 1;
             }
         }
+
+        return matchedLength > 0;
     }
+
 }
 

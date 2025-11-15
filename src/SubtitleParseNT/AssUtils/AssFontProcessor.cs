@@ -132,7 +132,7 @@ public sealed class AssFontProcessor(byte wrapStyle, AssStyles styles) : IAssTag
                     if (seg.Tags == null) break;
                     foreach (var tag in seg.Tags.Value.Span)
                         if (AssTagRegistry.TryGet(tag.Tag, out var desc))
-                            OnTag(tag, desc);
+                            OnTag(tag, desc!);
                     break;
                 case AssEventSegmentKind.Text:
                     OnText(line[seg.LineRange]);

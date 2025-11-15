@@ -94,52 +94,31 @@ public static class AssEventParser
             {
                 if (i > runStart)
                 {
-                    AddSegment(ref buffer, ref count,
-                        new AssEventSegment(new Range(baseIndex + runStart, baseIndex + i),
-                                            AssEventSegmentKind.Text));
+                    AddSegment(ref buffer, ref count, new AssEventSegment(new Range(baseIndex + runStart, baseIndex + i), AssEventSegmentKind.Text));
                 }
 
-                switch (text[i + 1])
+                if (TextLookup.TryGetValue(text[i + 1], out var kind))
                 {
-                    case (byte)'N':
-                        AddSegment(ref buffer, ref count,
-                            new AssEventSegment(new Range(baseIndex + i, baseIndex + i + 2),
-                                                AssEventSegmentKind.HardLineBreaker));
-                        i += 2;
-                        break;
-                    case (byte)'n':
-                        AddSegment(ref buffer, ref count,
-                            new AssEventSegment(new Range(baseIndex + i, baseIndex + i + 2),
-                                                AssEventSegmentKind.SoftLineBreaker));
-                        i += 2;
-                        break;
-                    case (byte)'h':
-                        AddSegment(ref buffer, ref count,
-                            new AssEventSegment(new Range(baseIndex + i, baseIndex + i + 2),
-                                                AssEventSegmentKind.NonBreakingSpace));
-                        i += 2;
-                        break;
-                    
-                    default:
-                        i++;
-                        break;
+                    AddSegment(ref buffer, ref count,  new AssEventSegment(new Range(baseIndex + i, baseIndex + i + 2), kind));
+                    i += 2;
                 }
-
+                else i++;
                 runStart = i;
             }
-            else
-            {
-                i++;
-            }
+            else i++;
         }
 
         if (i > runStart)
         {
-            AddSegment(ref buffer, ref count,
-                new AssEventSegment(new Range(baseIndex + runStart, baseIndex + i),
-                                    AssEventSegmentKind.Text));
+            AddSegment(ref buffer, ref count,  new AssEventSegment(new Range(baseIndex + runStart, baseIndex + i), AssEventSegmentKind.Text));
         }
     }
+    private static readonly Dictionary<byte, AssEventSegmentKind> TextLookup = new()
+    {
+        [(byte)'N'] = AssEventSegmentKind.HardLineBreaker,
+        [(byte)'n'] = AssEventSegmentKind.SoftLineBreaker,
+        [(byte)'h'] = AssEventSegmentKind.NonBreakingSpace,
+    };
 
     private static ReadOnlyMemory<AssTagSpan> ParseTagBlock(ReadOnlySpan<byte> block, int absoluteStart)
     {
@@ -155,76 +134,44 @@ public static class AssEventParser
             int tagStart = i;
             i++; // skip '\'
 
-            // 读取候选标签名：字母或数字（支持 1c、2c 等）
             int nameStart = i;
             while (i < block.Length && IsAsciiLetterOrDigit(block[i])) i++;
             int nameLen = i - nameStart;
 
-            // 参数：直到下一个 '\' 或块结束
-            int paramStart = i;
+            //int paramStart = i;
             while (i < block.Length && block[i] != (byte)'\\') i++;
             int paramEnd = i;
 
-            if (nameLen == 0)
-            {
-                // 没有合法标签名，跳过这一段（把后面的非 '\' 内容当作参数区）
-                continue;
-            }
+            if (nameLen == 0) continue;
 
-            // 最长前缀优先，逐步退回
-            bool matched = false;
-            for (int len = nameLen; len >= 1; len--)
+            if (AssTagRegistry.TryMatch(block.Slice(nameStart, nameLen), out var tagEnum, out var desc, out var matchedLength))
             {
-                var nameBytes = block.Slice(nameStart, len);
-                if (AssTagRegistry.TryGetByNameBytes(nameBytes, out var tagEnum, out var desc))
+                ReadOnlySpan<byte> paramBytes;
+
+                int actualParamStart = nameStart + matchedLength;
+
+                if (desc.TagType.HasFlag(AssTagKind.ShouldBeFunction) &&
+                    actualParamStart < block.Length && block[actualParamStart] == (byte)'(')
                 {
-                    ReadOnlySpan<byte> paramBytes;
-
-                    if (desc.TagType.HasFlag(AssTagKind.ShouldBeFunction) && paramStart < block.Length && block[paramStart] == (byte)'(')
+                    int j = actualParamStart + 1;
+                    int depth = 1;
+                    while (j < block.Length && depth > 0)
                     {
-                        // 特殊处理 \t(...) 函数式参数
-                        int j = paramStart + 1;
-                        int depth = 1;
-                        while (j < block.Length && depth > 0)
-                        {
-                            if (block[j] == (byte)'(') depth++;
-                            else if (block[j] == (byte)')') depth--;
-                            j++;
-                        }
-                        if (depth != 0)
-                        {
-                            // 没有闭合，整个剩余部分当作参数
-                            paramBytes = block.Slice(paramStart);
-                            i = block.Length;
-                        }
-                        else
-                        {
-                            paramBytes = block.Slice(paramStart, j - paramStart);
-                            i = j; // 跳过整个函数参数
-                        }
+                        if (block[j] == (byte)'(') depth++;
+                        else if (block[j] == (byte)')') depth--;
+                        j++;
                     }
-                    else
-                    {
-                        // 普通参数：直到下一个 '\' 或块结束
-                        paramBytes = block.Slice(nameStart + nameBytes.Length, paramEnd - (nameStart + nameBytes.Length));
-                        i = paramEnd;
-                    }
-
-                    object? value = ParseValue(desc, paramBytes);
-                    AddTag(ref buffer, ref count,
-                        new AssTagSpan(tagEnum,
-                                       new Range(absoluteStart + tagStart, absoluteStart + i),
-                                       value));
-                    matched = true;
-                    break;
+                    paramBytes = block[actualParamStart..j];
+                    i = j;
                 }
-            }
+                else
+                {
+                    paramBytes = block[actualParamStart..paramEnd];
+                    i = paramEnd;
+                }
 
-            // 未匹配到已知标签：跳过当前片段（把它当作未知控制序列）
-            // 此时 i 已经在 paramEnd 或下一 '\' 处，继续外层循环
-            if (!matched)
-            {
-                // 可选：也可以将未知序列作为文本忽略，这里直接跳过
+                object? value = ParseValue(desc, paramBytes);
+                AddTag(ref buffer, ref count, new AssTagSpan(tagEnum, new Range(absoluteStart + tagStart, absoluteStart + i), value));
             }
         }
 
@@ -281,57 +228,39 @@ public static class AssEventParser
         return null;
     }
 
+    internal static T FindLastTag<T>(ReadOnlySpan<AssEventSegment> segments, AssTag target, T defaultValue, out bool found)
+    {
+        for (int i = segments.Length - 1; i >= 0; i--)
+        {
+            ref readonly var seg = ref segments[i];
+            if (seg.SegmentKind != AssEventSegmentKind.TagBlock || seg.Tags == null)
+                continue;
+
+            var tagsSpan = seg.Tags.Value.Span;
+            for (int j = tagsSpan.Length - 1; j >= 0; j--)
+            {
+                ref readonly var tagSpan = ref tagsSpan[j];
+                if (tagSpan.Tag == target)
+                {
+                    found = true;
+                    if (tagSpan.Value is T value)
+                        return value;
+                    return defaultValue;
+                }
+            }
+        }
+        found = false;
+        return defaultValue;
+    }
+
     public static short GetWrapStyle(ReadOnlySpan<AssEventSegment> segments, short infoValue)
     {
-        for (int i = segments.Length - 1; i >= 0; i--)
-        {
-            ref readonly var seg = ref segments[i];
-            if (seg.SegmentKind != AssEventSegmentKind.TagBlock || seg.Tags == null)
-                continue;
-
-            var tags = seg.Tags;
-            if (tags == null)
-                continue;
-            var tagsSpan = tags.Value.Span;
-
-            for (int j = tagsSpan!.Length - 1; j >= 0; j--)
-            {
-                ref readonly var tagSpan = ref tagsSpan[j];
-                if (tagSpan.Tag == AssTag.WrapStyle)
-                {
-                    return tagSpan.Value is short s ? s : infoValue;
-                }
-            }
-        }
-
-        return infoValue;
+        return FindLastTag(segments, AssTag.WrapStyle, infoValue, out _);
     }
-
     public static bool HasPolygon(ReadOnlySpan<AssEventSegment> segments)
     {
-        for (int i = segments.Length - 1; i >= 0; i--)
-        {
-            ref readonly var seg = ref segments[i];
-            if (seg.SegmentKind != AssEventSegmentKind.TagBlock || seg.Tags == null)
-                continue;
-
-            var tags = seg.Tags;
-            if (tags == null)
-                continue;
-            var tagsSpan = tags.Value.Span;
-
-            for (int j = 0; j < tagsSpan!.Length; j++)
-            {
-                ref readonly var tagSpan = ref tagsSpan[j];
-                if (tagSpan.Tag == AssTag.Polygon)
-                {
-                    return true;
-                }
-            }
-        }
-
-        return false;
+        FindLastTag<int>(segments, AssTag.Polygon, default, out bool found);
+        return found;
     }
-
 }
 
