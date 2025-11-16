@@ -1,6 +1,4 @@
 ﻿using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
 using System.Text;
 using ZLogger;
 
@@ -57,4 +55,5 @@ public class AssEvents(ILogger? logger = null)
             OnEventView(view);
         }
     }
+
 }

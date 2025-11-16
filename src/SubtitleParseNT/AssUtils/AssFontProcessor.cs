@@ -8,7 +8,6 @@ public sealed class AssFontProcessor(byte wrapStyle, AssStyles styles) : IAssTag
 {
     private readonly byte wrapStyle = wrapStyle;
     private readonly AssStyles styles = styles;
-    private readonly Dictionary<byte[], AssStyleView>.AlternateLookup<ReadOnlySpan<byte>> stylesDict = styles.BuildStyleViewDictionary();
     private AssFontInfo baseInfo;
     private AssFontInfo current;
     private readonly Dictionary<AssFontInfo, HashSet<Rune>> output = [];
@@ -16,22 +15,13 @@ public sealed class AssFontProcessor(byte wrapStyle, AssStyles styles) : IAssTag
 
     public void InitForLine(ReadOnlySpan<byte> styleName)
     {
-        baseInfo = new AssFontInfo(GetAssStyleViewByName(styleName));
+        baseInfo = new AssFontInfo(styles.GetAssStyleViewByEventStyle(styleName));
         current = baseInfo;
     }
     public void InitForLine(AssFontInfo info)
     {
         baseInfo = info;
         current = info;
-    }
-
-    private AssStyleView GetAssStyleViewByName(ReadOnlySpan<byte> styleName)
-    {
-        if (stylesDict.TryGetValue(styleName, out var styleView))
-        {
-            return styleView;
-        }
-        throw new KeyNotFoundException($"AssFontProcessor: Style not found: '{Utils.GetString(styleName)}'");
     }
 
     public void OnTag(AssTagSpan tag, AssTagDescriptor desc)
@@ -58,7 +48,7 @@ public sealed class AssFontProcessor(byte wrapStyle, AssStyles styles) : IAssTag
                 }
                 else
                 {
-                    current = new AssFontInfo(GetAssStyleViewByName(value.AsSpan()));
+                    current = new AssFontInfo(styles.GetAssStyleViewByName(value.AsSpan()));
                 }
                 break;
         }

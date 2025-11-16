@@ -39,7 +39,7 @@ public sealed class AssData(ILogger? logger = null, AssParseTarget target = AssP
         eventInit = true;
     }
 
-    public async Task<AssData> ReadAssFileAsync(FileStream fs)
+    public async Task<AssData> ReadAssFileAsync(Stream fs)
     {
         using var sr = new Utf8StreamReader(fs);
         var lineNumber = 0;
@@ -67,6 +67,11 @@ public sealed class AssData(ILogger? logger = null, AssParseTarget target = AssP
         using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read);
         logger?.ZLogInformation($"Open ass file: {filePath}");
         return await ReadAssFileAsync(fs);
+    }
+    public AssData ReadAssText(ReadOnlySpan<byte> data)
+    {
+        using var ms = new MemoryStream(data.ToArray(), writable: false);
+        return ReadAssFileAsync(ms).GetAwaiter().GetResult();
     }
 
     private void ParseContent(ReadOnlyMemory<byte> line, int lineNumber, ref AssSection sectionType)

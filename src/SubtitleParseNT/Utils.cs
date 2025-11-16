@@ -29,7 +29,7 @@ public class Utils
         }
     }
 
-    public static void GuessEncoding(FileStream fs, out Encoding charEncoding)
+    public static void GuessEncoding(Stream fs, out Encoding charEncoding)
     {
         var buffer = new byte[4];
         _ = fs.Read(buffer, 0, 4);
@@ -37,7 +37,7 @@ public class Utils
         fs.Seek(0, SeekOrigin.Begin);
     }
 
-    public static void GuessEncoding(FileStream fs, out Encoding charEncoding, out bool isCarriageReturn)
+    public static void GuessEncoding(Stream fs, out Encoding charEncoding, out bool isCarriageReturn)
     {
         var buffer = new byte[1024];
         var b = fs.Read(buffer, 0, 1024);
