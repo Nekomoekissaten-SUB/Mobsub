@@ -10,8 +10,13 @@ public sealed class AssFontProcessor(byte wrapStyle, AssStyles styles) : IAssTag
     private readonly AssStyles styles = styles;
     private AssFontInfo baseInfo;
     private AssFontInfo current;
-    private readonly Dictionary<AssFontInfo, HashSet<Rune>> output = [];
+    private readonly Dictionary<AssFontInfo, Dictionary<Rune, List<int>>> maps = [];
+    public int FirstEventLineNumber = -1;
+    private int lineNumber = 0;
+    private readonly Dictionary<Rune, HashSet<int>> runeLocations = [];
     public bool AnalyzeWithEncoding = false;
+    public IReadOnlyDictionary<AssFontInfo, HashSet<Rune>> Results => maps.ToDictionary(keyValuePair => keyValuePair.Key, keyValuePair => new HashSet<Rune>(keyValuePair.Value.Keys));
+    public IReadOnlyDictionary<AssFontInfo, Dictionary<Rune, List<int>>> ResultsWithLineNumber => maps;
 
     public void InitForLine(ReadOnlySpan<byte> styleName)
     {
@@ -70,12 +75,19 @@ public sealed class AssFontProcessor(byte wrapStyle, AssStyles styles) : IAssTag
             while (enumerator.MoveNext())
             {
                 var rune = enumerator.Current;
-                if (!output.TryGetValue(current, out var set))
+                if (!maps.TryGetValue(current, out var set))
                 {
                     set = [];
-                    output[current] = set;
+                    maps[current] = set;
                 }
-                set.Add(rune);
+                if (!set.TryGetValue(rune, out _))
+                {
+                    set[rune] = [];
+                }
+                set[rune].Add(lineNumber);
+
+                if (!runeLocations.ContainsKey(rune)) runeLocations.Add(rune, []);
+                runeLocations[rune].Add(lineNumber);
             }
         }
         finally
@@ -101,9 +113,20 @@ public sealed class AssFontProcessor(byte wrapStyle, AssStyles styles) : IAssTag
 
     public void Process(AssEventView ev) => GetUsedFontInfos(ev);
     public object? GetResults() => Results;
+    public IReadOnlyDictionary<AssFontInfo, IReadOnlyDictionary<Rune, IReadOnlyList<int>>> GetResultsWithLineNumber() => maps.ToDictionary(
+        outerKvp => outerKvp.Key,
+        outerKvp =>
+        {
+            var innerReadOnlyDict = outerKvp.Value.ToDictionary(
+                innerKvp => innerKvp.Key,
+                innerKvp => (IReadOnlyList<int>)innerKvp.Value
+            );
+            return (IReadOnlyDictionary<Rune, IReadOnlyList<int>>)innerReadOnlyDict;
+        }
+    );
+    public int[]? GetExistsLines(Rune rune) => runeLocations.TryGetValue(rune, out var lines) ? lines.ToArray() : null;
 
-    public IReadOnlyDictionary<AssFontInfo, HashSet<Rune>> Results => output;
-    public void ResetResults() => output.Clear();
+    public void ResetResults() => maps.Clear();
 
     public void GetUsedFontInfos(ReadOnlySpan<byte> line)
     {
@@ -133,6 +156,7 @@ public sealed class AssFontProcessor(byte wrapStyle, AssStyles styles) : IAssTag
 
     public void GetUsedFontInfos(AssEvents events)
     {
+        FirstEventLineNumber = events.Collection.FirstOrDefault()?.GetView().LineNumber ?? -1;
         foreach (var evt in events.Collection)
         {
             GetUsedFontInfos(evt.GetView());
@@ -143,6 +167,7 @@ public sealed class AssFontProcessor(byte wrapStyle, AssStyles styles) : IAssTag
     {
         if (!view.IsDialogue) return;
         InitForLine(view.StyleSpan);
+        lineNumber = view.LineNumber;
         GetUsedFontInfos(view.TextSpan);
     }
 }
