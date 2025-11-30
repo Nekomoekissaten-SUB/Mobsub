@@ -113,7 +113,7 @@ public sealed class AssFontProcessor(byte wrapStyle, AssStyles styles) : IAssTag
 
     public void Process(AssEventView ev) => GetUsedFontInfos(ev);
     public object? GetResults() => Results;
-    public IReadOnlyDictionary<AssFontInfo, IReadOnlyDictionary<Rune, IReadOnlyList<int>>> GetResultsWithLineNumber() => maps.ToDictionary(
+    public IReadOnlyDictionary<AssFontInfo, IReadOnlyDictionary<Rune, IReadOnlyList<int>>> GetResultsWithLineNumbers() => maps.ToDictionary(
         outerKvp => outerKvp.Key,
         outerKvp =>
         {
