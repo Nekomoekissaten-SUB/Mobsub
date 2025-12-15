@@ -46,14 +46,8 @@ public class AssEvents(ILogger? logger = null)
 
     private void Dispatch(AssEventView view)
     {
-        if (OnEventView == null)
-        {
-            Collection.Add(new AssEventHandle(view));
-        }
-        else
-        {
-            OnEventView(view);
-        }
+        Collection.Add(new AssEventHandle(view));
+        OnEventView?.Invoke(view);
     }
 
 }
