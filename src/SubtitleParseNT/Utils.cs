@@ -323,7 +323,8 @@ public class Utils
     internal static bool TryGetParenContent(ReadOnlySpan<byte> payload, out ReadOnlySpan<byte> inner)
     {
         inner = payload;
-        SkipSpaces(ref inner);
+        // Allow surrounding spaces around the whole "( ... )" payload.
+        inner = TrimSpaces(inner);
         if (inner.Length < 2 || inner[0] != (byte)'(' || inner[^1] != (byte)')')
             return false;
         inner = inner[1..^1];
