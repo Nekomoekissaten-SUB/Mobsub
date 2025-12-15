@@ -1,4 +1,5 @@
 ﻿using Mobsub.SubtitleParseNT2.AssTypes;
+using System.Buffers.Text;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -287,12 +288,67 @@ public class Utils
 
     internal static ReadOnlySpan<byte> TrimSpaces(ReadOnlySpan<byte> span)
     {
-        int start = 0, end = span.Length - 1;
-        while (start <= end && IsSpace(span[start])) start++;
-        while (end >= start && IsSpace(span[end])) end--;
-        return span.Slice(start, end - start + 1);
+        TrimSpaces(span, out int start, out int length);
+        return span.Slice(start, length);
+    }
 
-        static bool IsSpace(byte b)
-            => b == (byte)' '; // || b == (byte)'\t' || b == (byte)'\r' || b == (byte)'\n'
+    internal static void TrimSpaces(ReadOnlySpan<byte> span, out int start, out int length)
+    {
+        start = 0;
+        int end = span.Length;
+        while (start < end && IsSpace(span[start])) start++;
+        while (end > start && IsSpace(span[end - 1])) end--;
+        length = end - start;
+    }
+
+    private static bool IsSpace(byte b)
+        => b == (byte)' '; // || b == (byte)'\t' || b == (byte)'\r' || b == (byte)'\n'
+
+    internal static void SkipSpaces(ref ReadOnlySpan<byte> span)
+    {
+        int i = 0;
+        while (i < span.Length && span[i] == (byte)' ') i++;
+        span = span[i..];
+    }
+
+    internal static bool TryConsume(ref ReadOnlySpan<byte> span, byte expected)
+    {
+        SkipSpaces(ref span);
+        if (span.IsEmpty || span[0] != expected)
+            return false;
+        span = span[1..];
+        return true;
+    }
+
+    internal static bool TryGetParenContent(ReadOnlySpan<byte> payload, out ReadOnlySpan<byte> inner)
+    {
+        inner = payload;
+        SkipSpaces(ref inner);
+        if (inner.Length < 2 || inner[0] != (byte)'(' || inner[^1] != (byte)')')
+            return false;
+        inner = inner[1..^1];
+        return true;
+    }
+
+    internal static bool TryReadInt(ref ReadOnlySpan<byte> span, out int value)
+    {
+        value = 0;
+        SkipSpaces(ref span);
+        if (!Utf8Parser.TryParse(span, out int v, out int consumed))
+            return false;
+        value = v;
+        span = span[consumed..];
+        return true;
+    }
+
+    internal static bool TryReadDouble(ref ReadOnlySpan<byte> span, out double value)
+    {
+        value = 0;
+        SkipSpaces(ref span);
+        if (!Utf8Parser.TryParse(span, out double v, out int consumed))
+            return false;
+        value = v;
+        span = span[consumed..];
+        return true;
     }
 }
