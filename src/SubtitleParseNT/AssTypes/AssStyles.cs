@@ -16,8 +16,16 @@ public class AssStyles(ILogger? logger = null)
     }
     public List<AssStyleHandle> Collection = [];
 
-    private Dictionary<byte[], AssStyleView>.AlternateLookup<ReadOnlySpan<byte>>? _styleViewMap;
-    public Dictionary<byte[], AssStyleView>.AlternateLookup<ReadOnlySpan<byte>> StyleViewMap => _styleViewMap ??= BuildStyleViewDictionary();
+    // Rebuild on every access to guarantee consistency even if external code mutates Collection.
+    private Dictionary<byte[], AssStyleView>? _styleViewDict;
+    public Dictionary<byte[], AssStyleView>.AlternateLookup<ReadOnlySpan<byte>> StyleViewMap
+    {
+        get
+        {
+            _styleViewDict = BuildStyleViewDictionary();
+            return _styleViewDict.GetAlternateLookup<ReadOnlySpan<byte>>();
+        }
+    }
     private AssStyleView? _defaultView;
     public AssStyleView DefaultStyleView => _defaultView ??= new(AssConstants.StyleDefaultV4P, "Style"u8, Formats, logger);
 
@@ -45,7 +53,7 @@ public class AssStyles(ILogger? logger = null)
         }
     }
 
-    private Dictionary<byte[], AssStyleView>.AlternateLookup<ReadOnlySpan<byte>> BuildStyleViewDictionary()
+    private Dictionary<byte[], AssStyleView> BuildStyleViewDictionary()
     {
         var dict = new Dictionary<byte[], AssStyleView>(Utf8StringEqualityComparer.Default);
         foreach (var s in Collection)
@@ -57,7 +65,7 @@ public class AssStyles(ILogger? logger = null)
                 nameSpan = nameSpan[1..];
             dict[nameSpan.ToArray()] = view;
         }
-        return dict.GetAlternateLookup<ReadOnlySpan<byte>>();
+        return dict;
     }
 
     public bool TryGetAssStyleViewByEventStyle(ReadOnlySpan<byte> styleName, out ReadOnlySpan<byte> queryName, out AssStyleView? view)
