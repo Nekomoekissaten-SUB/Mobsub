@@ -186,7 +186,7 @@ public static class AssEventParser
                     i = paramEnd;
                 }
 
-                object? value = ParseValue(desc, paramBytes);
+                var value = ParseValue(desc, paramBytes);
                 AddTag(ref buffer, ref count, new AssTagSpan(tagEnum, new Range(absoluteStart + tagStart, absoluteStart + i), value));
             }
             else
@@ -247,17 +247,17 @@ public static class AssEventParser
         buffer[count++] = seg;
     }
 
-    private static object? ParseValue(AssTagDescriptor desc, ReadOnlySpan<byte> param)
+    private static AssTagValue ParseValue(AssTagDescriptor desc, ReadOnlySpan<byte> param)
     {
         param = Utils.TrimSpaces(param);
-        if (param.Length == 0) return null;
-        if (desc.ValueType == typeof(int) && Utf8Parser.TryParse(param, out int iv, out _)) return iv;
-        if (desc.ValueType == typeof(double) && Utf8Parser.TryParse(param, out double dv, out _)) return dv;
-        if (desc.ValueType == typeof(bool) && Utf8Parser.TryParse(param, out int bv, out _)) return bv != 0;
-        if (desc.ValueType == typeof(byte) && Utf8Parser.TryParse(param, out int byv, out _)) return byv;
-        if (desc.ValueType == typeof(AssRGB8)) return AssRGB8.Parse(param);
-        if (desc.ValueType == typeof(ReadOnlyMemory<byte>)) return param.ToArray();
-        return null;
+        if (param.Length == 0) return AssTagValue.Empty;
+        if (desc.ValueType == typeof(int) && Utf8Parser.TryParse(param, out int iv, out _)) return AssTagValue.FromInt(iv);
+        if (desc.ValueType == typeof(double) && Utf8Parser.TryParse(param, out double dv, out _)) return AssTagValue.FromDouble(dv);
+        if (desc.ValueType == typeof(bool) && Utf8Parser.TryParse(param, out int bv, out _)) return AssTagValue.FromBool(bv != 0);
+        if (desc.ValueType == typeof(byte) && Utf8Parser.TryParse(param, out int byv, out _)) return AssTagValue.FromByte((byte)byv);
+        if (desc.ValueType == typeof(AssRGB8)) return AssTagValue.FromColor(AssRGB8.Parse(param));
+        if (desc.ValueType == typeof(ReadOnlyMemory<byte>)) return AssTagValue.FromBytes(param.ToArray());
+        return AssTagValue.Empty;
     }
 
     internal static T FindLastTag<T>(ReadOnlySpan<AssEventSegment> segments, AssTag target, T defaultValue, out bool found)
@@ -275,8 +275,8 @@ public static class AssEventParser
                 if (tagSpan.Tag == target)
                 {
                     found = true;
-                    if (tagSpan.Value is T value)
-                        return value;
+                    if (tagSpan.TryGet<T>(out var v))
+                        return v!;
                     return defaultValue;
                 }
             }

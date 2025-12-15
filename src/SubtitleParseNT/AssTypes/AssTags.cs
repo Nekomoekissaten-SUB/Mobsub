@@ -53,6 +53,37 @@ public enum AssTag
     // libass ass_types.h ass_render.h ass_parse.c
 }
 
+public enum AssTagValueKind : byte
+{
+    None = 0,
+    Int,
+    Double,
+    Bool,
+    Byte,
+    Color,
+    Bytes
+}
+
+public readonly struct AssTagValue
+{
+    public AssTagValueKind Kind { get; init; }
+    public int IntValue { get; init; }
+    public double DoubleValue { get; init; }
+    public bool BoolValue { get; init; }
+    public byte ByteValue { get; init; }
+    public AssRGB8 ColorValue { get; init; }
+    public ReadOnlyMemory<byte> BytesValue { get; init; }
+
+    public static AssTagValue FromInt(int v) => new() { Kind = AssTagValueKind.Int, IntValue = v };
+    public static AssTagValue FromDouble(double v) => new() { Kind = AssTagValueKind.Double, DoubleValue = v };
+    public static AssTagValue FromBool(bool v) => new() { Kind = AssTagValueKind.Bool, BoolValue = v };
+    public static AssTagValue FromByte(byte v) => new() { Kind = AssTagValueKind.Byte, ByteValue = v };
+    public static AssTagValue FromColor(AssRGB8 v) => new() { Kind = AssTagValueKind.Color, ColorValue = v };
+    public static AssTagValue FromBytes(ReadOnlyMemory<byte> v) => new() { Kind = AssTagValueKind.Bytes, BytesValue = v };
+    public static AssTagValue Empty => new() { Kind = AssTagValueKind.None };
+
+}
+
 public static class AssTagRegistry
 {
     private struct UnImp { private string v; };

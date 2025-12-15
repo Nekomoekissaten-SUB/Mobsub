@@ -34,26 +34,32 @@ public sealed class AssFontProcessor(byte wrapStyle, AssStyles styles) : IAssTag
         switch (tag.Tag)
         {
             case AssTag.Bold:
-                current.Weight = tag.Value is int b ? b : baseInfo.Weight;
+                if (tag.TryGet<int>(out var b)) current.Weight = b; else current.Weight = baseInfo.Weight;
                 break;
             case AssTag.Italic:
-                current.Italic = tag.Value is int i ? i != 0 : baseInfo.Italic;
+                if (tag.TryGet<int>(out var i)) current.Italic = i != 0; else current.Italic = baseInfo.Italic;
                 break;
             case AssTag.FontEncoding:
-                current.Encoding = AnalyzeWithEncoding ? (tag.Value is int fe ? fe : baseInfo.Encoding) : 1;
-                break;
-            case AssTag.FontName:
-                current.NameBytes = tag.Value is byte[] fn && fn.Length > 0 ? fn : baseInfo.NameBytes;
-                break;
-            case AssTag.Reset:
-                var value = tag.Value is byte[] r && r.Length > 0 ? r : null;
-                if (value == null)
+                if (AnalyzeWithEncoding)
                 {
-                    current = baseInfo;
+                    if (tag.TryGet<int>(out var fe)) current.Encoding = fe; else current.Encoding = baseInfo.Encoding;
                 }
                 else
                 {
-                    current = new AssFontInfo(styles.GetAssStyleViewByName(value.AsSpan()));
+                    current.Encoding = 1;
+                }
+                break;
+            case AssTag.FontName:
+                if (tag.TryGet<ReadOnlyMemory<byte>>(out var fn) && fn.Length > 0) current.NameBytes = fn.ToArray(); else current.NameBytes = baseInfo.NameBytes;
+                break;
+            case AssTag.Reset:
+                if (tag.TryGet<ReadOnlyMemory<byte>>(out var r) && r.Length > 0)
+                {
+                    current = new AssFontInfo(styles.GetAssStyleViewByName(r.Span));
+                }
+                else
+                {
+                    current = baseInfo;
                 }
                 break;
         }
