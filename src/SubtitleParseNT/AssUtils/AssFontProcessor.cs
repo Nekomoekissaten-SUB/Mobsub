@@ -37,7 +37,7 @@ public sealed class AssFontProcessor(byte wrapStyle, AssStyles styles) : IAssTag
                 if (tag.TryGet<int>(out var b)) current.Weight = b; else current.Weight = baseInfo.Weight;
                 break;
             case AssTag.Italic:
-                if (tag.TryGet<int>(out var i)) current.Italic = i != 0; else current.Italic = baseInfo.Italic;
+                if (tag.TryGet<bool>(out var i)) current.Italic = i; else current.Italic = baseInfo.Italic;
                 break;
             case AssTag.FontEncoding:
                 if (AnalyzeWithEncoding)
@@ -134,31 +134,7 @@ public sealed class AssFontProcessor(byte wrapStyle, AssStyles styles) : IAssTag
 
     public void ResetResults() => maps.Clear();
 
-    public void GetUsedFontInfos(ReadOnlySpan<byte> line)
-    {
-        var segs = AssEventParser.ParseLine(line).Span;
-        var wrapStyleCurrent = AssEventParser.GetWrapStyle(segs, wrapStyle);
-        if (AssEventParser.HasPolygon(segs)) return;
-
-        foreach (var seg in segs)
-        {
-            switch (seg.SegmentKind)
-            {
-                case AssEventSegmentKind.TagBlock:
-                    if (seg.Tags == null) break;
-                    foreach (var tag in seg.Tags.Value.Span)
-                        if (AssTagRegistry.TryGet(tag.Tag, out var desc))
-                            OnTag(tag, desc!);
-                    break;
-                case AssEventSegmentKind.Text:
-                    OnText(line[seg.LineRange]);
-                    break;
-                default:
-                    OnSpecialChars(seg.SegmentKind, wrapStyleCurrent);
-                    break;
-            }
-        }
-    }
+    public void GetUsedFontInfos(ReadOnlySpan<byte> line) => GetUsedFontInfosCore(line, default);
 
     public void GetUsedFontInfos(AssEvents events)
     {
@@ -174,7 +150,40 @@ public sealed class AssFontProcessor(byte wrapStyle, AssStyles styles) : IAssTag
         if (!view.IsDialogue) return;
         InitForLine(view.StyleSpan);
         lineNumber = view.LineNumber;
-        GetUsedFontInfos(view.TextSpan);
+        GetUsedFontInfos(view.LineRaw[view.TextReadOnly]);
+    }
+
+    public void GetUsedFontInfos(ReadOnlyMemory<byte> line) => GetUsedFontInfosCore(line.Span, line);
+
+    private void GetUsedFontInfosCore(ReadOnlySpan<byte> lineSpan, ReadOnlyMemory<byte> lineMemory)
+    {
+        // Prefer the ReadOnlyMemory overload when we have backing memory so byte/function tag payloads
+        // can be kept as slices (avoids per-tag param allocations).
+        var segs = lineMemory.IsEmpty
+            ? AssEventParser.ParseLine(lineSpan).Span
+            : AssEventParser.ParseLine(lineMemory).Span;
+
+        var wrapStyleCurrent = AssEventParser.GetWrapStyle(segs, wrapStyle);
+        if (AssEventParser.HasPolygon(segs)) return;
+
+        foreach (var seg in segs)
+        {
+            switch (seg.SegmentKind)
+            {
+                case AssEventSegmentKind.TagBlock:
+                    if (seg.Tags == null) break;
+                    foreach (var tag in seg.Tags.Value.Span)
+                        if (AssTagRegistry.TryGet(tag.Tag, out var desc))
+                            OnTag(tag, desc!);
+                    break;
+                case AssEventSegmentKind.Text:
+                    OnText(lineSpan[seg.LineRange]);
+                    break;
+                default:
+                    OnSpecialChars(seg.SegmentKind, wrapStyleCurrent);
+                    break;
+            }
+        }
     }
 }
 
