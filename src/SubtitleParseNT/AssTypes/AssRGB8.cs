@@ -54,7 +54,7 @@ public struct AssRGB8(byte red, byte green, byte blue, byte alpha)
     public static AssRGB8 Parse(ReadOnlySpan<byte> sp)
     {
         // Optional: trim ASCII spaces if needed
-        // sp = Utils.TrimSpaces(sp);
+        if (sp.StartsWith((byte)' ') || sp.EndsWith((byte)' ')) sp = Utils.TrimSpaces(sp);
 
         if (sp.Length < 3) throw new FormatException("Invalid color format");
         if (sp[0] != (byte)'&' || (sp[1] != (byte)'H' && sp[1] != (byte)'h'))
