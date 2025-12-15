@@ -8,7 +8,13 @@ namespace Mobsub.SubtitleParseNT2.AssUtils;
 
 public static class AssEventParser
 {
+    public static ReadOnlyMemory<AssEventSegment> ParseLine(ReadOnlyMemory<byte> line)
+        => ParseLineInternal(line.Span, line);
+
     public static ReadOnlyMemory<AssEventSegment> ParseLine(ReadOnlySpan<byte> line)
+        => ParseLineInternal(line, default);
+
+    private static ReadOnlyMemory<AssEventSegment> ParseLineInternal(ReadOnlySpan<byte> line, ReadOnlyMemory<byte> lineMemory)
     {
         var pool = ArrayPool<AssEventSegment>.Shared;
         var buffer = pool.Rent(32);
@@ -34,7 +40,7 @@ public static class AssEventParser
                     }
 
                     var block = line.Slice(i + 1, j - i - 1);
-                    var tags = ParseTagBlock(block, i + 1);
+                    var tags = ParseTagBlock(block, i + 1, lineMemory);
 
                     AddSegment(ref buffer, ref count,  new AssEventSegment(new Range(i, j + 1), AssEventSegmentKind.TagBlock, tags));
 
@@ -101,7 +107,7 @@ public static class AssEventParser
         }
     }
 
-    private static ReadOnlyMemory<AssTagSpan> ParseTagBlock(ReadOnlySpan<byte> block, int absoluteStart)
+    private static ReadOnlyMemory<AssTagSpan> ParseTagBlock(ReadOnlySpan<byte> block, int absoluteStart, ReadOnlyMemory<byte> lineMemory)
     {
         var pool = ArrayPool<AssTagSpan>.Shared;
         AssTagSpan[] buffer = pool.Rent(8);
@@ -153,6 +159,9 @@ public static class AssEventParser
             {
                 ReadOnlySpan<byte> paramBytes;
                 int actualParamStart = nameStart + matchedLength;
+                int paramStart = actualParamStart;
+                int paramLength;
+                ReadOnlyMemory<byte> paramMemory = default;
 
                 if (((desc.TagType & AssTagKind.ShouldBeFunction) != 0) && actualParamStart < block.Length && block[actualParamStart] == (byte)'(')
                 {
@@ -177,16 +186,23 @@ public static class AssEventParser
                         j++;
                         funcSearchSpan = block[j..];
                     }
-                    paramBytes = block[actualParamStart..j];
+                    paramLength = j - actualParamStart;
+                    paramBytes = block.Slice(paramStart, paramLength);
                     i = j;
                 }
                 else
                 {
-                    paramBytes = block[actualParamStart..paramEnd];
+                    paramLength = paramEnd - actualParamStart;
+                    paramBytes = block.Slice(paramStart, paramLength);
                     i = paramEnd;
                 }
 
-                var value = ParseValue(desc, paramBytes);
+                if (!lineMemory.IsEmpty)
+                {
+                    paramMemory = lineMemory.Slice(absoluteStart + paramStart, paramLength);
+                }
+
+                var value = ParseValue(desc, paramBytes, paramMemory);
                 AddTag(ref buffer, ref count, new AssTagSpan(tagEnum, new Range(absoluteStart + tagStart, absoluteStart + i), value));
             }
             else
@@ -247,16 +263,36 @@ public static class AssEventParser
         buffer[count++] = seg;
     }
 
-    private static AssTagValue ParseValue(AssTagDescriptor desc, ReadOnlySpan<byte> param)
+    private static AssTagValue ParseValue(AssTagDescriptor desc, ReadOnlySpan<byte> param, ReadOnlyMemory<byte> paramMemory)
     {
-        param = Utils.TrimSpaces(param);
-        if (param.Length == 0) return AssTagValue.Empty;
-        if (desc.ValueType == typeof(int) && Utf8Parser.TryParse(param, out int iv, out _)) return AssTagValue.FromInt(iv);
-        if (desc.ValueType == typeof(double) && Utf8Parser.TryParse(param, out double dv, out _)) return AssTagValue.FromDouble(dv);
-        if (desc.ValueType == typeof(bool) && Utf8Parser.TryParse(param, out int bv, out _)) return AssTagValue.FromBool(bv != 0);
-        if (desc.ValueType == typeof(byte) && Utf8Parser.TryParse(param, out int byv, out _)) return AssTagValue.FromByte((byte)byv);
-        if (desc.ValueType == typeof(AssRGB8)) return AssTagValue.FromColor(AssRGB8.Parse(param));
-        if (desc.ValueType == typeof(ReadOnlyMemory<byte>)) return AssTagValue.FromBytes(param.ToArray());
+        Utils.TrimSpaces(param, out int start, out int length);
+        if (length == 0) return AssTagValue.Empty;
+
+        var trimmedSpan = param.Slice(start, length);
+        var trimmedMemory = paramMemory.IsEmpty ? default : paramMemory.Slice(start, length);
+
+        if (desc.ValueType == typeof(int) && Utf8Parser.TryParse(trimmedSpan, out int iv, out _)) return AssTagValue.FromInt(iv);
+        if (desc.ValueType == typeof(double) && Utf8Parser.TryParse(trimmedSpan, out double dv, out _)) return AssTagValue.FromDouble(dv);
+        if (desc.ValueType == typeof(bool))
+        {
+            // Semantics: only 0/1 are explicit; any other number (including -1) and any non-number => reset.
+            if (Utf8Parser.TryParse(trimmedSpan, out int bv, out _))
+            {
+                return bv switch
+                {
+                    0 => AssTagValue.FromBool(false),
+                    1 => AssTagValue.FromBool(true),
+                    _ => AssTagValue.Empty,
+                };
+            }
+            return AssTagValue.Empty;
+        }
+        if (desc.ValueType == typeof(byte) && Utf8Parser.TryParse(trimmedSpan, out int byv, out _)) return AssTagValue.FromByte((byte)byv);
+        if (desc.ValueType == typeof(AssRGB8)) return AssTagValue.FromColor(AssRGB8.Parse(trimmedSpan));
+        if (desc.ValueType == typeof(ReadOnlyMemory<byte>))
+        {
+            return AssTagValue.FromBytes(trimmedMemory.IsEmpty ? trimmedSpan.ToArray() : trimmedMemory);
+        }
         return AssTagValue.Empty;
     }
 
