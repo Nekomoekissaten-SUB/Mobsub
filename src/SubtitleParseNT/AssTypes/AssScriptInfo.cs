@@ -5,7 +5,7 @@ namespace Mobsub.SubtitleParseNT2.AssTypes;
 
 public sealed class AssScriptInfo(ILogger? logger = null)
 {
-    private readonly string[] scriptTypes = ["v4.00", "v4.00+", "v4.00++"];
+    private static readonly string[] ScriptTypes = ["v4.00", "v4.00+", "v4.00++"];
     private string scriptType = "v4.00";
     private int? layoutResX = null;
     private int? layoutResY = null;
@@ -17,13 +17,13 @@ public sealed class AssScriptInfo(ILogger? logger = null)
         get => scriptType;
         set
         {
-            if (!scriptTypes.Contains(value, StringComparer.OrdinalIgnoreCase))
+            if (!ScriptTypes.Contains(value, StringComparer.OrdinalIgnoreCase))
             {
                 logger?.ZLogError($"ScriptType: {value} is invalid");
             }
-            if (value.AsSpan()[0] == 'V')
+            if (value.Length > 0 && value.AsSpan()[0] == 'V')
             {
-                logger?.ZLogWarning($"ScriptType is {value}, it should be start with 'v'");
+                 logger?.ZLogWarning($"ScriptType is {value}, it should be start with 'v'");
             }
             scriptType = value;
         }
@@ -75,10 +75,11 @@ public sealed class AssScriptInfo(ILogger? logger = null)
     // public int status = 0;
     public HashSet<string> Orders = [];
 
-
     public void Read(ReadOnlyMemory<byte> line, int lineNumber)
     {
-        var sp = line.Span;
+        var sp = Utils.TrimSpaces(line.Span);
+        if (sp.IsEmpty) return;
+        
         switch (sp[0])
         {
             case (byte)'!':
@@ -88,49 +89,106 @@ public sealed class AssScriptInfo(ILogger? logger = null)
             case (byte)';':
                 Comment.Add(Utils.GetString(line, Range.StartAt(1), true));
                 return;
-            default:
-                break;
         }
 
-        var idx = sp.IndexOf((byte)':');
-        if (idx < 0)
+        if (sp.IndexOf((byte)':') is int idx && idx > 0)
         {
-            logger?.ZLogError($"Unknown line #{lineNumber}: '{Utils.GetString(line)}'");
-            return;
-        }
+            var k = Utils.GetString(sp[..idx]);
+            var valueSpan = Utils.TrimSpaces(sp[(idx + 1)..]);
             
-        var k = Utils.GetString(sp[..idx]);
-        var v = Utils.TrimSpaces(sp[(idx + 1)..]);
-        if (Utils.IsStringInFields(new AssConstants.ScriptInfo(), typeof(AssConstants.ScriptInfo), k))
-        {
-            if (k.SequenceEqual(AssConstants.ScriptInfo.YCbCrMatrix))
+            // Fast path for known integer properties to avoid string allocation for Value
+            if (k.Equals(AssConstants.ScriptInfo.PlayResX, StringComparison.OrdinalIgnoreCase) && Utils.TryReadInt(ref valueSpan, out int prx))
             {
-                idx = v.IndexOf((byte)'.');
-                if (idx < 0)
+                PlayResX = prx;
+            }
+            else if (k.Equals(AssConstants.ScriptInfo.PlayResY, StringComparison.OrdinalIgnoreCase) && Utils.TryReadInt(ref valueSpan, out int pry))
+            {
+                PlayResY = pry;
+            }
+            else if (k.Equals(AssConstants.ScriptInfo.LayoutResX, StringComparison.OrdinalIgnoreCase) && Utils.TryReadInt(ref valueSpan, out int lrx))
+            {
+                LayoutResX = lrx;
+            }
+            else if (k.Equals(AssConstants.ScriptInfo.LayoutResY, StringComparison.OrdinalIgnoreCase) && Utils.TryReadInt(ref valueSpan, out int lry))
+            {
+                LayoutResY = lry;
+            }
+            else if (k.Equals(AssConstants.ScriptInfo.Timer, StringComparison.OrdinalIgnoreCase) && Utils.TryReadDouble(ref valueSpan, out double t))
+            {
+                Timer = (float)t;
+            }
+            else if (k.Equals(AssConstants.ScriptInfo.WrapStyle, StringComparison.OrdinalIgnoreCase) && Utils.TryReadInt(ref valueSpan, out int ws))
+            {
+                WrapStyle = (byte)ws;
+            }
+            else if (k.Equals(AssConstants.ScriptInfo.ScaledBorderAndShadow, StringComparison.OrdinalIgnoreCase))
+            {
+                ScaledBorderAndShadow = valueSpan.SequenceEqual("yes"u8);
+            }
+             else if (k.Equals(AssConstants.ScriptInfo.Kerning, StringComparison.OrdinalIgnoreCase))
+            {
+                Kerning = valueSpan.SequenceEqual("yes"u8);
+            }
+            else if (k.Equals(AssConstants.ScriptInfo.YCbCrMatrix, StringComparison.OrdinalIgnoreCase))
+            {
+                int dotIdx = valueSpan.IndexOf((byte)'.');
+                if (dotIdx < 0)
                 {
-                    YCbCrMatrix.Matrix = Utils.GetString(v);
+                    YCbCrMatrix.Matrix = Utils.GetString(valueSpan);
                 }
                 else
                 {
-                    YCbCrMatrix.Full = !v[..idx].SequenceEqual("TV"u8);
-                    YCbCrMatrix.Matrix = Utils.GetString(v, Range.StartAt(idx + 1));
+                    YCbCrMatrix.Full = !valueSpan[..dotIdx].SequenceEqual("TV"u8);
+                    YCbCrMatrix.Matrix = Utils.GetString(valueSpan, Range.StartAt(dotIdx + 1));
                 }
+            }
+            else if (k.Equals(AssConstants.ScriptInfo.ScriptType, StringComparison.OrdinalIgnoreCase))
+            {
+                ScriptType = Utils.GetString(valueSpan);
+            }
+             else if (k.Equals(AssConstants.ScriptInfo.Title, StringComparison.OrdinalIgnoreCase))
+            {
+                Title = Utils.GetString(valueSpan);
+            }
+            else if (k.Equals(AssConstants.ScriptInfo.OriginalScript, StringComparison.OrdinalIgnoreCase))
+            {
+                OriginalScript = Utils.GetString(valueSpan);
+            }
+            else if (k.Equals(AssConstants.ScriptInfo.OriginalTranslation, StringComparison.OrdinalIgnoreCase))
+            {
+                OriginalTranslation = Utils.GetString(valueSpan);
+            }
+            else if (k.Equals(AssConstants.ScriptInfo.OriginalEditing, StringComparison.OrdinalIgnoreCase))
+            {
+                OriginalEditing = Utils.GetString(valueSpan);
+            }
+            else if (k.Equals(AssConstants.ScriptInfo.OriginalTiming, StringComparison.OrdinalIgnoreCase))
+            {
+                OriginalTiming = Utils.GetString(valueSpan);
+            }
+             else if (k.Equals(AssConstants.ScriptInfo.ScriptUpdatedBy, StringComparison.OrdinalIgnoreCase))
+            {
+                ScriptUpdatedBy = Utils.GetString(valueSpan);
+            }
+            else if (k.Equals(AssConstants.ScriptInfo.UpdateDetails, StringComparison.OrdinalIgnoreCase))
+            {
+                UpdateDetails = Utils.GetString(valueSpan);
             }
             else
             {
-                Utils.SetProperty(this, typeof(AssScriptInfo), k.Contains(' ') ? k.Replace(" ", "") : k, v);
+                 // Unknown key
+                 Others[k] = Utils.GetString(valueSpan);
+            }
+
+            if (!Orders.Add(k))
+            {
+                logger?.ZLogWarning($"Duplicate key in Script Info: {k}");
             }
         }
         else
         {
-            Others[k] = Utils.GetString(v);
+             logger?.ZLogError($"Unknown line #{lineNumber}: '{Utils.GetString(line)}'");
         }
-
-        if (!Orders.Add(k))
-        {
-            logger?.ZLogError($"Duplicate key in Script Info: {k}");
-        }
-        logger?.ZLogDebug($"Line {lineNumber} is a key-pair, key {k} parse completed");
     }
 
     public void Write(StreamWriter sw, char[] newline)
