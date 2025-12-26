@@ -15,6 +15,10 @@ public sealed class AssData(ILogger? logger = null, AssParseTarget target = AssP
     public AssScriptInfo ScriptInfo { get; set; } = new();
     public AssStyles Styles { get; set; } = new();
     public AssEvents? Events { get; set; }
+    public AssEmbeddedSection Fonts { get; set; } = new(AssEmbeddedFileType.Font);
+    public AssEmbeddedSection Graphics { get; set; } = new(AssEmbeddedFileType.Graphics);
+    public AssMetaData ProjectGarbage { get; set; } = new();
+    public AssMetaData Extradata { get; set; } = new();
 
     public IAssTagProcessor? Processor { get; private set; }
     internal Action<AssEvent>? EventViewAction { get; private set; }
@@ -118,6 +122,11 @@ public sealed class AssData(ILogger? logger = null, AssParseTarget target = AssP
             offset = nextOffset;
         }
 
+
+        
+        Fonts.Finish();
+        Graphics.Finish();
+
         logger?.ZLogInformation($"Ass parsing completed");
         return this;
     }
@@ -156,6 +165,22 @@ public sealed class AssData(ILogger? logger = null, AssParseTarget target = AssP
             {
                 sectionType = AssSection.Events;
             }
+            else if (sp.SequenceEqual("[Fonts]"u8))
+            {
+                sectionType = AssSection.Fonts;
+            }
+            else if (sp.SequenceEqual("[Graphics]"u8))
+            {
+                sectionType = AssSection.Graphics;
+            }
+            else if (sp.SequenceEqual("[Aegisub Project Garbage]"u8))
+            {
+                sectionType = AssSection.AegisubProjectGarbage;
+            }
+            else if (sp.SequenceEqual("[Aegisub Extradata]"u8))
+            {
+                sectionType = AssSection.AegisubExtradata;
+            }
             else
             {
                 throw new Exception($"Unknown section: {sp.ToString()}.");
@@ -185,20 +210,18 @@ public sealed class AssData(ILogger? logger = null, AssParseTarget target = AssP
                 }
                 Events!.Read(line, "[V4+ Styles]"u8, lineNumber);
                 break;
-            //case AssSection.AegisubProjectGarbage:
-            //    Utils.TrySplitKeyValue(sp, out var k, out var v);
-            //    AegisubProjectGarbage.TryAdd(k, v);
-            //    break;
-            //case AssSection.AegisubExtradata:
-            //    Utils.TrySplitKeyValue(sp, out var k1, out var v1);
-            //    AegiusbExtradata.Add(k1 == string.Empty ? sp.ToString() : v1);
-            //    break;
-            //case AssSection.Fonts:
-            //    Fonts = AssEmbedded.ParseFontsFromAss(sp, lineNumber, _logger);
-            //    break;
-            //case AssSection.Graphics:
-            //    Graphics = AssEmbedded.ParseGraphicsFromAss(sp, lineNumber, _logger);
-            //    break;
+            case AssSection.AegisubProjectGarbage:
+                ProjectGarbage.Read(line, lineNumber);
+                break;
+            case AssSection.AegisubExtradata:
+                Extradata.Read(line, lineNumber);
+                break;
+            case AssSection.Fonts:
+                Fonts.Read(line, lineNumber);
+                break;
+            case AssSection.Graphics:
+                Graphics.Read(line, lineNumber);
+                break;
             default:
                 break;
         }
