@@ -8,16 +8,32 @@ namespace Mobsub.SubtitleParseNT2;
 
 public class Utils
 {
-    public static Encoding GuessEncoding(byte[] buffer)
+    public static Encoding GuessEncoding(ReadOnlySpan<byte> buffer, out int preambleLength)
     {
-        return buffer switch
+        preambleLength = 0;
+        if (buffer.Length >= 3 && buffer[0] == 0xEF && buffer[1] == 0xBB && buffer[2] == 0xBF)
         {
-            [0xFF, 0xFE, ..] => Encoding.Unicode,           // UTF-16 (Little-Endian)
-            [0xFE, 0xFF, ..] => Encoding.BigEndianUnicode,  // UTF-16 (Big-Endian)
-            [0xEF, 0xBB, 0xBF, ..] => Encoding.UTF8,        // UTF-8
-            _ => new UTF8Encoding(false)                    // UTF-8 without Bom
-        };
+            preambleLength = 3;
+            return Encoding.UTF8;
+        }
+        if (buffer.Length >= 2)
+        {
+            if (buffer[0] == 0xFF && buffer[1] == 0xFE)
+            {
+                preambleLength = 2;
+                return Encoding.Unicode;
+            }
+            if (buffer[0] == 0xFE && buffer[1] == 0xFF)
+            {
+                preambleLength = 2;
+                return Encoding.BigEndianUnicode;
+            }
+        }
+        
+        return new UTF8Encoding(false);
     }
+    
+    public static Encoding GuessEncoding(byte[] buffer) => GuessEncoding(buffer, out _);
 
     public static Encoding EncodingRefOS()
     {

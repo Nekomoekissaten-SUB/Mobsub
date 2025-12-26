@@ -8,7 +8,8 @@ namespace Mobsub.SubtitleParseNT2.AssTypes;
 public sealed class AssData(ILogger? logger = null, AssParseTarget target = AssParseTarget.Default)
 {
     public bool CarriageReturn = true;
-    public Encoding CharEncoding = Utils.EncodingRefOS();
+    private bool _getFirstCarriageReturn = false;
+    public Encoding CharEncoding = Encoding.UTF8;
     public HashSet<AssSection> Sections = [];
 
     public AssScriptInfo ScriptInfo { get; set; } = new();
@@ -42,10 +43,6 @@ public sealed class AssData(ILogger? logger = null, AssParseTarget target = AssP
 
     public async Task<AssData> ReadAssFileAsync(Stream fs)
     {
-        Utils.GuessEncoding(fs, out CharEncoding, out CarriageReturn);
-        logger?.ZLogInformation($"File use {CharEncoding.EncodingName} and {(CarriageReturn ? "CRLF" : "LF")}");
-        logger?.ZLogInformation($"Start parse ass");
-
         if (fs is MemoryStream ms && ms.TryGetBuffer(out ArraySegment<byte> segment))
         {
             _sourceBuffer = new byte[segment.Count];
@@ -58,24 +55,15 @@ public sealed class AssData(ILogger? logger = null, AssParseTarget target = AssP
             _sourceBuffer = memoryStream.ToArray();
         }
 
-        var preamble = CharEncoding.GetPreamble();
-        int preambleLength = 0;
+        var span = _sourceBuffer.AsSpan();
+        CharEncoding = Utils.GuessEncoding(span, out int preambleLength);
+        CarriageReturn = false;
         
-        if (_sourceBuffer.AsSpan().StartsWith(preamble))
-        {
-            preambleLength = preamble.Length;
-        }
-
+        logger?.ZLogInformation($"Start parse ass");
+ 
         var lineNumber = 0;
         var sectionType = AssSection.None;
-        var span = _sourceBuffer.AsSpan(preambleLength); // Skip BOM
-
-        int offset = preambleLength;
-        span = _sourceBuffer.AsSpan();
-        offset = preambleLength;
-
-        logger?.ZLogInformation($"File use {CharEncoding.EncodingName} and {(CarriageReturn ? "CRLF" : "LF")}");
-        logger?.ZLogInformation($"Start parse ass");
+        var offset = preambleLength;
 
         while (offset < span.Length)
         {
@@ -98,6 +86,11 @@ public sealed class AssData(ILogger? logger = null, AssParseTarget target = AssP
                     if (nextLineLength > 0 && span[i - 1] == (byte)'\r')
                     {
                         nextLineLength--; // Exclude \r
+                        if (!_getFirstCarriageReturn)
+                        {
+                            CarriageReturn = true;
+                            _getFirstCarriageReturn = true;
+                        }
                     }
                     foundLine = true;
                     break;
