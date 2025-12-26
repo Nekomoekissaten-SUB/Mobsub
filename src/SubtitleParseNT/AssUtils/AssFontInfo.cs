@@ -29,7 +29,7 @@ public record struct AssFontInfo : IEquatable<AssFontInfo>
         Encoding = int.Parse(span);
     }
 
-    public AssFontInfo(AssStyleView syl)
+    public AssFontInfo(AssStyle syl)
     {
         NameBytes = syl.FontnameSpan.ToArray();
         Weight = syl.Bold ? 1 : 0;

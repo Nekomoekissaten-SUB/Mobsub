@@ -1,6 +1,6 @@
-﻿using Mobsub.SubtitleParseNT2.AssTypes;
-using System.Buffers;
+﻿using System.Buffers;
 using System.Text;
+using Mobsub.SubtitleParseNT2.AssTypes;
 
 namespace Mobsub.SubtitleParseNT2.AssUtils;
 
@@ -20,7 +20,7 @@ public sealed class AssFontProcessor(byte wrapStyle, AssStyles styles) : IAssTag
 
     public void InitForLine(ReadOnlySpan<byte> styleName)
     {
-        baseInfo = new AssFontInfo(styles.GetAssStyleViewByEventStyle(styleName));
+        baseInfo = new AssFontInfo(styles.GetAssStyleByEventStyle(styleName));
         current = baseInfo;
     }
     public void InitForLine(AssFontInfo info)
@@ -55,7 +55,7 @@ public sealed class AssFontProcessor(byte wrapStyle, AssStyles styles) : IAssTag
             case AssTag.Reset:
                 if (tag.TryGet<ReadOnlyMemory<byte>>(out var r) && r.Length > 0)
                 {
-                    current = new AssFontInfo(styles.GetAssStyleViewByName(r.Span));
+                    current = new AssFontInfo(styles.GetAssStyleByName(r.Span));
                 }
                 else
                 {
@@ -117,7 +117,7 @@ public sealed class AssFontProcessor(byte wrapStyle, AssStyles styles) : IAssTag
         }
     }
 
-    public void Process(AssEventView ev) => GetUsedFontInfos(ev);
+    public void Process(AssEvent ev) => GetUsedFontInfos(ev);
     public object? GetResults() => Results;
     public IReadOnlyDictionary<AssFontInfo, IReadOnlyDictionary<Rune, IReadOnlyList<int>>> GetResultsWithLineNumbers() => maps.ToDictionary(
         outerKvp => outerKvp.Key,
@@ -138,14 +138,14 @@ public sealed class AssFontProcessor(byte wrapStyle, AssStyles styles) : IAssTag
 
     public void GetUsedFontInfos(AssEvents events)
     {
-        FirstEventLineNumber = events.Collection.FirstOrDefault()?.GetView().LineNumber ?? -1;
+        FirstEventLineNumber = events.Collection.FirstOrDefault().LineNumber;
         foreach (var evt in events.Collection)
         {
-            GetUsedFontInfos(evt.GetView());
+            GetUsedFontInfos(evt);
         }
     }
 
-    public void GetUsedFontInfos(AssEventView view)
+    public void GetUsedFontInfos(AssEvent view)
     {
         if (!view.IsDialogue) return;
         InitForLine(view.StyleSpan);

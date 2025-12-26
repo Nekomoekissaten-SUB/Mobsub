@@ -1,7 +1,6 @@
-﻿using Cysharp.IO;
+﻿using System.Text;
 using Microsoft.Extensions.Logging;
 using Mobsub.SubtitleParseNT2.AssUtils;
-using System.Text;
 using ZLogger;
 
 namespace Mobsub.SubtitleParseNT2.AssTypes;
@@ -17,7 +16,7 @@ public sealed class AssData(ILogger? logger = null, AssParseTarget target = AssP
     public AssEvents? Events { get; set; }
 
     public IAssTagProcessor? Processor { get; private set; }
-    internal Action<AssEventView>? EventViewAction { get; private set; }
+    internal Action<AssEvent>? EventViewAction { get; private set; }
     private bool eventInit = false;
     private void InitEvents()
     {
@@ -35,28 +34,95 @@ public sealed class AssData(ILogger? logger = null, AssParseTarget target = AssP
                 break;
         }
 
-        Events = new(logger) { OnEventView = EventViewAction };
+        Events = new(logger) { OnEventParsed = EventViewAction };
         eventInit = true;
     }
 
+    private byte[]? _sourceBuffer;
+
     public async Task<AssData> ReadAssFileAsync(Stream fs)
     {
-        using var sr = new Utf8StreamReader(fs);
-        var lineNumber = 0;
-        var sectionType = AssSection.None;
         Utils.GuessEncoding(fs, out CharEncoding, out CarriageReturn);
         logger?.ZLogInformation($"File use {CharEncoding.EncodingName} and {(CarriageReturn ? "CRLF" : "LF")}");
         logger?.ZLogInformation($"Start parse ass");
 
-        ReadOnlyMemory<byte>? line;
-        while ((line = await sr.ReadLineAsync()) != null)
+        if (fs is MemoryStream ms && ms.TryGetBuffer(out ArraySegment<byte> segment))
         {
-            lineNumber++;
-            if (lineNumber == 1 && !((ReadOnlyMemory<byte>)line).Span.SequenceEqual("[Script Info]"u8))
+            _sourceBuffer = new byte[segment.Count];
+            Buffer.BlockCopy(segment.Array!, segment.Offset, _sourceBuffer, 0, segment.Count);
+        }
+        else
+        {
+            using var memoryStream = new MemoryStream();
+            await fs.CopyToAsync(memoryStream);
+            _sourceBuffer = memoryStream.ToArray();
+        }
+
+        var preamble = CharEncoding.GetPreamble();
+        int preambleLength = 0;
+        
+        if (_sourceBuffer.AsSpan().StartsWith(preamble))
+        {
+            preambleLength = preamble.Length;
+        }
+
+        var lineNumber = 0;
+        var sectionType = AssSection.None;
+        var span = _sourceBuffer.AsSpan(preambleLength); // Skip BOM
+
+        int offset = preambleLength;
+        span = _sourceBuffer.AsSpan();
+        offset = preambleLength;
+
+        logger?.ZLogInformation($"File use {CharEncoding.EncodingName} and {(CarriageReturn ? "CRLF" : "LF")}");
+        logger?.ZLogInformation($"Start parse ass");
+
+        while (offset < span.Length)
+        {
+            // Find next line break
+            int nextLineLength = 0;
+            int nextOffset = offset;
+            bool foundLine = false;
+
+            // Simple search for \n or \r\n
+            // Optimized search could use SIMD (IndexOfAny), but loop is sufficient for text
+            int i = offset;
+            while (i < span.Length)
             {
-                throw new Exception("Please check first line");
+                if (span[i] == (byte)'\n')
+                {
+                    nextLineLength = i - offset; // Exclude \n
+                    nextOffset = i + 1;
+                    
+                    // Handle \r\n (if prev char was \r)
+                    if (nextLineLength > 0 && span[i - 1] == (byte)'\r')
+                    {
+                        nextLineLength--; // Exclude \r
+                    }
+                    foundLine = true;
+                    break;
+                }
+                i++;
             }
-            ParseContent((ReadOnlyMemory<byte>)line, lineNumber, ref sectionType);
+
+            if (!foundLine)
+            {
+                // End of file without newline
+                nextLineLength = span.Length - offset;
+                nextOffset = span.Length;
+            }
+
+            lineNumber++;
+            var lineSlice = new ReadOnlyMemory<byte>(_sourceBuffer, offset, nextLineLength);
+            
+            if (lineNumber == 1 && !lineSlice.Span.SequenceEqual("[Script Info]"u8))
+            {
+                 throw new Exception("Please check first line");
+            }
+            
+            ParseContent(lineSlice, lineNumber, ref sectionType);
+            
+            offset = nextOffset;
         }
 
         logger?.ZLogInformation($"Ass parsing completed");

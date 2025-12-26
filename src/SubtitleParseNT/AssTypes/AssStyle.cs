@@ -1,17 +1,16 @@
-﻿using Microsoft.Extensions.Logging;
+using System.Buffers;
 using System.Text;
-using ZLogger;
+using Mobsub.SubtitleParseNT2.AssUtils;
 
 namespace Mobsub.SubtitleParseNT2.AssTypes;
 
-public sealed class AssStyleView : IAssStyleData
+public struct AssStyle
 {
-    internal readonly ILogger? logger;
-    public readonly ReadOnlyMemory<byte> LineRaw;
-    public readonly bool IsCommentLine = false;
+    public ReadOnlyMemory<byte> LineRaw { get; set; }
+    public bool IsCommentLine { get; set; } = false;
 
-    public Range NameReadOnly { get; private set; }
-    public Range FontnameReadOnly { get; private set; }
+    public Range NameReadOnly { get; set; }
+    public Range FontnameReadOnly { get; set; }
     public double Fontsize { get; set; }
     public AssRGB8 PrimaryColour { get; set; }
     public AssRGB8 SecondaryColour { get; set; }
@@ -38,19 +37,61 @@ public sealed class AssStyleView : IAssStyleData
     public int AlphaLevel { get; set; }
     public int RelativeTo { get; set; }
 
-    public string Name => Utils.GetString(LineRaw, NameReadOnly);
-    public string Fontname => Utils.GetString(LineRaw, FontnameReadOnly);
+    private string? _name;
+    private string? _fontname;
+
+    public string Name
+    {
+        get => _name ?? Utils.GetString(LineRaw, NameReadOnly);
+        set => _name = value;
+    }
+    public string Fontname
+    {
+        get => _fontname ?? Utils.GetString(LineRaw, FontnameReadOnly);
+        set => _fontname = value;
+    }
 
     public ReadOnlySpan<byte> NameSpan => LineRaw.Span[NameReadOnly];
     public ReadOnlySpan<byte> FontnameSpan => LineRaw.Span[FontnameReadOnly];
 
-    public AssStyleView(ReadOnlyMemory<byte> line, ReadOnlySpan<byte> header, string[] formats, ILogger? logger = null)
+    public AssStyle(ReadOnlyMemory<byte> line, ReadOnlySpan<byte> header, string[] formats)
     {
-        this.logger = logger;
         var sepIndex = header.Length;
         var sp = line.Span;
-        
-        LineRaw = line.ToArray();
+
+        LineRaw = line;
+
+        // Initialize other fields to default
+        NameReadOnly = default;
+        FontnameReadOnly = default;
+        Fontsize = 0;
+        PrimaryColour = default;
+        SecondaryColour = default;
+        OutlineColour = default;
+        BackColour = default;
+        Bold = false;
+        Italic = false;
+        Underline = false;
+        StrikeOut = false;
+        ScaleX = 100;
+        ScaleY = 100;
+        Spacing = 0;
+        Angle = 0;
+        BorderStyle = 1;
+        Outline = 0;
+        Shadow = 0;
+        Alignment = 2;
+        MarginL = 0;
+        MarginR = 0;
+        MarginV = 0;
+        MarginT = 0;
+        MarginB = 0;
+        Encoding = 0;
+        AlphaLevel = 0;
+        RelativeTo = 0;
+
+        _name = null;
+        _fontname = null;
 
         if (header.SequenceEqual("/"u8))
         {
@@ -105,5 +146,10 @@ public sealed class AssStyleView : IAssStyleData
 
             segCount++;
         }
+    }
+
+    public void Write(TextWriter writer, string[] formats)
+    {
+        Helper.Write(writer, this, formats);
     }
 }

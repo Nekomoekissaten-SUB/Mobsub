@@ -6,6 +6,6 @@ public interface IAssTagProcessor
 {
     void OnTag(AssTagSpan tag, AssTagDescriptor desc);
     void OnText(ReadOnlySpan<byte> text);
-    void Process(AssEventView ev);
+    void Process(AssEvent ev);
     object? GetResults();
 }

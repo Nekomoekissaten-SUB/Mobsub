@@ -1,5 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
-using System.Text;
+﻿using System.Text;
+using Microsoft.Extensions.Logging;
 using ZLogger;
 
 namespace Mobsub.SubtitleParseNT2.AssTypes;
@@ -12,17 +12,17 @@ public class AssEvents(ILogger? logger = null)
         get => formats ?? [.. AssConstants.EventFormatV4P.Split(',').Select(s => s.Trim())];
         set => formats = value;
     }
-    public List<AssEventHandle> Collection = [];
+    public List<AssEvent> Collection = [];
 
-    public Action<AssEventView>? OnEventView { get; set; }
+    public Action<AssEvent>? OnEventParsed { get; set; }
 
     public void Read(ReadOnlyMemory<byte> line, ReadOnlySpan<byte> scriptType, int lineNumber)
     {
         var sp = line.Span;
         if (sp[0] == ';')
         {
-            var view = new AssEventView(line, lineNumber, ";"u8, Formats, logger);
-            Dispatch(view);
+            var evt = new AssEvent(line, lineNumber, ";"u8, Formats);
+            Dispatch(evt);
             return;
         }
 
@@ -39,15 +39,15 @@ public class AssEvents(ILogger? logger = null)
         }
         else
         {
-            var view = new AssEventView(line, lineNumber, sp[..sepIndex], Formats, logger);
-            Dispatch(view);
+            var evt = new AssEvent(line, lineNumber, sp[..sepIndex], Formats);
+            Dispatch(evt);
         }
     }
 
-    private void Dispatch(AssEventView view)
+    private void Dispatch(AssEvent evt)
     {
-        Collection.Add(new AssEventHandle(view));
-        OnEventView?.Invoke(view);
+        Collection.Add(evt);
+        OnEventParsed?.Invoke(evt);
     }
 
     private static string[] ParseFormatLine(ReadOnlySpan<byte> line)
@@ -58,14 +58,27 @@ public class AssEvents(ILogger? logger = null)
         {
             int comma = line.Slice(start).IndexOf((byte)',');
             if (comma == -1) comma = line.Length - start;
-            
+
             var segment = Utils.TrimSpaces(line.Slice(start, comma));
             if (!segment.IsEmpty)
                 results.Add(Encoding.UTF8.GetString(segment.ToArray()));
-            
+
             start += comma + 1;
         }
         return [.. results];
+    }
+
+    public void Write(StreamWriter sw, char[] newline)
+    {
+        sw.Write(AssConstants.SectionEvent);
+        sw.Write(newline);
+        sw.Write($"Format: {string.Join(", ", Formats)}");
+        sw.Write(newline);
+        foreach (var evt in Collection)
+        {
+            Helper.Write(sw, evt, Formats, true);
+            sw.Write(newline);
+        }
     }
 
 }

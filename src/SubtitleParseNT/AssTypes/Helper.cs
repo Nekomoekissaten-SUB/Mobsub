@@ -2,7 +2,7 @@
 
 public static class Helper
 {
-    public static void Write(TextWriter writer, IAssStyleData style, string[] formats)
+    public static void Write(TextWriter writer, AssStyle style, string[] formats)
     {
         writer.Write("Style: ");
         for (int i = 0; i < formats.Length; i++)
@@ -88,8 +88,7 @@ public static class Helper
                 writer.Write(',');
         }
     }
-
-    public static void Write(TextWriter writer, IAssEventData evt, string[] fmts, bool ctsRounding)
+    public static void Write(TextWriter writer, AssEvent evt, string[] fmts, bool ctsRounding)
     {
         writer.Write(evt.IsDialogue ? "Dialogue: " : "Comment: ");
 

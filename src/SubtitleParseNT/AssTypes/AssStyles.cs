@@ -1,7 +1,7 @@
-﻿using Microsoft.Extensions.Logging;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using Microsoft.Extensions.Logging;
 using ZLogger;
 
 namespace Mobsub.SubtitleParseNT2.AssTypes;
@@ -14,28 +14,29 @@ public class AssStyles(ILogger? logger = null)
         get => formats ?? [.. AssConstants.StyleFormatV4P.Split(',').Select(s => s.Trim())];
         set => formats = value;
     }
-    public List<AssStyleHandle> Collection = [];
+    public List<AssStyle> Collection = [];
+    public HashSet<string> Names = [];
 
     // Rebuild on every access to guarantee consistency even if external code mutates Collection.
-    private Dictionary<byte[], AssStyleView>? _styleViewDict;
-    public Dictionary<byte[], AssStyleView>.AlternateLookup<ReadOnlySpan<byte>> StyleViewMap
+    private Dictionary<byte[], AssStyle>? _styleDict;
+    public Dictionary<byte[], AssStyle>.AlternateLookup<ReadOnlySpan<byte>> StyleMap
     {
         get
         {
-            _styleViewDict = BuildStyleViewDictionary();
-            return _styleViewDict.GetAlternateLookup<ReadOnlySpan<byte>>();
+            _styleDict = BuildStyleDictionary();
+            return _styleDict.GetAlternateLookup<ReadOnlySpan<byte>>();
         }
     }
-    private AssStyleView? _defaultView;
-    public AssStyleView DefaultStyleView => _defaultView ??= new(AssConstants.StyleDefaultV4P, "Style"u8, Formats, logger);
+    private AssStyle? _defaultStyle;
+    public AssStyle DefaultStyle => _defaultStyle ??= new(AssConstants.StyleDefaultV4P, "Style"u8, Formats);
 
     public void Read(ReadOnlyMemory<byte> line, int lineNumber)
     {
         var sp = line.Span;
         if (sp[0] == '/')
         {
-            var view = new AssStyleView(line, "/"u8, Formats, logger);
-            Collection.Add(new AssStyleHandle(view));
+            var style = new AssStyle(line, "/"u8, Formats);
+            Collection.Add(style);
             return;
         }
 
@@ -48,27 +49,27 @@ public class AssStyles(ILogger? logger = null)
         }
         else
         {
-            var view = new AssStyleView(line, sp[..sepIndex], Formats, logger);
-            Collection.Add(new AssStyleHandle(view));
+            var style = new AssStyle(line, sp[..sepIndex], Formats);
+            Names.Add(style.Name);
+            Collection.Add(style);
         }
     }
 
-    private Dictionary<byte[], AssStyleView> BuildStyleViewDictionary()
+    private Dictionary<byte[], AssStyle> BuildStyleDictionary()
     {
-        var dict = new Dictionary<byte[], AssStyleView>(Utf8StringEqualityComparer.Default);
+        var dict = new Dictionary<byte[], AssStyle>(Utf8StringEqualityComparer.Default);
         foreach (var s in Collection)
         {
-            var view = s.GetView();
-            var nameSpan = view.NameSpan;
+            var nameSpan = s.NameSpan;
             // https://sourceforge.net/p/guliverkli2/code/HEAD/tree/src/subtitles/STS.cpp#l1447
             if (!nameSpan.IsEmpty && nameSpan[0] == (byte)'*')
                 nameSpan = nameSpan[1..];
-            dict[nameSpan.ToArray()] = view;
+            dict[nameSpan.ToArray()] = s;
         }
         return dict;
     }
 
-    public bool TryGetAssStyleViewByEventStyle(ReadOnlySpan<byte> styleName, out ReadOnlySpan<byte> queryName, out AssStyleView? view)
+    public bool TryGetAssStyleByEventStyle(ReadOnlySpan<byte> styleName, out ReadOnlySpan<byte> queryName, out AssStyle view)
     {
         // https://sourceforge.net/p/guliverkli2/code/HEAD/tree/src/subtitles/STS.cpp#l1490
         while (!styleName.IsEmpty && styleName[0] == (byte)'*')
@@ -103,47 +104,60 @@ public class AssStyles(ILogger? logger = null)
         }
 
         queryName = styleName;
-        return TryGetAssStyleViewByName(queryName, out view);
+        return TryGetAssStyleByName(queryName, out view);
     }
-    public bool TryGetAssStyleViewByName(ReadOnlySpan<byte> styleName, out AssStyleView? view)
+    public bool TryGetAssStyleByName(ReadOnlySpan<byte> styleName, out AssStyle view)
     {
         // https://sourceforge.net/p/guliverkli2/code/HEAD/tree/src/subtitles/RTS.cpp#l1857
-        if (StyleViewMap.TryGetValue(styleName, out view))
+        if (StyleMap.TryGetValue(styleName, out view))
         {
             return true;
         }
 
-        if (StyleViewMap.TryGetValue("Default"u8, out view))
+        if (StyleMap.TryGetValue("Default"u8, out view))
         {
             return false;
         }
+        view = default;
         return false;
     }
-    public AssStyleView GetAssStyleViewByEventStyle(ReadOnlySpan<byte> styleName)
+    public AssStyle GetAssStyleByEventStyle(ReadOnlySpan<byte> styleName)
     {
-        var result = TryGetAssStyleViewByEventStyle(styleName, out _, out var view);
-        return TryGetAssStyleViewProcessResult(result, view, styleName);
+        var result = TryGetAssStyleByEventStyle(styleName, out _, out var view);
+        return TryGetAssStyleProcessResult(result, view, styleName);
     }
-    public AssStyleView GetAssStyleViewByName(ReadOnlySpan<byte> styleName)
+    public AssStyle GetAssStyleByName(ReadOnlySpan<byte> styleName)
     {
-        var result = TryGetAssStyleViewByName(styleName, out var view);
-        return TryGetAssStyleViewProcessResult(result, view, styleName);
+        var result = TryGetAssStyleByName(styleName, out var view);
+        return TryGetAssStyleProcessResult(result, view, styleName);
     }
-    private AssStyleView TryGetAssStyleViewProcessResult(bool notFallback, AssStyleView? view, ReadOnlySpan<byte> styleName)
+    private AssStyle TryGetAssStyleProcessResult(bool notFallback, AssStyle view, ReadOnlySpan<byte> styleName)
     {
         if (notFallback)
         {
-            return view!;
+            return view;
         }
         logger?.ZLogWarning($"Events: Style '{Utils.GetString(styleName)}' not found, will fallback to 'Default' style.");
-        if (view is null)
+        
+        if (view.LineRaw.Length > 0) // crude check for valid struct
         {
-            logger?.ZLogWarning($"Events: 'Default' style also not found, will generate a 'Default' style.");
-            return DefaultStyleView;
+             return view;
         }
-        else
+
+        logger?.ZLogWarning($"Events: 'Default' style also not found, will generate a 'Default' style.");
+        return DefaultStyle;
+    }
+
+    public void Write(StreamWriter sw, char[] newline)
+    {
+        sw.Write(AssConstants.SectionStyleV4P);
+        sw.Write(newline);
+        sw.Write($"Format: {string.Join(", ", Formats)}");
+        sw.Write(newline);
+        foreach (var style in Collection)
         {
-            return view;
+            style.Write(sw, Formats);
+            sw.Write(newline);
         }
     }
 

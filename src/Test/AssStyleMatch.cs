@@ -9,19 +9,19 @@ public class ParseAssStyleMatch
     [TestMethod]
     public void BuildStyleDict()
     {
-        var dict = styles.StyleViewMap.Dictionary;
+        var dict = styles.StyleMap.Dictionary;
         
         dict.Keys.Count.Should().Be(3);
         dict["test"u8.ToArray()].FontnameSpan.SequenceEqual("HYXuanSong 85S"u8).Should().BeTrue();
     }
 
     [TestMethod]
-    public void EventStyleMatch_Default() => styles.GetAssStyleViewByEventStyle("Default"u8).NameSpan.SequenceEqual("*Default"u8).Should().BeTrue();
+    public void EventStyleMatch_Default() => styles.GetAssStyleByEventStyle("Default"u8).NameSpan.SequenceEqual("*Default"u8).Should().BeTrue();
 
     [TestMethod]
     public void EventStyleMatch_StarTest()
     {
-        var matched = styles.TryGetAssStyleViewByEventStyle("****test"u8, out var query, out var view);
+        var matched = styles.TryGetAssStyleByEventStyle("****test"u8, out var query, out var view);
         matched.Should().BeTrue();
         query.SequenceEqual("test"u8).Should().BeTrue();
         view!.NameSpan.SequenceEqual("*test"u8).Should().BeTrue();
@@ -30,7 +30,7 @@ public class ParseAssStyleMatch
     [TestMethod]
     public void EventStyleMatch_StarDefault()
     {
-        var matched = styles.TryGetAssStyleViewByEventStyle("*Default"u8, out var query, out var view);
+        var matched = styles.TryGetAssStyleByEventStyle("*Default"u8, out var query, out var view);
         matched.Should().BeTrue();
         query.SequenceEqual("Default"u8).Should().BeTrue();
         view!.NameSpan.SequenceEqual("*Default"u8).Should().BeTrue();
@@ -39,7 +39,7 @@ public class ParseAssStyleMatch
     [TestMethod]
     public void EventStyleMatch_StarDefault_DefaultStyleTwice()
     {
-        var matched = stylesDefaultTwice.TryGetAssStyleViewByEventStyle("*Default"u8, out var query, out var view);
+        var matched = stylesDefaultTwice.TryGetAssStyleByEventStyle("*Default"u8, out var query, out var view);
         matched.Should().BeTrue();
         query.SequenceEqual("Default"u8).Should().BeTrue();
         view!.NameSpan.SequenceEqual("Default"u8).Should().BeTrue();
@@ -48,7 +48,7 @@ public class ParseAssStyleMatch
     [TestMethod]
     public void EventStyleMatch_default()
     {
-        var matched = styles.TryGetAssStyleViewByEventStyle("default"u8, out var query, out var view);
+        var matched = styles.TryGetAssStyleByEventStyle("default"u8, out var query, out var view);
         matched.Should().BeTrue();
         query.SequenceEqual("Default"u8).Should().BeTrue();
         view!.NameSpan.SequenceEqual("*Default"u8).Should().BeTrue();
@@ -57,10 +57,10 @@ public class ParseAssStyleMatch
     [TestMethod]
     public void EventStyleMatch_default_WithoutDefaultStyle()
     {
-        var matched = stylesWithoutDefault.TryGetAssStyleViewByEventStyle("default"u8, out var query, out var view);
+        var matched = stylesWithoutDefault.TryGetAssStyleByEventStyle("default"u8, out var query, out var view);
         matched.Should().BeFalse();
         query.SequenceEqual("Default"u8).Should().BeTrue();
-        view.Should().BeNull();
+        view.LineRaw.IsEmpty.Should().BeTrue(); // Struct can't be null
     }
 
     private readonly AssStyles styles = BuildAssStyles("""
@@ -84,7 +84,6 @@ Style: *test,HYXuanSong 85S,56,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0,0
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 Dialogue: 0,0:00:00.00,0:00:05.00,Default,,0,0,0,,12{\rdefault}2
 """u8);
-
     private readonly AssStyles stylesWithoutDefault = BuildAssStyles("""
 [Script Info]
 Title: Default Aegisub file
@@ -127,7 +126,6 @@ Style: *test,HYXuanSong 85S,56,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0,0
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 Dialogue: 0,0:00:00.00,0:00:05.00,Default,,0,0,0,,12{\rdefault}2
 """u8);
-
 
     private static AssStyles BuildAssStyles(ReadOnlySpan<byte> text)
     {
