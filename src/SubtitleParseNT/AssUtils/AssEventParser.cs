@@ -87,47 +87,6 @@ public static class AssEventParser
     {
         var buffer = ParseLineToPool(line, lineMemory, out int count, pooledTags: false);
 
-        int i = 0;
-        int runStart = 0;
-
-        while (i < line.Length)
-        {
-            if (line[i] == (byte)'{')
-            {
-                var searchSpan = line[(i + 1)..];
-                int k = searchSpan.IndexOfAny((byte)'}', (byte)'{');
-
-                if (k != -1 && searchSpan[k] == (byte)'}')
-                {
-                    int j = i + 1 + k;
-
-                    if (i > runStart)
-                    {
-                        ParseTextSegment(line[runStart..i], runStart, ref buffer, ref count);
-                    }
-
-                    var block = line.Slice(i + 1, j - i - 1);
-                    var tags = ParseTagBlock(block, i + 1, lineMemory);
-
-                    AddSegment(ref buffer, ref count,  new AssEventSegment(new Range(i, j + 1), AssEventSegmentKind.TagBlock, tags));
-
-                    i = j + 1;
-                    runStart = i;
-                }
-                else
-                {
-                    // not found '}' or found another '{' first
-                    i++;
-                }
-            }
-            else i++;
-        }
-
-        if (i > runStart)
-        {
-            ParseTextSegment(line[runStart..i], runStart, ref buffer, ref count);
-        }
-
         var result = new AssEventSegment[count];
         Array.Copy(buffer, result, count);
         ArrayPool<AssEventSegment>.Shared.Return(buffer, clearArray: true);
