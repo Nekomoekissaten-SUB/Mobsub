@@ -8,17 +8,46 @@ namespace Mobsub.SubtitleParseNT2.AssUtils;
 
 public static class AssEventParser
 {
+    public struct AssEventSegmentBuffer : IDisposable
+    {
+        private AssEventSegment[]? _buffer;
+        private int _count;
+
+        internal AssEventSegmentBuffer(AssEventSegment[] buffer, int count)
+        {
+            _buffer = buffer;
+            _count = count;
+        }
+
+        public int Count => _count;
+        public ReadOnlySpan<AssEventSegment> Span => _buffer == null ? ReadOnlySpan<AssEventSegment>.Empty : _buffer.AsSpan(0, _count);
+
+        public void Dispose()
+        {
+            if (_buffer == null)
+                return;
+
+            ArrayPool<AssEventSegment>.Shared.Return(_buffer, clearArray: true);
+            _buffer = null;
+            _count = 0;
+        }
+    }
+
     public static ReadOnlyMemory<AssEventSegment> ParseLine(ReadOnlyMemory<byte> line)
         => ParseLineInternal(line.Span, line);
 
     public static ReadOnlyMemory<AssEventSegment> ParseLine(ReadOnlySpan<byte> line)
         => ParseLineInternal(line, default);
 
+    public static AssEventSegmentBuffer ParseLinePooled(ReadOnlyMemory<byte> line)
+        => ParseLineInternalPooled(line.Span, line);
+
+    public static AssEventSegmentBuffer ParseLinePooled(ReadOnlySpan<byte> line)
+        => ParseLineInternalPooled(line, default);
+
     private static ReadOnlyMemory<AssEventSegment> ParseLineInternal(ReadOnlySpan<byte> line, ReadOnlyMemory<byte> lineMemory)
     {
-        var pool = ArrayPool<AssEventSegment>.Shared;
-        var buffer = pool.Rent(32);
-        int count = 0;
+        var buffer = ParseLineToPool(line, lineMemory, out int count);
 
         int i = 0;
         int runStart = 0;
@@ -63,9 +92,65 @@ public static class AssEventParser
 
         var result = new AssEventSegment[count];
         Array.Copy(buffer, result, count);
-        pool.Return(buffer, clearArray: true);
+        ArrayPool<AssEventSegment>.Shared.Return(buffer, clearArray: true);
 
         return result;
+    }
+
+    private static AssEventSegmentBuffer ParseLineInternalPooled(ReadOnlySpan<byte> line, ReadOnlyMemory<byte> lineMemory)
+    {
+        var buffer = ParseLineToPool(line, lineMemory, out int count);
+        return new AssEventSegmentBuffer(buffer, count);
+    }
+
+    private static AssEventSegment[] ParseLineToPool(ReadOnlySpan<byte> line, ReadOnlyMemory<byte> lineMemory, out int count)
+    {
+        var pool = ArrayPool<AssEventSegment>.Shared;
+        var buffer = pool.Rent(32);
+        count = 0;
+
+        int i = 0;
+        int runStart = 0;
+
+        while (i < line.Length)
+        {
+            if (line[i] == (byte)'{')
+            {
+                var searchSpan = line[(i + 1)..];
+                int k = searchSpan.IndexOfAny((byte)'}', (byte)'{');
+
+                if (k != -1 && searchSpan[k] == (byte)'}')
+                {
+                    int j = i + 1 + k;
+
+                    if (i > runStart)
+                    {
+                        ParseTextSegment(line[runStart..i], runStart, ref buffer, ref count);
+                    }
+
+                    var block = line.Slice(i + 1, j - i - 1);
+                    var tags = ParseTagBlock(block, i + 1, lineMemory);
+
+                    AddSegment(ref buffer, ref count, new AssEventSegment(new Range(i, j + 1), AssEventSegmentKind.TagBlock, tags));
+
+                    i = j + 1;
+                    runStart = i;
+                }
+                else
+                {
+                    // not found '}' or found another '{' first
+                    i++;
+                }
+            }
+            else i++;
+        }
+
+        if (i > runStart)
+        {
+            ParseTextSegment(line[runStart..i], runStart, ref buffer, ref count);
+        }
+
+        return buffer;
     }
 
     private static void ParseTextSegment(ReadOnlySpan<byte> text, int baseIndex, ref AssEventSegment[] buffer, ref int count)
