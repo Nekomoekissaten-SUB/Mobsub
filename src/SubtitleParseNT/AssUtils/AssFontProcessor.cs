@@ -159,11 +159,14 @@ public sealed class AssFontProcessor(byte wrapStyle, AssStyles styles) : IAssTag
     {
         // Prefer the ReadOnlyMemory overload when we have backing memory so byte/function tag payloads
         // can be kept as slices (avoids per-tag param allocations).
-        using var segsPooled = lineMemory.IsEmpty
-            ? AssEventParser.ParseLinePooled(lineSpan)
-            : AssEventParser.ParseLinePooled(lineMemory);
-        var segs = segsPooled.Span;
+        if (lineMemory.IsEmpty)
+            AssEventParser.WithParsedSegments(lineSpan, ProcessSegments);
+        else
+            AssEventParser.WithParsedSegments(lineMemory, ProcessSegments);
+    }
 
+    private void ProcessSegments(ReadOnlySpan<AssEventSegment> segs, ReadOnlySpan<byte> lineSpan)
+    {
         var wrapStyleCurrent = AssEventParser.GetWrapStyle(segs, wrapStyle);
         if (AssEventParser.HasPolygon(segs)) return;
 

@@ -9,6 +9,8 @@ namespace Mobsub.SubtitleParseNT2.AssUtils;
 
 public static class AssEventParser
 {
+    public delegate void AssEventSegmentSpanAction(ReadOnlySpan<AssEventSegment> segments, ReadOnlySpan<byte> line);
+
     public struct AssEventSegmentBuffer : IDisposable
     {
         private AssEventSegment[]? _buffer;
@@ -67,6 +69,18 @@ public static class AssEventParser
     {
         using var buffer = ParseLinePooled(line);
         action(buffer.Span);
+    }
+
+    public static void WithParsedSegments(ReadOnlyMemory<byte> line, AssEventSegmentSpanAction action)
+    {
+        using var buffer = ParseLinePooled(line);
+        action(buffer.Span, line.Span);
+    }
+
+    public static void WithParsedSegments(ReadOnlySpan<byte> line, AssEventSegmentSpanAction action)
+    {
+        using var buffer = ParseLinePooled(line);
+        action(buffer.Span, line);
     }
 
     private static ReadOnlyMemory<AssEventSegment> ParseLineInternal(ReadOnlySpan<byte> line, ReadOnlyMemory<byte> lineMemory)
@@ -319,7 +333,7 @@ public static class AssEventParser
                     paramMemory = lineMemory.Slice(absoluteStart + paramStart, paramLength);
                 }
 
-                var value = ParseValue(desc, paramBytes, paramMemory);
+                var value = ParseValue(tagEnum, desc, paramBytes, paramMemory);
                 AddTag(ref buffer, ref count, new AssTagSpan(tagEnum, new Range(absoluteStart + tagStart, absoluteStart + i), value));
             }
             else
@@ -385,13 +399,16 @@ public static class AssEventParser
         buffer[count++] = seg;
     }
 
-    private static AssTagValue ParseValue(AssTagDescriptor desc, ReadOnlySpan<byte> param, ReadOnlyMemory<byte> paramMemory)
+    private static AssTagValue ParseValue(AssTag tag, AssTagDescriptor desc, ReadOnlySpan<byte> param, ReadOnlyMemory<byte> paramMemory)
     {
         Utils.TrimSpaces(param, out int start, out int length);
         if (length == 0) return AssTagValue.Empty;
 
         var trimmedSpan = param.Slice(start, length);
         var trimmedMemory = paramMemory.IsEmpty ? default : paramMemory.Slice(start, length);
+
+        if (TryParseFunctionTag(tag, trimmedSpan, trimmedMemory, out var funcValue))
+            return AssTagValue.FromFunction(funcValue);
 
         if (desc.ValueType == typeof(int) && Utf8Parser.TryParse(trimmedSpan, out int iv, out _)) return AssTagValue.FromInt(iv);
         if (desc.ValueType == typeof(double) && Utf8Parser.TryParse(trimmedSpan, out double dv, out _)) return AssTagValue.FromDouble(dv);
@@ -416,6 +433,131 @@ public static class AssEventParser
             return AssTagValue.FromBytes(trimmedMemory.IsEmpty ? trimmedSpan.ToArray() : trimmedMemory);
         }
         return AssTagValue.Empty;
+    }
+
+    private static bool TryParseFunctionTag(AssTag tag, ReadOnlySpan<byte> param, ReadOnlyMemory<byte> paramMemory, out AssTagFunctionValue value)
+    {
+        value = default;
+        switch (tag)
+        {
+            case AssTag.Position:
+                if (AssFunctionTagParsers.TryParsePos(param, out var x, out var y))
+                {
+                    value = new AssTagFunctionValue { Kind = AssTagFunctionKind.Pos, X1 = x, Y1 = y };
+                    return true;
+                }
+                return false;
+            case AssTag.OriginRotation:
+                if (AssFunctionTagParsers.TryParseOrg(param, out var ox, out var oy))
+                {
+                    value = new AssTagFunctionValue { Kind = AssTagFunctionKind.Org, X1 = ox, Y1 = oy };
+                    return true;
+                }
+                return false;
+            case AssTag.Movement:
+                if (AssFunctionTagParsers.TryParseMove(param, out var x1, out var y1, out var x2, out var y2, out var t1, out var t2, out var hasTimes))
+                {
+                    value = new AssTagFunctionValue
+                    {
+                        Kind = AssTagFunctionKind.Move,
+                        X1 = x1,
+                        Y1 = y1,
+                        X2 = x2,
+                        Y2 = y2,
+                        T1 = t1,
+                        T2 = t2,
+                        HasTimes = hasTimes
+                    };
+                    return true;
+                }
+                return false;
+            case AssTag.Fade:
+                if (AssFunctionTagParsers.TryParseFade(param, out var a1, out var a2, out var a3, out var ft1, out var ft2, out var ft3, out var ft4))
+                {
+                    value = new AssTagFunctionValue
+                    {
+                        Kind = AssTagFunctionKind.Fade,
+                        A1 = a1,
+                        A2 = a2,
+                        A3 = a3,
+                        T1 = ft1,
+                        T2 = ft2,
+                        T3 = ft3,
+                        T4 = ft4
+                    };
+                    return true;
+                }
+                return false;
+            case AssTag.Fad:
+                if (AssFunctionTagParsers.TryParseFad(param, out var fadT1, out var fadT2))
+                {
+                    value = new AssTagFunctionValue { Kind = AssTagFunctionKind.Fad, T1 = fadT1, T2 = fadT2 };
+                    return true;
+                }
+                return false;
+            case AssTag.Clip:
+            case AssTag.InverseClip:
+                if (AssFunctionTagParsers.TryParseClip(param, out var clipKind, out var cx1, out var cy1, out var cx2, out var cy2, out var scale, out var drawing))
+                {
+                    if (clipKind == AssFunctionTagParsers.AssClipKind.Rect)
+                    {
+                        value = new AssTagFunctionValue
+                        {
+                            Kind = AssTagFunctionKind.ClipRect,
+                            X1 = cx1,
+                            Y1 = cy1,
+                            X2 = cx2,
+                            Y2 = cy2
+                        };
+                    }
+                    else
+                    {
+                        value = new AssTagFunctionValue
+                        {
+                            Kind = AssTagFunctionKind.ClipDrawing,
+                            Scale = scale,
+                            Drawing = GetSliceMemory(param, paramMemory, drawing)
+                        };
+                    }
+                    return true;
+                }
+                return false;
+            case AssTag.Transform:
+                if (AssFunctionTagParsers.TryParseTransform(param, out var tt1, out var tt2, out var hasTimesT, out var accel, out var hasAccel, out var tagPayload))
+                {
+                    value = new AssTagFunctionValue
+                    {
+                        Kind = AssTagFunctionKind.Transform,
+                        T1 = tt1,
+                        T2 = tt2,
+                        HasTimes = hasTimesT,
+                        Accel = accel,
+                        HasAccel = hasAccel,
+                        TagPayload = GetSliceMemory(param, paramMemory, tagPayload)
+                    };
+                    return true;
+                }
+                return false;
+        }
+
+        return false;
+    }
+
+    private static ReadOnlyMemory<byte> GetSliceMemory(ReadOnlySpan<byte> fullSpan, ReadOnlyMemory<byte> fullMemory, ReadOnlySpan<byte> sliceSpan)
+    {
+        if (sliceSpan.IsEmpty)
+            return ReadOnlyMemory<byte>.Empty;
+
+        if (fullMemory.IsEmpty)
+            return sliceSpan.ToArray();
+
+        ref byte fullRef = ref MemoryMarshal.GetReference(fullSpan);
+        ref byte sliceRef = ref MemoryMarshal.GetReference(sliceSpan);
+        int offset = (int)Unsafe.ByteOffset(ref fullRef, ref sliceRef);
+        if ((uint)offset > (uint)fullSpan.Length || offset + sliceSpan.Length > fullSpan.Length)
+            return sliceSpan.ToArray();
+
+        return fullMemory.Slice(offset, sliceSpan.Length);
     }
 
     internal static T FindLastTag<T>(ReadOnlySpan<AssEventSegment> segments, AssTag target, T defaultValue, out bool found)
