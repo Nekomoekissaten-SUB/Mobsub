@@ -57,6 +57,18 @@ public static class AssEventParser
     public static AssEventSegmentBuffer ParseLinePooled(ReadOnlySpan<byte> line)
         => ParseLineInternalPooled(line, default);
 
+    public static void WithParsedSegments(ReadOnlyMemory<byte> line, Action<ReadOnlySpan<AssEventSegment>> action)
+    {
+        using var buffer = ParseLinePooled(line);
+        action(buffer.Span);
+    }
+
+    public static void WithParsedSegments(ReadOnlySpan<byte> line, Action<ReadOnlySpan<AssEventSegment>> action)
+    {
+        using var buffer = ParseLinePooled(line);
+        action(buffer.Span);
+    }
+
     private static ReadOnlyMemory<AssEventSegment> ParseLineInternal(ReadOnlySpan<byte> line, ReadOnlyMemory<byte> lineMemory)
     {
         var buffer = ParseLineToPool(line, lineMemory, out int count, pooledTags: false);
