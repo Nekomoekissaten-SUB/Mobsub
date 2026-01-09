@@ -61,7 +61,43 @@ public enum AssTagValueKind : byte
     Bool,
     Byte,
     Color,
-    Bytes
+    Bytes,
+    Function
+}
+
+public enum AssTagFunctionKind : byte
+{
+    None = 0,
+    Pos,
+    Org,
+    Move,
+    Fade,
+    Fad,
+    ClipRect,
+    ClipDrawing,
+    Transform
+}
+
+public readonly struct AssTagFunctionValue
+{
+    public AssTagFunctionKind Kind { get; init; }
+    public double X1 { get; init; }
+    public double Y1 { get; init; }
+    public double X2 { get; init; }
+    public double Y2 { get; init; }
+    public int A1 { get; init; }
+    public int A2 { get; init; }
+    public int A3 { get; init; }
+    public int T1 { get; init; }
+    public int T2 { get; init; }
+    public int T3 { get; init; }
+    public int T4 { get; init; }
+    public int Scale { get; init; }
+    public bool HasTimes { get; init; }
+    public bool HasAccel { get; init; }
+    public double Accel { get; init; }
+    public ReadOnlyMemory<byte> Drawing { get; init; }
+    public ReadOnlyMemory<byte> TagPayload { get; init; }
 }
 
 public readonly struct AssTagValue
@@ -73,6 +109,7 @@ public readonly struct AssTagValue
     public byte ByteValue { get; init; }
     public AssRGB8 ColorValue { get; init; }
     public ReadOnlyMemory<byte> BytesValue { get; init; }
+    public AssTagFunctionValue FunctionValue { get; init; }
 
     public static AssTagValue FromInt(int v) => new() { Kind = AssTagValueKind.Int, IntValue = v };
     public static AssTagValue FromDouble(double v) => new() { Kind = AssTagValueKind.Double, DoubleValue = v };
@@ -80,6 +117,7 @@ public readonly struct AssTagValue
     public static AssTagValue FromByte(byte v) => new() { Kind = AssTagValueKind.Byte, ByteValue = v };
     public static AssTagValue FromColor(AssRGB8 v) => new() { Kind = AssTagValueKind.Color, ColorValue = v };
     public static AssTagValue FromBytes(ReadOnlyMemory<byte> v) => new() { Kind = AssTagValueKind.Bytes, BytesValue = v };
+    public static AssTagValue FromFunction(AssTagFunctionValue v) => new() { Kind = AssTagValueKind.Function, FunctionValue = v };
     public static AssTagValue Empty => new() { Kind = AssTagValueKind.None };
 
 }

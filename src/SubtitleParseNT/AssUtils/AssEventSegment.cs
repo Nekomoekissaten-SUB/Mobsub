@@ -54,6 +54,12 @@ public readonly struct AssTagSpan(AssTag tag, Range range, AssTagValue value)
             result = (T)o;
             return true;
         }
+        if (typeof(T) == typeof(AssTagFunctionValue) && Value.Kind == AssTagValueKind.Function)
+        {
+            object o = Value.FunctionValue;
+            result = (T)o;
+            return true;
+        }
         return false;
     }
 }
