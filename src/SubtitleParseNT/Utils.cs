@@ -374,4 +374,36 @@ public class Utils
         span = span[consumed..];
         return true;
     }
+
+    internal static int ParseInt(ReadOnlySpan<byte> span)
+    {
+        span = TrimSpaces(span);
+        if (!Utf8Parser.TryParse(span, out int value, out int consumed) || consumed != span.Length)
+            throw new FormatException($"Invalid int: {GetString(span)}");
+        return value;
+    }
+
+    internal static sbyte ParseSByte(ReadOnlySpan<byte> span)
+    {
+        span = TrimSpaces(span);
+        if (!Utf8Parser.TryParse(span, out sbyte value, out int consumed) || consumed != span.Length)
+            throw new FormatException($"Invalid sbyte: {GetString(span)}");
+        return value;
+    }
+
+    internal static byte ParseByte(ReadOnlySpan<byte> span)
+    {
+        span = TrimSpaces(span);
+        if (!Utf8Parser.TryParse(span, out byte value, out int consumed) || consumed != span.Length)
+            throw new FormatException($"Invalid byte: {GetString(span)}");
+        return value;
+    }
+
+    internal static double ParseDouble(ReadOnlySpan<byte> span)
+    {
+        span = TrimSpaces(span);
+        if (!Utf8Parser.TryParse(span, out double value, out int consumed) || consumed != span.Length)
+            throw new FormatException($"Invalid double: {GetString(span)}");
+        return value;
+    }
 }

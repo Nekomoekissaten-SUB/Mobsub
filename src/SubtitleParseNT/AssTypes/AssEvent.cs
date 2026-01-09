@@ -125,17 +125,17 @@ public struct AssEvent
             var value = sp[sepIndex..nextSep];
             switch (formats[segCount])
             {
-                case "Layer": Layer = int.Parse(value); break;
+                case "Layer": Layer = Utils.ParseInt(value); break;
                 case "Marked": break;
                 case "Start": Start = AssTime.ParseFromAss(value); break;
                 case "End": End = AssTime.ParseFromAss(value); break;
                 case "Style": StyleReadOnly = new Range(sepIndex, nextSep); break;
                 case "Name": NameReadOnly = new Range(sepIndex, nextSep); break;
-                case "MarginL": MarginL = int.Parse(value); break;
-                case "MarginR": MarginR = int.Parse(value); break;
-                case "MarginV": MarginV = int.Parse(value); break;
-                case "MarginT": MarginT = int.Parse(value); break;
-                case "MarginB": MarginB = int.Parse(value); break;
+                case "MarginL": MarginL = Utils.ParseInt(value); break;
+                case "MarginR": MarginR = Utils.ParseInt(value); break;
+                case "MarginV": MarginV = Utils.ParseInt(value); break;
+                case "MarginT": MarginT = Utils.ParseInt(value); break;
+                case "MarginB": MarginB = Utils.ParseInt(value); break;
                 case "Effect": EffectReadOnly = new Range(sepIndex, nextSep); break;
             }
 
