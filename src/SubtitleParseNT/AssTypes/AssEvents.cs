@@ -61,7 +61,7 @@ public class AssEvents(ILogger? logger = null)
 
             var segment = Utils.TrimSpaces(line.Slice(start, comma));
             if (!segment.IsEmpty)
-                results.Add(Encoding.UTF8.GetString(segment.ToArray()));
+                results.Add(Utils.GetString(segment));
 
             start += comma + 1;
         }

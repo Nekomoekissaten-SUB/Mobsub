@@ -19,12 +19,13 @@ public class AssStyles(ILogger? logger = null)
 
     // Rebuild on every access to guarantee consistency even if external code mutates Collection.
     private Dictionary<byte[], AssStyle>? _styleDict;
+    private bool _styleMapDirty = true;
     public Dictionary<byte[], AssStyle>.AlternateLookup<ReadOnlySpan<byte>> StyleMap
     {
         get
         {
-            _styleDict = BuildStyleDictionary();
-            return _styleDict.GetAlternateLookup<ReadOnlySpan<byte>>();
+            EnsureStyleMap();
+            return _styleDict!.GetAlternateLookup<ReadOnlySpan<byte>>();
         }
     }
     private AssStyle? _defaultStyle;
@@ -44,7 +45,7 @@ public class AssStyles(ILogger? logger = null)
 
         if (sp[..sepIndex].SequenceEqual("Format"u8))
         {
-            Formats = Encoding.UTF8.GetString(sp[(sepIndex + 1)..].ToArray()).Split(',').Select(s => s.Trim()).ToArray();
+            Formats = Utils.GetString(sp[(sepIndex + 1)..]).Split(',').Select(s => s.Trim()).ToArray();
             logger?.ZLogDebug($"Styles: Line {lineNumber} is a format line, parse completed");
         }
         else
@@ -52,6 +53,7 @@ public class AssStyles(ILogger? logger = null)
             var style = new AssStyle(line, sp[..sepIndex], Formats);
             Names.Add(style.Name);
             Collection.Add(style);
+            _styleMapDirty = true;
         }
     }
 
@@ -68,6 +70,17 @@ public class AssStyles(ILogger? logger = null)
         }
         return dict;
     }
+
+    private void EnsureStyleMap()
+    {
+        if (_styleDict == null || _styleMapDirty)
+        {
+            _styleDict = BuildStyleDictionary();
+            _styleMapDirty = false;
+        }
+    }
+
+    public void InvalidateStyleMap() => _styleMapDirty = true;
 
     public bool TryGetAssStyleByEventStyle(ReadOnlySpan<byte> styleName, out ReadOnlySpan<byte> queryName, out AssStyle view)
     {

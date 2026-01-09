@@ -8,32 +8,38 @@ namespace Mobsub.SubtitleParseNT2;
 
 public class Utils
 {
+    public static Encoding GuessEncoding(byte[] buffer)
+    {
+        return buffer switch
+        {
+            [0xFF, 0xFE, ..] => Encoding.Unicode,           // UTF-16 (Little-Endian)
+            [0xFE, 0xFF, ..] => Encoding.BigEndianUnicode,  // UTF-16 (Big-Endian)
+            [0xEF, 0xBB, 0xBF, ..] => Encoding.UTF8,        // UTF-8
+            _ => new UTF8Encoding(false)                    // UTF-8 without Bom
+        };
+    }
+
     public static Encoding GuessEncoding(ReadOnlySpan<byte> buffer, out int preambleLength)
     {
-        preambleLength = 0;
         if (buffer.Length >= 3 && buffer[0] == 0xEF && buffer[1] == 0xBB && buffer[2] == 0xBF)
         {
             preambleLength = 3;
             return Encoding.UTF8;
         }
-        if (buffer.Length >= 2)
+        if (buffer.Length >= 2 && buffer[0] == 0xFF && buffer[1] == 0xFE)
         {
-            if (buffer[0] == 0xFF && buffer[1] == 0xFE)
-            {
-                preambleLength = 2;
-                return Encoding.Unicode;
-            }
-            if (buffer[0] == 0xFE && buffer[1] == 0xFF)
-            {
-                preambleLength = 2;
-                return Encoding.BigEndianUnicode;
-            }
+            preambleLength = 2;
+            return Encoding.Unicode;
         }
-        
+        if (buffer.Length >= 2 && buffer[0] == 0xFE && buffer[1] == 0xFF)
+        {
+            preambleLength = 2;
+            return Encoding.BigEndianUnicode;
+        }
+
+        preambleLength = 0;
         return new UTF8Encoding(false);
     }
-    
-    public static Encoding GuessEncoding(byte[] buffer) => GuessEncoding(buffer, out _);
 
     public static Encoding EncodingRefOS()
     {
@@ -300,7 +306,7 @@ public class Utils
     internal static string GetString(ReadOnlyMemory<byte> bytes, Range range, bool trimSpaces = false) => GetString(bytes.Span, range, trimSpaces);
     internal static string GetString(ReadOnlySpan<byte> bytes) => Encoding.UTF8.GetString(bytes);
     internal static string GetString(ReadOnlySpan<byte> bytes, Range range, bool trimSpaces = false) =>
-        trimSpaces ? Encoding.UTF8.GetString(TrimSpaces(bytes[range]).ToArray()) : Encoding.UTF8.GetString(bytes[range].ToArray());
+        trimSpaces ? Encoding.UTF8.GetString(TrimSpaces(bytes[range])) : Encoding.UTF8.GetString(bytes[range]);
 
     internal static ReadOnlySpan<byte> TrimSpaces(ReadOnlySpan<byte> span)
     {
