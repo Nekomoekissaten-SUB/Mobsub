@@ -6,10 +6,11 @@ namespace Mobsub.SubtitleParseNT2.AssTypes;
 
 public class AssEvents(ILogger? logger = null)
 {
+    private static readonly string[] DefaultFormats = [.. AssConstants.EventFormatV4P.Split(',').Select(s => s.Trim())];
     private string[]? formats;
     public string[] Formats
     {
-        get => formats ?? [.. AssConstants.EventFormatV4P.Split(',').Select(s => s.Trim())];
+        get => formats ??= [.. DefaultFormats];
         set => formats = value;
     }
     public List<AssEvent> Collection = [];

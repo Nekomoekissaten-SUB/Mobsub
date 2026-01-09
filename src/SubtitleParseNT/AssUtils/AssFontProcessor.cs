@@ -50,7 +50,7 @@ public sealed class AssFontProcessor(byte wrapStyle, AssStyles styles) : IAssTag
                 }
                 break;
             case AssTag.FontName:
-                if (tag.TryGet<ReadOnlyMemory<byte>>(out var fn) && fn.Length > 0) current.NameBytes = fn.ToArray(); else current.NameBytes = baseInfo.NameBytes;
+                if (tag.TryGet<ReadOnlyMemory<byte>>(out var fn) && fn.Length > 0) current.NameBytes = fn; else current.NameBytes = baseInfo.NameBytes;
                 break;
             case AssTag.Reset:
                 if (tag.TryGet<ReadOnlyMemory<byte>>(out var r) && r.Length > 0)
@@ -67,40 +67,41 @@ public sealed class AssFontProcessor(byte wrapStyle, AssStyles styles) : IAssTag
     public void OnText(ReadOnlySpan<byte> text)
     {
         if (text.Length == 0) return;
-
-        int charCount = Encoding.UTF8.GetCharCount(text);
-        char[]? rented = null;
-        Span<char> buffer = charCount <= 512
-            ? stackalloc char[charCount]
-            : (rented = ArrayPool<char>.Shared.Rent(charCount)).AsSpan(0, charCount);
-
-        try
+        var remaining = text;
+        while (!remaining.IsEmpty)
         {
-            Encoding.UTF8.GetChars(text, buffer);
-            var enumerator = buffer.EnumerateRunes();
-            while (enumerator.MoveNext())
+            var status = Rune.DecodeFromUtf8(remaining, out var rune, out int consumed);
+            if (status == OperationStatus.Done)
             {
-                var rune = enumerator.Current;
-                if (!maps.TryGetValue(current, out var set))
-                {
-                    set = [];
-                    maps[current] = set;
-                }
-                if (!set.TryGetValue(rune, out _))
-                {
-                    set[rune] = [];
-                }
-                set[rune].Add(lineNumber);
-
-                if (!runeLocations.ContainsKey(rune)) runeLocations.Add(rune, []);
-                runeLocations[rune].Add(lineNumber);
+                RecordRune(rune);
+                remaining = remaining[consumed..];
+                continue;
             }
+
+            RecordRune(Rune.ReplacementChar);
+            if (status == OperationStatus.NeedMoreData)
+            {
+                break;
+            }
+            remaining = remaining[1..];
         }
-        finally
+    }
+
+    private void RecordRune(Rune rune)
+    {
+        if (!maps.TryGetValue(current, out var set))
         {
-            if (rented != null)
-                ArrayPool<char>.Shared.Return(rented);
+            set = [];
+            maps[current] = set;
         }
+        if (!set.TryGetValue(rune, out _))
+        {
+            set[rune] = [];
+        }
+        set[rune].Add(lineNumber);
+
+        if (!runeLocations.ContainsKey(rune)) runeLocations.Add(rune, []);
+        runeLocations[rune].Add(lineNumber);
     }
     public void OnSpecialChars(AssEventSegmentKind kind, short wrapStyle)
     {

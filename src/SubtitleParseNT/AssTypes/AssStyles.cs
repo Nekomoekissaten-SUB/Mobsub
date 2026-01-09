@@ -8,10 +8,11 @@ namespace Mobsub.SubtitleParseNT2.AssTypes;
 
 public class AssStyles(ILogger? logger = null)
 {
+    private static readonly string[] DefaultFormats = [.. AssConstants.StyleFormatV4P.Split(',').Select(s => s.Trim())];
     private string[]? formats;
     public string[] Formats
     {
-        get => formats ?? [.. AssConstants.StyleFormatV4P.Split(',').Select(s => s.Trim())];
+        get => formats ??= [.. DefaultFormats];
         set => formats = value;
     }
     public List<AssStyle> Collection = [];

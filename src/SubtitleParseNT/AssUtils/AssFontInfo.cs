@@ -15,7 +15,11 @@ public record struct AssFontInfo : IEquatable<AssFontInfo>
     public AssFontInfo(ReadOnlySpan<char> span)
     {
         var index = span.IndexOf(',');
-        NameBytes = System.Text.Encoding.UTF8.GetBytes(span[..index].ToArray());
+        var nameSpan = span[..index];
+        var byteCount = System.Text.Encoding.UTF8.GetByteCount(nameSpan);
+        var bytes = new byte[byteCount];
+        System.Text.Encoding.UTF8.GetBytes(nameSpan, bytes);
+        NameBytes = bytes;
 
         span = span[(index + 1)..];
         index = span.IndexOf(',');
@@ -31,7 +35,8 @@ public record struct AssFontInfo : IEquatable<AssFontInfo>
 
     public AssFontInfo(AssStyle syl)
     {
-        NameBytes = syl.FontnameSpan.ToArray();
+        var (offset, length) = syl.FontnameReadOnly.GetOffsetAndLength(syl.LineRaw.Length);
+        NameBytes = syl.LineRaw.Slice(offset, length);
         Weight = syl.Bold ? 1 : 0;
         Italic = syl.Italic;
         Encoding = syl.Encoding;
