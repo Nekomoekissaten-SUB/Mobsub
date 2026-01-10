@@ -175,12 +175,19 @@ public class AssFunctionTagParsersTest
     }
 
     [TestMethod]
-    public void Transform_InvalidHeader_NonNumeric_IsRejected()
+    public void Transform_InvalidHeader_NonNumeric_IsTreatedAsZero()
     {
         AssFunctionTagParsers.TryParseTransform("(abc,\\bord2)"u8,
-            out _, out _, out _,
-            out _, out _,
-            out _).Should().BeFalse();
+            out var t1, out var t2, out var hasTimes,
+            out var accel, out var hasAccel,
+            out var tagPayload).Should().BeTrue();
+
+        hasTimes.Should().BeFalse();
+        hasAccel.Should().BeTrue();
+        accel.Should().Be(0);
+        t1.Should().Be(0);
+        t2.Should().Be(0);
+        tagPayload.SequenceEqual("\\bord2"u8).Should().BeTrue();
     }
 
     [TestMethod]
@@ -244,7 +251,7 @@ public class AssFunctionTagParsersTest
         AssFunctionTagParsers.TryParseFad("(10,)"u8, out _, out _).Should().BeFalse();
         AssFunctionTagParsers.TryParseFad("(,20)"u8, out _, out _).Should().BeFalse();
         AssFunctionTagParsers.TryParseFad("(10,20,30)"u8, out _, out _).Should().BeFalse();
-        AssFunctionTagParsers.TryParseFad("(10,20,)"u8, out _, out _).Should().BeFalse();
+        AssFunctionTagParsers.TryParseFad("(10,20,)"u8, out _, out _).Should().BeTrue();
     }
 
     [TestMethod]
@@ -274,8 +281,7 @@ public class AssFunctionTagParsersTest
         AssFunctionTagParsers.TryParseFade("(0,1,2,3,4,5,6,7)"u8,
             out _, out _, out _, out _, out _, out _, out _).Should().BeFalse();
 
-        // trailing comma
         AssFunctionTagParsers.TryParseFade("(0,1,2,3,4,5,6,)"u8,
-            out _, out _, out _, out _, out _, out _, out _).Should().BeFalse();
+            out _, out _, out _, out _, out _, out _, out _).Should().BeTrue();
     }
 }

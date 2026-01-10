@@ -122,18 +122,23 @@ public struct AssRGB8(byte red, byte green, byte blue, byte alpha)
 
     public static bool TryParseAlphaByte(ReadOnlySpan<byte> sp, out byte value)
     {
+        return TryParseAlphaByte(sp, out value, out _);
+    }
+
+    public static bool TryParseAlphaByte(ReadOnlySpan<byte> sp, out byte value, out bool invalid)
+    {
         value = 0;
-        if (!TryParseAssHex(sp, out var raw, out _))
+        if (!TryParseAssHex(sp, out var raw, out _, out invalid))
             return false;
         value = (byte)raw;
         return true;
     }
 
-    public static bool TryParseTagColor(ReadOnlySpan<byte> sp, out AssRGB8 color, out bool ignoredHighByte)
+    public static bool TryParseTagColor(ReadOnlySpan<byte> sp, out AssRGB8 color, out bool ignoredHighByte, out bool invalid)
     {
         color = default;
         ignoredHighByte = false;
-        if (!TryParseAssHex(sp, out var raw, out int digits))
+        if (!TryParseAssHex(sp, out var raw, out int digits, out invalid))
             return false;
 
         ignoredHighByte = digits > 6;
@@ -142,10 +147,11 @@ public struct AssRGB8(byte red, byte green, byte blue, byte alpha)
         return true;
     }
 
-    private static bool TryParseAssHex(ReadOnlySpan<byte> sp, out uint value, out int digits)
+    private static bool TryParseAssHex(ReadOnlySpan<byte> sp, out uint value, out int digits, out bool invalid)
     {
         value = 0;
         digits = 0;
+        invalid = false;
         sp = Utils.TrimSpaces(sp);
         if (sp.IsEmpty)
             return false;
@@ -168,12 +174,24 @@ public struct AssRGB8(byte red, byte green, byte blue, byte alpha)
         {
             int n = HexLut[sp[i]];
             if (n < 0)
+            {
+                invalid = true;
                 break;
+            }
             value = (value << 4) | (uint)n;
             digits++;
         }
 
-        return digits > 0;
+        if (digits == 0)
+        {
+            invalid = true;
+            return true;
+        }
+
+        if (digits < sp.Length)
+            invalid = true;
+
+        return true;
     }
 
     public readonly string ConvertToString(bool withAlpha = false, bool onlyAlpha = false)

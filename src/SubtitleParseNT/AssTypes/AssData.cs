@@ -109,109 +109,118 @@ public sealed class AssData(ILogger? logger = null, AssParseTarget target = AssP
 
     private AssData ParseBuffer(byte[] buffer, Encoding? forcedEncoding, Func<ReadOnlySpan<byte>, Encoding?>? detector, Encoding? fallbackEncoding)
     {
-        _sourceBuffer = buffer;
-        _scriptTypeCache = null;
-        _scriptTypeBytes = null;
-        var span = _sourceBuffer.AsSpan();
-        int preambleLength;
+        var previousLogger = AssEventParser.Logger;
+        AssEventParser.Logger = logger;
+        try
+        {
+            _sourceBuffer = buffer;
+            _scriptTypeCache = null;
+            _scriptTypeBytes = null;
+            var span = _sourceBuffer.AsSpan();
+            int preambleLength;
 
-        if (forcedEncoding != null)
-        {
-            CharEncoding = forcedEncoding;
-            preambleLength = GetPreambleLength(span, forcedEncoding);
-        }
-        else
-        {
-            CharEncoding = Utils.GuessEncoding(span, out preambleLength);
-            if (preambleLength == 0 && detector != null)
+            if (forcedEncoding != null)
             {
-                var detected = detector(span);
-                if (detected != null)
-                {
-                    CharEncoding = detected;
-                    preambleLength = GetPreambleLength(span, detected);
-                }
+                CharEncoding = forcedEncoding;
+                preambleLength = GetPreambleLength(span, forcedEncoding);
             }
-
-            if (preambleLength == 0 && fallbackEncoding != null && CharEncoding.CodePage == Encoding.UTF8.CodePage)
+            else
             {
-                CharEncoding = fallbackEncoding;
-            }
-        }
-
-        CarriageReturn = false;
-        if (CharEncoding.CodePage != Encoding.UTF8.CodePage)
-        {
-            var decoded = CharEncoding.GetString(span.Slice(preambleLength));
-            _sourceBuffer = Encoding.UTF8.GetBytes(decoded);
-            span = _sourceBuffer.AsSpan();
-            preambleLength = 0;
-        }
-
-        logger?.ZLogInformation($"Start parse ass");
-
-        var lineNumber = 0;
-        var sectionType = AssSection.None;
-        var offset = preambleLength;
-
-        while (offset < span.Length)
-        {
-            // Find next line break
-            int nextLineLength = 0;
-            int nextOffset = offset;
-            bool foundLine = false;
-
-            // Simple search for \n or \r\n
-            // Optimized search could use SIMD (IndexOfAny), but loop is sufficient for text
-            int i = offset;
-            while (i < span.Length)
-            {
-                if (span[i] == (byte)'\n')
+                CharEncoding = Utils.GuessEncoding(span, out preambleLength);
+                if (preambleLength == 0 && detector != null)
                 {
-                    nextLineLength = i - offset; // Exclude \n
-                    nextOffset = i + 1;
-
-                    // Handle \r\n (if prev char was \r)
-                    if (nextLineLength > 0 && span[i - 1] == (byte)'\r')
+                    var detected = detector(span);
+                    if (detected != null)
                     {
-                        nextLineLength--; // Exclude \r
-                        if (!_getFirstCarriageReturn)
-                        {
-                            CarriageReturn = true;
-                            _getFirstCarriageReturn = true;
-                        }
+                        CharEncoding = detected;
+                        preambleLength = GetPreambleLength(span, detected);
                     }
-                    foundLine = true;
-                    break;
                 }
-                i++;
+
+                if (preambleLength == 0 && fallbackEncoding != null && CharEncoding.CodePage == Encoding.UTF8.CodePage)
+                {
+                    CharEncoding = fallbackEncoding;
+                }
             }
 
-            if (!foundLine)
+            CarriageReturn = false;
+            if (CharEncoding.CodePage != Encoding.UTF8.CodePage)
             {
-                // End of file without newline
-                nextLineLength = span.Length - offset;
-                nextOffset = span.Length;
+                var decoded = CharEncoding.GetString(span.Slice(preambleLength));
+                _sourceBuffer = Encoding.UTF8.GetBytes(decoded);
+                span = _sourceBuffer.AsSpan();
+                preambleLength = 0;
             }
 
-            lineNumber++;
-            var lineSlice = new ReadOnlyMemory<byte>(_sourceBuffer, offset, nextLineLength);
+            logger?.ZLogInformation($"Start parse ass");
 
-            if (lineNumber == 1 && !lineSlice.Span.SequenceEqual("[Script Info]"u8))
+            var lineNumber = 0;
+            var sectionType = AssSection.None;
+            var offset = preambleLength;
+
+            while (offset < span.Length)
             {
-                throw new Exception("Please check first line");
+                // Find next line break
+                int nextLineLength = 0;
+                int nextOffset = offset;
+                bool foundLine = false;
+
+                // Simple search for \n or \r\n
+                // Optimized search could use SIMD (IndexOfAny), but loop is sufficient for text
+                int i = offset;
+                while (i < span.Length)
+                {
+                    if (span[i] == (byte)'\n')
+                    {
+                        nextLineLength = i - offset; // Exclude \n
+                        nextOffset = i + 1;
+
+                        // Handle \r\n (if prev char was \r)
+                        if (nextLineLength > 0 && span[i - 1] == (byte)'\r')
+                        {
+                            nextLineLength--; // Exclude \r
+                            if (!_getFirstCarriageReturn)
+                            {
+                                CarriageReturn = true;
+                                _getFirstCarriageReturn = true;
+                            }
+                        }
+                        foundLine = true;
+                        break;
+                    }
+                    i++;
+                }
+
+                if (!foundLine)
+                {
+                    // End of file without newline
+                    nextLineLength = span.Length - offset;
+                    nextOffset = span.Length;
+                }
+
+                lineNumber++;
+                var lineSlice = new ReadOnlyMemory<byte>(_sourceBuffer, offset, nextLineLength);
+
+                if (lineNumber == 1 && !lineSlice.Span.SequenceEqual("[Script Info]"u8))
+                {
+                    throw new Exception("Please check first line");
+                }
+
+                ParseContent(lineSlice, lineNumber, ref sectionType);
+
+                offset = nextOffset;
             }
 
-            ParseContent(lineSlice, lineNumber, ref sectionType);
+            Fonts.Finish();
+            Graphics.Finish();
 
-            offset = nextOffset;
+            logger?.ZLogInformation($"Ass parsing completed");
+            return this;
         }
-
-        Fonts.Finish();
-        Graphics.Finish();
-
-        logger?.ZLogInformation($"Ass parsing completed");
-        return this;
+        finally
+        {
+            AssEventParser.Logger = previousLogger;
+        }
     }
 
     private static int GetPreambleLength(ReadOnlySpan<byte> span, Encoding encoding)

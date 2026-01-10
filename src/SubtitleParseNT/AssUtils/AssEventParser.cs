@@ -1,16 +1,17 @@
 ﻿using Mobsub.SubtitleParseNT2.AssTypes;
 using System.Buffers;
 using System.Buffers.Text;
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
+using Microsoft.Extensions.Logging;
 
 namespace Mobsub.SubtitleParseNT2.AssUtils;
 
 public static class AssEventParser
 {
     public delegate void AssEventSegmentSpanAction(ReadOnlySpan<AssEventSegment> segments, ReadOnlySpan<byte> line);
+    public static ILogger? Logger { get; set; }
 
     public struct AssEventSegmentBuffer : IDisposable
     {
@@ -334,6 +335,11 @@ public static class AssEventParser
         [(byte)'h'] = AssEventSegmentKind.NonBreakingSpace,
     };
 
+    internal static void LogWarning(string message)
+    {
+        Logger?.LogWarning(message);
+    }
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool IsAsciiLetterOrDigit(byte b) => _asciiLetterOrDigit.Contains(b);
     private static readonly SearchValues<byte> _asciiLetterOrDigit =  SearchValues.Create(Encoding.ASCII.GetBytes("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"));
@@ -376,19 +382,43 @@ public static class AssEventParser
         if (tag == AssTag.FontScale)
             return AssTagValue.Empty;
 
-        if (IsAlphaTag(tag) && AssRGB8.TryParseAlphaByte(trimmedSpan, out var alpha))
+        if (IsAlphaTag(tag) && AssRGB8.TryParseAlphaByte(trimmedSpan, out var alpha, out var invalidAlpha))
+        {
+            if (invalidAlpha && Logger != null)
+            {
+                LogWarning($"Invalid alpha value for \\{Utils.GetString(desc.Name)}: '{Utils.GetString(trimmedSpan)}', treated as 0.");
+            }
             return AssTagValue.FromByte(alpha);
+        }
 
         if (IsFunctionTag(tag) && TryParseFunctionTag(tag, trimmedSpan, trimmedMemory, out var funcValue))
             return AssTagValue.FromFunction(funcValue);
 
-        if (desc.ValueType == typeof(int) && Utf8Parser.TryParse(trimmedSpan, out int iv, out _)) return AssTagValue.FromInt(iv);
-        if (desc.ValueType == typeof(double) && Utf8Parser.TryParse(trimmedSpan, out double dv, out _)) return AssTagValue.FromDouble(dv);
+        if (desc.ValueType == typeof(int) && Utils.TryParseIntLoose(trimmedSpan, out int iv, out var invalidInt))
+        {
+            if (invalidInt && Logger != null)
+            {
+                LogWarning($"Invalid integer value for \\{Utils.GetString(desc.Name)}: '{Utils.GetString(trimmedSpan)}', treated as 0.");
+            }
+            return AssTagValue.FromInt(iv);
+        }
+        if (desc.ValueType == typeof(double) && Utils.TryParseDoubleLoose(trimmedSpan, out double dv, out var invalidDouble))
+        {
+            if (invalidDouble && Logger != null)
+            {
+                LogWarning($"Invalid number value for \\{Utils.GetString(desc.Name)}: '{Utils.GetString(trimmedSpan)}', treated as 0.");
+            }
+            return AssTagValue.FromDouble(dv);
+        }
         if (desc.ValueType == typeof(bool))
         {
-            // Semantics: only 0/1 are explicit; any other number (including -1) and any non-number => reset.
-            if (Utf8Parser.TryParse(trimmedSpan, out int bv, out _))
+            // Semantics: only 0/1 are explicit; any other number (including -1) => reset.
+            if (Utils.TryParseIntLoose(trimmedSpan, out int bv, out var invalidBool))
             {
+                if (invalidBool && Logger != null)
+                {
+                    LogWarning($"Invalid bool value for \\{Utils.GetString(desc.Name)}: '{Utils.GetString(trimmedSpan)}', treated as 0.");
+                }
                 return bv switch
                 {
                     0 => AssTagValue.FromBool(false),
@@ -398,14 +428,25 @@ public static class AssEventParser
             }
             return AssTagValue.Empty;
         }
-        if (desc.ValueType == typeof(byte) && Utf8Parser.TryParse(trimmedSpan, out int byv, out _)) return AssTagValue.FromByte((byte)byv);
+        if (desc.ValueType == typeof(byte) && Utils.TryParseIntLoose(trimmedSpan, out int byv, out var invalidByte))
+        {
+            if (invalidByte && Logger != null)
+            {
+                LogWarning($"Invalid byte value for \\{Utils.GetString(desc.Name)}: '{Utils.GetString(trimmedSpan)}', treated as 0.");
+            }
+            return AssTagValue.FromByte((byte)byv);
+        }
         if (desc.ValueType == typeof(AssRGB8))
         {
-            if (AssRGB8.TryParseTagColor(trimmedSpan, out var color, out var ignoredHighByte))
+            if (AssRGB8.TryParseTagColor(trimmedSpan, out var color, out var ignoredHighByte, out var invalidColor))
             {
-                if (ignoredHighByte)
+                if (invalidColor && Logger != null)
                 {
-                    Debug.WriteLine("ASS color tag contains more than 6 hex digits; high byte ignored.");
+                    LogWarning($"Invalid color value for \\{Utils.GetString(desc.Name)}: '{Utils.GetString(trimmedSpan)}', treated as 0.");
+                }
+                if (ignoredHighByte && Logger != null)
+                {
+                    LogWarning($"ASS color tag \\{Utils.GetString(desc.Name)} has more than 6 hex digits; high byte ignored.");
                 }
                 return AssTagValue.FromColor(color);
             }

@@ -364,6 +364,34 @@ public class Utils
         return true;
     }
 
+    internal static bool TryParseIntLoose(ReadOnlySpan<byte> span, out int value, out bool invalid)
+    {
+        value = 0;
+        invalid = false;
+        span = TrimSpaces(span);
+        if (span.IsEmpty)
+            return false;
+
+        int prefix = ScanIntPrefix(span);
+        if (prefix == 0)
+        {
+            invalid = true;
+            return true;
+        }
+
+        if (!Utf8Parser.TryParse(span[..prefix], out value, out _))
+        {
+            value = 0;
+            invalid = true;
+            return true;
+        }
+
+        if (prefix < span.Length)
+            invalid = true;
+
+        return true;
+    }
+
     internal static bool TryReadDouble(ref ReadOnlySpan<byte> span, out double value)
     {
         value = 0;
@@ -372,6 +400,34 @@ public class Utils
             return false;
         value = v;
         span = span[consumed..];
+        return true;
+    }
+
+    internal static bool TryParseDoubleLoose(ReadOnlySpan<byte> span, out double value, out bool invalid)
+    {
+        value = 0;
+        invalid = false;
+        span = TrimSpaces(span);
+        if (span.IsEmpty)
+            return false;
+
+        int prefix = ScanDoublePrefix(span);
+        if (prefix == 0)
+        {
+            invalid = true;
+            return true;
+        }
+
+        if (!Utf8Parser.TryParse(span[..prefix], out value, out _))
+        {
+            value = 0;
+            invalid = true;
+            return true;
+        }
+
+        if (prefix < span.Length)
+            invalid = true;
+
         return true;
     }
 
@@ -405,5 +461,71 @@ public class Utils
         if (!Utf8Parser.TryParse(span, out double value, out int consumed) || consumed != span.Length)
             throw new FormatException($"Invalid double: {GetString(span)}");
         return value;
+    }
+
+    private static int ScanIntPrefix(ReadOnlySpan<byte> span)
+    {
+        int i = 0;
+        if (span.Length == 0)
+            return 0;
+
+        if (span[0] == (byte)'+' || span[0] == (byte)'-')
+            i++;
+
+        int digitStart = i;
+        while (i < span.Length && span[i] >= (byte)'0' && span[i] <= (byte)'9')
+            i++;
+
+        return i == digitStart ? 0 : i;
+    }
+
+    private static int ScanDoublePrefix(ReadOnlySpan<byte> span)
+    {
+        int i = 0;
+        if (span.Length == 0)
+            return 0;
+
+        if (span[0] == (byte)'+' || span[0] == (byte)'-')
+            i++;
+
+        int digitStart = i;
+        while (i < span.Length && span[i] >= (byte)'0' && span[i] <= (byte)'9')
+            i++;
+        bool hasDigits = i > digitStart;
+
+        if (i < span.Length && span[i] == (byte)'.')
+        {
+            i++;
+            int fracStart = i;
+            while (i < span.Length && span[i] >= (byte)'0' && span[i] <= (byte)'9')
+                i++;
+            hasDigits = hasDigits || i > fracStart;
+        }
+
+        if (!hasDigits)
+            return 0;
+
+        int expStart = i;
+        if (i < span.Length && (span[i] == (byte)'e' || span[i] == (byte)'E'))
+        {
+            int j = i + 1;
+            if (j < span.Length && (span[j] == (byte)'+' || span[j] == (byte)'-'))
+                j++;
+
+            int expDigitsStart = j;
+            while (j < span.Length && span[j] >= (byte)'0' && span[j] <= (byte)'9')
+                j++;
+
+            if (j > expDigitsStart)
+            {
+                i = j;
+            }
+            else
+            {
+                i = expStart;
+            }
+        }
+
+        return i;
     }
 }

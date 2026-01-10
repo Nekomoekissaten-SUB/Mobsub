@@ -47,4 +47,23 @@ public class AssTagBoolParseTest
         tags[0].TryGet<bool>(out var value).Should().BeTrue();
         value.Should().Be(expectedValue);
     }
+
+    [DataTestMethod]
+    [DataRow("{\\iabc}x", AssTag.Italic)]
+    [DataRow("{\\ufoo}x", AssTag.Underline)]
+    [DataRow("{\\sbar}x", AssTag.Strikeout)]
+    public void ParseLine_BoolTagsWithInvalidValue_TreatedAsZero(string lineText, AssTag expectedTag)
+    {
+        ReadOnlyMemory<byte> line = System.Text.Encoding.UTF8.GetBytes(lineText);
+        var segments = AssEventParser.ParseLine(line).Span;
+
+        segments.Length.Should().Be(2);
+        segments[0].SegmentKind.Should().Be(AssEventSegmentKind.TagBlock);
+
+        var tags = segments[0].Tags!.Value.Span;
+        tags.Length.Should().Be(1);
+        tags[0].Tag.Should().Be(expectedTag);
+        tags[0].TryGet<bool>(out var value).Should().BeTrue();
+        value.Should().BeFalse();
+    }
 }

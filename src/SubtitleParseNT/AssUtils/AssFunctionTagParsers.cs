@@ -1,5 +1,4 @@
 using Mobsub.SubtitleParseNT2;
-using System.Buffers.Text;
 
 namespace Mobsub.SubtitleParseNT2.AssUtils;
 
@@ -17,12 +16,9 @@ public static class AssFunctionTagParsers
         y = 0;
         if (!Utils.TryGetParenContent(payload, out var inner))
             return false;
-
-        if (!Utils.TryReadDouble(ref inner, out x))
+        if (!TryReadDoubleToken(ref inner, "pos", out x))
             return false;
-        if (!Utils.TryConsume(ref inner, (byte)','))
-            return false;
-        if (!Utils.TryReadDouble(ref inner, out y))
+        if (!TryReadDoubleToken(ref inner, "pos", out y))
             return false;
 
         Utils.SkipSpaces(ref inner);
@@ -35,12 +31,9 @@ public static class AssFunctionTagParsers
         t2 = 0;
         if (!Utils.TryGetParenContent(payload, out var inner))
             return false;
-
-        if (!Utils.TryReadDouble(ref inner, out var dt1))
+        if (!TryReadDoubleToken(ref inner, "fad", out var dt1))
             return false;
-        if (!Utils.TryConsume(ref inner, (byte)','))
-            return false;
-        if (!Utils.TryReadDouble(ref inner, out var dt2))
+        if (!TryReadDoubleToken(ref inner, "fad", out var dt2))
             return false;
 
         // Some producers output fractional times; ASS expects ms integers.
@@ -58,19 +51,13 @@ public static class AssFunctionTagParsers
             return false;
 
         // Accept floats for compatibility, truncate toward zero.
-        if (!Utils.TryReadDouble(ref inner, out var da1)) return false;
-        if (!Utils.TryConsume(ref inner, (byte)',')) return false;
-        if (!Utils.TryReadDouble(ref inner, out var da2)) return false;
-        if (!Utils.TryConsume(ref inner, (byte)',')) return false;
-        if (!Utils.TryReadDouble(ref inner, out var da3)) return false;
-        if (!Utils.TryConsume(ref inner, (byte)',')) return false;
-        if (!Utils.TryReadDouble(ref inner, out var dt1)) return false;
-        if (!Utils.TryConsume(ref inner, (byte)',')) return false;
-        if (!Utils.TryReadDouble(ref inner, out var dt2)) return false;
-        if (!Utils.TryConsume(ref inner, (byte)',')) return false;
-        if (!Utils.TryReadDouble(ref inner, out var dt3)) return false;
-        if (!Utils.TryConsume(ref inner, (byte)',')) return false;
-        if (!Utils.TryReadDouble(ref inner, out var dt4)) return false;
+        if (!TryReadDoubleToken(ref inner, "fade", out var da1)) return false;
+        if (!TryReadDoubleToken(ref inner, "fade", out var da2)) return false;
+        if (!TryReadDoubleToken(ref inner, "fade", out var da3)) return false;
+        if (!TryReadDoubleToken(ref inner, "fade", out var dt1)) return false;
+        if (!TryReadDoubleToken(ref inner, "fade", out var dt2)) return false;
+        if (!TryReadDoubleToken(ref inner, "fade", out var dt3)) return false;
+        if (!TryReadDoubleToken(ref inner, "fade", out var dt4)) return false;
 
         a1 = (int)da1;
         a2 = (int)da2;
@@ -98,25 +85,18 @@ public static class AssFunctionTagParsers
         if (!Utils.TryGetParenContent(payload, out var inner))
             return false;
 
-        if (!Utils.TryReadDouble(ref inner, out x1)) return false;
-        if (!Utils.TryConsume(ref inner, (byte)',')) return false;
-        if (!Utils.TryReadDouble(ref inner, out y1)) return false;
-        if (!Utils.TryConsume(ref inner, (byte)',')) return false;
-        if (!Utils.TryReadDouble(ref inner, out x2)) return false;
-        if (!Utils.TryConsume(ref inner, (byte)',')) return false;
-        if (!Utils.TryReadDouble(ref inner, out y2)) return false;
+        if (!TryReadDoubleToken(ref inner, "move", out x1)) return false;
+        if (!TryReadDoubleToken(ref inner, "move", out y1)) return false;
+        if (!TryReadDoubleToken(ref inner, "move", out x2)) return false;
+        if (!TryReadDoubleToken(ref inner, "move", out y2)) return false;
 
         Utils.SkipSpaces(ref inner);
         if (inner.IsEmpty)
             return true;
 
-        if (!Utils.TryConsume(ref inner, (byte)','))
+        if (!TryReadDoubleToken(ref inner, "move", out var dt1))
             return false;
-        if (!Utils.TryReadDouble(ref inner, out var dt1))
-            return false;
-        if (!Utils.TryConsume(ref inner, (byte)','))
-            return false;
-        if (!Utils.TryReadDouble(ref inner, out var dt2))
+        if (!TryReadDoubleToken(ref inner, "move", out var dt2))
             return false;
 
         // Some producers output fractional times; ASS expects ms integers.
@@ -136,13 +116,10 @@ public static class AssFunctionTagParsers
 
         // ASS spec says these are integers, but some producers output floats.
         // For compatibility we accept doubles and truncate toward zero (like C atoi-style parsing would effectively do).
-        if (!Utils.TryReadDouble(ref inner, out var dx1)) return false;
-        if (!Utils.TryConsume(ref inner, (byte)',')) return false;
-        if (!Utils.TryReadDouble(ref inner, out var dy1)) return false;
-        if (!Utils.TryConsume(ref inner, (byte)',')) return false;
-        if (!Utils.TryReadDouble(ref inner, out var dx2)) return false;
-        if (!Utils.TryConsume(ref inner, (byte)',')) return false;
-        if (!Utils.TryReadDouble(ref inner, out var dy2)) return false;
+        if (!TryReadDoubleToken(ref inner, "clip", out var dx1)) return false;
+        if (!TryReadDoubleToken(ref inner, "clip", out var dy1)) return false;
+        if (!TryReadDoubleToken(ref inner, "clip", out var dx2)) return false;
+        if (!TryReadDoubleToken(ref inner, "clip", out var dy2)) return false;
 
         x1 = (int)dx1;
         y1 = (int)dy1;
@@ -217,8 +194,10 @@ public static class AssFunctionTagParsers
         if (scaleSpan.IsEmpty)
             return false;
 
-        if (!Utf8Parser.TryParse(scaleSpan, out double sDouble, out int consumed) || consumed != scaleSpan.Length)
+        if (!Utils.TryParseDoubleLoose(scaleSpan, out double sDouble, out var invalidScale))
             return false;
+        if (invalidScale)
+            LogInvalidNumber("clip", scaleSpan);
 
         scale = Math.Max(1, (int)sDouble);
         drawing = Utils.TrimSpaces(inner[(commaIndex + 1)..]);
@@ -264,7 +243,7 @@ public static class AssFunctionTagParsers
         // - \t(t1,t2,\\tags)
         // - \t(t1,t2,accel,\\tags)
         ReadOnlySpan<byte> h = header;
-        if (!Utils.TryReadDouble(ref h, out var first))
+        if (!TryReadDoubleToken(ref h, "t", out var first))
             return false;
 
         Utils.SkipSpaces(ref h);
@@ -276,58 +255,78 @@ public static class AssFunctionTagParsers
             return true;
         }
 
-        // Expect a comma separator if there are more header tokens, and allow a trailing comma.
-        if (!Utils.TryConsume(ref h, (byte)','))
+        if (!TryReadDoubleToken(ref h, "t", out var second))
             return false;
 
         Utils.SkipSpaces(ref h);
         if (h.IsEmpty)
         {
-            // "accel," form (common in \t(accel,\tags))
-            accel = first;
-            hasAccel = true;
+            t1 = (int)first;
+            t2 = (int)second;
+            hasTimes = true;
             return true;
         }
+
+        if (!TryReadDoubleToken(ref h, "t", out accel))
+            return false;
+
+        Utils.SkipSpaces(ref h);
+        if (!h.IsEmpty)
+            return false;
 
         t1 = (int)first;
+        t2 = (int)second;
         hasTimes = true;
-
-        if (!Utils.TryReadDouble(ref h, out var dt2))
-            return false;
-        t2 = (int)dt2;
-
-        Utils.SkipSpaces(ref h);
-        if (h.IsEmpty)
-        {
-            // tolerate "t1,t2" without trailing comma
-            return true;
-        }
-
-        if (!Utils.TryConsume(ref h, (byte)','))
-            return false;
-
-        Utils.SkipSpaces(ref h);
-        if (h.IsEmpty)
-        {
-            // "t1,t2," form
-            return true;
-        }
-
-        if (!Utils.TryReadDouble(ref h, out accel))
-            return false;
         hasAccel = true;
+        return true;
+    }
 
-        Utils.SkipSpaces(ref h);
-        if (h.IsEmpty)
+    private static bool TryReadToken(ref ReadOnlySpan<byte> span, out ReadOnlySpan<byte> token)
+    {
+        Utils.SkipSpaces(ref span);
+        if (span.IsEmpty)
         {
-            // tolerate "t1,t2,accel" without trailing comma
+            token = default;
+            return false;
+        }
+
+        int commaIndex = span.IndexOf((byte)',');
+        if (commaIndex < 0)
+        {
+            token = span;
+            span = ReadOnlySpan<byte>.Empty;
             return true;
         }
 
-        if (!Utils.TryConsume(ref h, (byte)','))
+        token = span[..commaIndex];
+        span = span[(commaIndex + 1)..];
+        return true;
+    }
+
+    private static bool TryReadDoubleToken(ref ReadOnlySpan<byte> span, string tag, out double value)
+    {
+        value = 0;
+        if (!TryReadToken(ref span, out var token))
             return false;
 
-        Utils.SkipSpaces(ref h);
-        return h.IsEmpty;
+        token = Utils.TrimSpaces(token);
+        if (token.IsEmpty)
+            return false;
+
+        if (!Utils.TryParseDoubleLoose(token, out value, out var invalid))
+            return false;
+
+        if (invalid)
+            LogInvalidNumber(tag, token);
+
+        return true;
+    }
+
+    private static void LogInvalidNumber(string tag, ReadOnlySpan<byte> token)
+    {
+        if (AssEventParser.Logger == null)
+            return;
+
+        AssEventParser.LogWarning($"Invalid numeric value in \\{tag}: '{Utils.GetString(token)}', treated as 0.");
     }
 }
