@@ -316,7 +316,7 @@ public static class AssFunctionTagParsers
         if (!Utils.TryParseDoubleLoose(token, out value, out var invalid))
             return false;
 
-        if (invalid)
+        if (invalid && AssEventParser.Logger != null)
             LogInvalidNumber(tag, token);
 
         return true;

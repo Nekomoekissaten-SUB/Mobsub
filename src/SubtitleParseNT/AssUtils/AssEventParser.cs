@@ -91,8 +91,7 @@ public static class AssEventParser
     {
         var buffer = ParseLineToPool(line, lineMemory, out int count, pooledTags: false);
 
-        var result = new AssEventSegment[count];
-        Array.Copy(buffer, result, count);
+        var result = buffer.AsSpan(0, count).ToArray();
         ArrayPool<AssEventSegment>.Shared.Return(buffer, clearArray: true);
 
         return result;
@@ -230,6 +229,11 @@ public static class AssEventParser
             }
 
             int nameStart = i;
+            if (!IsAsciiLetterOrDigit(block[nameStart]))
+            {
+                i = nameStart + 1;
+                continue;
+            }
             while (i < block.Length && IsAsciiLetterOrDigit(block[i])) i++;
             int nameLen = i - nameStart;
             if (nameLen == 0)

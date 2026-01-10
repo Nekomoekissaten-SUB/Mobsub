@@ -8,7 +8,7 @@ namespace Mobsub.SubtitleParseNT2.AssTypes;
 
 public class AssStyles(ILogger? logger = null)
 {
-    private static readonly string[] DefaultFormats = [.. AssConstants.StyleFormatV4P.Split(',').Select(s => s.Trim())];
+    private static readonly string[] DefaultFormats = ParseFormats(AssConstants.StyleFormatV4P.AsSpan());
     private string[]? formats;
     public string[] Formats
     {
@@ -108,6 +108,43 @@ public class AssStyles(ILogger? logger = null)
     }
 
     private static bool IsFormatSpace(byte b) => b == (byte)' ' || b == (byte)'\t';
+
+    private static string[] ParseFormats(ReadOnlySpan<char> span)
+    {
+        int count = 1;
+        for (int i = 0; i < span.Length; i++)
+        {
+            if (span[i] == ',')
+                count++;
+        }
+
+        var result = new string[count];
+        int start = 0;
+        int index = 0;
+
+        for (int i = 0; i <= span.Length; i++)
+        {
+            if (i == span.Length || span[i] == ',')
+            {
+                var token = span.Slice(start, i - start);
+                int tokenStart = 0;
+                int tokenEnd = token.Length;
+                while (tokenStart < tokenEnd && IsFormatSpace(token[tokenStart]))
+                    tokenStart++;
+                while (tokenEnd > tokenStart && IsFormatSpace(token[tokenEnd - 1]))
+                    tokenEnd--;
+
+                result[index++] = tokenEnd > tokenStart
+                    ? token.Slice(tokenStart, tokenEnd - tokenStart).ToString()
+                    : string.Empty;
+                start = i + 1;
+            }
+        }
+
+        return result;
+    }
+
+    private static bool IsFormatSpace(char c) => c == ' ' || c == '\t';
 
     private void EnsureStyleMap()
     {
