@@ -46,7 +46,17 @@ public sealed class AssData(ILogger? logger = null, AssParseTarget target = AssP
     private byte[]? _sourceBuffer;
 
     public async Task<AssData> ReadAssFileAsync(Stream fs)
+        => await ReadAssFileCoreAsync(fs, forcedEncoding: null, detector: null, fallbackEncoding: null);
+
+    public async Task<AssData> ReadAssFileAsync(Stream fs, Encoding encoding)
+        => await ReadAssFileCoreAsync(fs, encoding, detector: null, fallbackEncoding: null);
+
+    public async Task<AssData> ReadAssFileAsync(Stream fs, Func<ReadOnlySpan<byte>, Encoding?> detector, Encoding? fallbackEncoding = null)
+        => await ReadAssFileCoreAsync(fs, forcedEncoding: null, detector, fallbackEncoding);
+
+    private async Task<AssData> ReadAssFileCoreAsync(Stream fs, Encoding? forcedEncoding, Func<ReadOnlySpan<byte>, Encoding?>? detector, Encoding? fallbackEncoding)
     {
+        _getFirstCarriageReturn = false;
         if (fs is MemoryStream ms && ms.TryGetBuffer(out ArraySegment<byte> segment))
         {
             _sourceBuffer = new byte[segment.Count];
@@ -59,12 +69,83 @@ public sealed class AssData(ILogger? logger = null, AssParseTarget target = AssP
             _sourceBuffer = memoryStream.ToArray();
         }
 
+        return ParseBuffer(_sourceBuffer, forcedEncoding, detector, fallbackEncoding);
+    }
+    public async Task<AssData> ReadAssFileAsync(string filePath)
+    {
+        using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read);
+        logger?.ZLogInformation($"Open ass file: {filePath}");
+        return await ReadAssFileAsync(fs);
+    }
+    public async Task<AssData> ReadAssFileAsync(string filePath, Encoding encoding)
+    {
+        using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read);
+        logger?.ZLogInformation($"Open ass file: {filePath}");
+        return await ReadAssFileAsync(fs, encoding);
+    }
+    public async Task<AssData> ReadAssFileAsync(string filePath, Func<ReadOnlySpan<byte>, Encoding?> detector, Encoding? fallbackEncoding = null)
+    {
+        using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read);
+        logger?.ZLogInformation($"Open ass file: {filePath}");
+        return await ReadAssFileAsync(fs, detector, fallbackEncoding);
+    }
+    public AssData ReadAssText(ReadOnlySpan<byte> data)
+    {
+        using var ms = new MemoryStream(data.ToArray(), writable: false);
+        return ReadAssFileAsync(ms).GetAwaiter().GetResult();
+    }
+    public AssData ReadAssText(ReadOnlySpan<byte> data, Encoding encoding)
+    {
+        using var ms = new MemoryStream(data.ToArray(), writable: false);
+        return ReadAssFileAsync(ms, encoding).GetAwaiter().GetResult();
+    }
+    public AssData ReadAssText(ReadOnlySpan<byte> data, Func<ReadOnlySpan<byte>, Encoding?> detector, Encoding? fallbackEncoding = null)
+    {
+        using var ms = new MemoryStream(data.ToArray(), writable: false);
+        return ReadAssFileAsync(ms, detector, fallbackEncoding).GetAwaiter().GetResult();
+    }
+
+    private AssData ParseBuffer(byte[] buffer, Encoding? forcedEncoding, Func<ReadOnlySpan<byte>, Encoding?>? detector, Encoding? fallbackEncoding)
+    {
+        _sourceBuffer = buffer;
         var span = _sourceBuffer.AsSpan();
-        CharEncoding = Utils.GuessEncoding(span, out int preambleLength);
+        int preambleLength;
+
+        if (forcedEncoding != null)
+        {
+            CharEncoding = forcedEncoding;
+            preambleLength = GetPreambleLength(span, forcedEncoding);
+        }
+        else
+        {
+            CharEncoding = Utils.GuessEncoding(span, out preambleLength);
+            if (preambleLength == 0 && detector != null)
+            {
+                var detected = detector(span);
+                if (detected != null)
+                {
+                    CharEncoding = detected;
+                    preambleLength = GetPreambleLength(span, detected);
+                }
+            }
+
+            if (preambleLength == 0 && fallbackEncoding != null && CharEncoding.CodePage == Encoding.UTF8.CodePage)
+            {
+                CharEncoding = fallbackEncoding;
+            }
+        }
+
         CarriageReturn = false;
-        
+        if (CharEncoding.CodePage != Encoding.UTF8.CodePage)
+        {
+            var decoded = CharEncoding.GetString(span.Slice(preambleLength));
+            _sourceBuffer = Encoding.UTF8.GetBytes(decoded);
+            span = _sourceBuffer.AsSpan();
+            preambleLength = 0;
+        }
+
         logger?.ZLogInformation($"Start parse ass");
- 
+
         var lineNumber = 0;
         var sectionType = AssSection.None;
         var offset = preambleLength;
@@ -85,7 +166,7 @@ public sealed class AssData(ILogger? logger = null, AssParseTarget target = AssP
                 {
                     nextLineLength = i - offset; // Exclude \n
                     nextOffset = i + 1;
-                    
+
                     // Handle \r\n (if prev char was \r)
                     if (nextLineLength > 0 && span[i - 1] == (byte)'\r')
                     {
@@ -111,35 +192,31 @@ public sealed class AssData(ILogger? logger = null, AssParseTarget target = AssP
 
             lineNumber++;
             var lineSlice = new ReadOnlyMemory<byte>(_sourceBuffer, offset, nextLineLength);
-            
+
             if (lineNumber == 1 && !lineSlice.Span.SequenceEqual("[Script Info]"u8))
             {
-                 throw new Exception("Please check first line");
+                throw new Exception("Please check first line");
             }
-            
+
             ParseContent(lineSlice, lineNumber, ref sectionType);
-            
+
             offset = nextOffset;
         }
 
-
-        
         Fonts.Finish();
         Graphics.Finish();
 
         logger?.ZLogInformation($"Ass parsing completed");
         return this;
     }
-    public async Task<AssData> ReadAssFileAsync(string filePath)
+
+    private static int GetPreambleLength(ReadOnlySpan<byte> span, Encoding encoding)
     {
-        using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read);
-        logger?.ZLogInformation($"Open ass file: {filePath}");
-        return await ReadAssFileAsync(fs);
-    }
-    public AssData ReadAssText(ReadOnlySpan<byte> data)
-    {
-        using var ms = new MemoryStream(data.ToArray(), writable: false);
-        return ReadAssFileAsync(ms).GetAwaiter().GetResult();
+        var preamble = encoding.GetPreamble();
+        if (preamble.Length == 0 || span.Length < preamble.Length)
+            return 0;
+
+        return span.Slice(0, preamble.Length).SequenceEqual(preamble) ? preamble.Length : 0;
     }
 
     private void ParseContent(ReadOnlyMemory<byte> line, int lineNumber, ref AssSection sectionType)
