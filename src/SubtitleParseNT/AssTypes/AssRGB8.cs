@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Buffers.Text;
 
 namespace Mobsub.SubtitleParseNT2.AssTypes;
 
@@ -118,6 +119,36 @@ public struct AssRGB8(byte red, byte green, byte blue, byte alpha)
         }
 
         return new AssRGB8(rr, gg, bb, aa);
+    }
+
+    public static bool TryParseAlphaByte(ReadOnlySpan<byte> sp, out byte value)
+    {
+        value = 0;
+        sp = Utils.TrimSpaces(sp);
+        if (sp.IsEmpty)
+            return false;
+
+        if (sp.Length >= 2 && sp[0] == (byte)'&' && (sp[1] == (byte)'H' || sp[1] == (byte)'h'))
+        {
+            try
+            {
+                var color = Parse(sp);
+                value = color.R;
+                return true;
+            }
+            catch (FormatException)
+            {
+                return false;
+            }
+        }
+
+        if (Utf8Parser.TryParse(sp, out int iv, out int consumed) && consumed == sp.Length)
+        {
+            value = (byte)iv;
+            return true;
+        }
+
+        return false;
     }
 
     public readonly string ConvertToString(bool withAlpha = false, bool onlyAlpha = false)
