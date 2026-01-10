@@ -77,12 +77,10 @@ public class AssFunctionTagParsersTest
     }
 
     [TestMethod]
-    public void ClipDrawing_AllowsCommas_WhenHasCommands()
+    public void ClipDrawing_WithCommaSeparatedPayload_IsRejected()
     {
-        AssFunctionTagParsers.TryParseClipDrawing("(2, m 0 0, l 10 10)"u8, out var scale, out var drawing)
-            .Should().BeTrue();
-        scale.Should().Be(2);
-        drawing.SequenceEqual("m 0 0, l 10 10"u8).Should().BeTrue();
+        AssFunctionTagParsers.TryParseClipDrawing("(2, m 0 0, l 10 10)"u8, out _, out _)
+            .Should().BeFalse();
     }
 
     [TestMethod]
@@ -95,17 +93,21 @@ public class AssFunctionTagParsersTest
     }
 
     [TestMethod]
-    public void ClipDrawing_RejectsScaleAsNonIntegerFloat()
+    public void ClipDrawing_AllowsScaleAsNonIntegerFloat_Truncates()
     {
-        AssFunctionTagParsers.TryParseClipDrawing("(2.5, m 0 0 l 10 10)"u8, out _, out _)
-            .Should().BeFalse();
+        AssFunctionTagParsers.TryParseClipDrawing("(2.5, m 0 0 l 10 10)"u8, out var scale, out var drawing)
+            .Should().BeTrue();
+        scale.Should().Be(2);
+        drawing.SequenceEqual("m 0 0 l 10 10"u8).Should().BeTrue();
     }
 
     [TestMethod]
-    public void ClipDrawing_RejectsNoCommandPayload()
+    public void ClipDrawing_AllowsNumericPayloadWithoutCommands()
     {
-        AssFunctionTagParsers.TryParseClipDrawing("(0 0 10 10)"u8, out _, out _)
-            .Should().BeFalse();
+        AssFunctionTagParsers.TryParseClipDrawing("(0 0 10 10)"u8, out var scale, out var drawing)
+            .Should().BeTrue();
+        scale.Should().Be(1);
+        drawing.SequenceEqual("0 0 10 10"u8).Should().BeTrue();
     }
 
     [TestMethod]
@@ -157,13 +159,19 @@ public class AssFunctionTagParsersTest
     }
 
     [TestMethod]
-    public void Transform_InvalidHeader_AccelThenTime_IsRejected()
+    public void Transform_TimesForm_AllowsFloatStart_Truncates()
     {
-        // accel cannot be followed by time tokens
         AssFunctionTagParsers.TryParseTransform("(0.5,100,\\bord2)"u8,
-            out _, out _, out _,
-            out _, out _,
-            out _).Should().BeFalse();
+            out var t1, out var t2, out var hasTimes,
+            out var accel, out var hasAccel,
+            out var tagPayload).Should().BeTrue();
+
+        hasTimes.Should().BeTrue();
+        t1.Should().Be(0);
+        t2.Should().Be(100);
+        hasAccel.Should().BeFalse();
+        accel.Should().Be(0);
+        tagPayload.SequenceEqual("\\bord2"u8).Should().BeTrue();
     }
 
     [TestMethod]

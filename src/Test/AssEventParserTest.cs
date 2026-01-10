@@ -30,4 +30,88 @@ public class AssEventParserTest
         tags[0].TryGet<int>(out var bold).Should().BeTrue();
         bold.Should().Be(1);
     }
+
+    [TestMethod]
+    public void ParseLine_AllowsSpaceBeforeFunctionParen()
+    {
+        ReadOnlyMemory<byte> line = "{\\t (0.5,100,\\pos(1,2))}x"u8.ToArray();
+
+        var segments = AssEventParser.ParseLine(line).Span;
+
+        segments.Length.Should().Be(2);
+        segments[0].SegmentKind.Should().Be(AssEventSegmentKind.TagBlock);
+
+        var tags = segments[0].Tags!.Value.Span;
+        tags.Length.Should().Be(1);
+        tags[0].Tag.Should().Be(AssTag.Transform);
+        tags[0].TryGet<AssTagFunctionValue>(out var value).Should().BeTrue();
+        value.Kind.Should().Be(AssTagFunctionKind.Transform);
+        value.HasTimes.Should().BeTrue();
+        value.T1.Should().Be(0);
+        value.T2.Should().Be(100);
+        value.HasAccel.Should().BeFalse();
+        value.TagPayload.Span.SequenceEqual("\\pos(1,2)"u8).Should().BeTrue();
+    }
+
+    [TestMethod]
+    public void ParseLine_ParsesRawHexColorAndAlpha()
+    {
+        ReadOnlyMemory<byte> line = "{\\c0000FF\\alpha7F}x"u8.ToArray();
+
+        var segments = AssEventParser.ParseLine(line).Span;
+
+        segments.Length.Should().Be(2);
+        segments[0].SegmentKind.Should().Be(AssEventSegmentKind.TagBlock);
+
+        var tags = segments[0].Tags!.Value.Span;
+        tags.Length.Should().Be(2);
+        tags[0].Tag.Should().Be(AssTag.ColorPrimaryAbbreviation);
+        tags[0].TryGet<AssRGB8>(out var color).Should().BeTrue();
+        color.R.Should().Be(0xFF);
+        color.G.Should().Be(0x00);
+        color.B.Should().Be(0x00);
+
+        tags[1].Tag.Should().Be(AssTag.Alpha);
+        tags[1].TryGet<byte>(out var alpha).Should().BeTrue();
+        alpha.Should().Be(0x7F);
+    }
+
+    [TestMethod]
+    public void ParseLine_IgnoresHighByteInColorTag()
+    {
+        ReadOnlyMemory<byte> line = "{\\c11223344}x"u8.ToArray();
+
+        var segments = AssEventParser.ParseLine(line).Span;
+
+        segments.Length.Should().Be(2);
+        segments[0].SegmentKind.Should().Be(AssEventSegmentKind.TagBlock);
+
+        var tags = segments[0].Tags!.Value.Span;
+        tags.Length.Should().Be(1);
+        tags[0].Tag.Should().Be(AssTag.ColorPrimaryAbbreviation);
+        tags[0].TryGet<AssRGB8>(out var color).Should().BeTrue();
+        color.R.Should().Be(0x44);
+        color.G.Should().Be(0x33);
+        color.B.Should().Be(0x22);
+    }
+
+    [TestMethod]
+    public void ParseLine_ParsesKaraokeTAndFontScaleReset()
+    {
+        ReadOnlyMemory<byte> line = "{\\kt10\\fsc50}x"u8.ToArray();
+
+        var segments = AssEventParser.ParseLine(line).Span;
+
+        segments.Length.Should().Be(2);
+        segments[0].SegmentKind.Should().Be(AssEventSegmentKind.TagBlock);
+
+        var tags = segments[0].Tags!.Value.Span;
+        tags.Length.Should().Be(2);
+        tags[0].Tag.Should().Be(AssTag.KaraokeT);
+        tags[0].TryGet<int>(out var kt).Should().BeTrue();
+        kt.Should().Be(10);
+
+        tags[1].Tag.Should().Be(AssTag.FontScale);
+        tags[1].Value.Kind.Should().Be(AssTagValueKind.None);
+    }
 }

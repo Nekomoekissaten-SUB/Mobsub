@@ -1,6 +1,5 @@
 ﻿using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Buffers.Text;
 
 namespace Mobsub.SubtitleParseNT2.AssTypes;
 
@@ -124,31 +123,57 @@ public struct AssRGB8(byte red, byte green, byte blue, byte alpha)
     public static bool TryParseAlphaByte(ReadOnlySpan<byte> sp, out byte value)
     {
         value = 0;
+        if (!TryParseAssHex(sp, out var raw, out _))
+            return false;
+        value = (byte)raw;
+        return true;
+    }
+
+    public static bool TryParseTagColor(ReadOnlySpan<byte> sp, out AssRGB8 color, out bool ignoredHighByte)
+    {
+        color = default;
+        ignoredHighByte = false;
+        if (!TryParseAssHex(sp, out var raw, out int digits))
+            return false;
+
+        ignoredHighByte = digits > 6;
+        raw &= 0xFFFFFF;
+        color = new AssRGB8((byte)(raw & 0xFF), (byte)((raw >> 8) & 0xFF), (byte)((raw >> 16) & 0xFF), 0);
+        return true;
+    }
+
+    private static bool TryParseAssHex(ReadOnlySpan<byte> sp, out uint value, out int digits)
+    {
+        value = 0;
+        digits = 0;
         sp = Utils.TrimSpaces(sp);
         if (sp.IsEmpty)
             return false;
 
-        if (sp.Length >= 2 && sp[0] == (byte)'&' && (sp[1] == (byte)'H' || sp[1] == (byte)'h'))
+        if (sp[^1] == (byte)'&')
+            sp = sp[..^1];
+
+        if (sp.IsEmpty)
+            return false;
+
+        if (sp[0] == (byte)'&')
+            sp = sp[1..];
+        if (!sp.IsEmpty && (sp[0] == (byte)'H' || sp[0] == (byte)'h'))
+            sp = sp[1..];
+
+        if (sp.IsEmpty)
+            return false;
+
+        for (int i = 0; i < sp.Length; i++)
         {
-            try
-            {
-                var color = Parse(sp);
-                value = color.R;
-                return true;
-            }
-            catch (FormatException)
-            {
-                return false;
-            }
+            int n = HexLut[sp[i]];
+            if (n < 0)
+                break;
+            value = (value << 4) | (uint)n;
+            digits++;
         }
 
-        if (Utf8Parser.TryParse(sp, out int iv, out int consumed) && consumed == sp.Length)
-        {
-            value = (byte)iv;
-            return true;
-        }
-
-        return false;
+        return digits > 0;
     }
 
     public readonly string ConvertToString(bool withAlpha = false, bool onlyAlpha = false)

@@ -1,6 +1,7 @@
 ﻿using Mobsub.SubtitleParseNT2.AssTypes;
 using System.Buffers;
 using System.Buffers.Text;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -253,9 +254,15 @@ public static class AssEventParser
                 int paramLength;
                 ReadOnlyMemory<byte> paramMemory = default;
 
-                if (((desc.TagType & AssTagKind.ShouldBeFunction) != 0) && actualParamStart < block.Length && block[actualParamStart] == (byte)'(')
+                int parenStart = actualParamStart;
+                if ((desc.TagType & AssTagKind.ShouldBeFunction) != 0)
                 {
-                    int j = actualParamStart + 1;
+                    while (parenStart < block.Length && block[parenStart] == (byte)' ') parenStart++;
+                }
+
+                if (((desc.TagType & AssTagKind.ShouldBeFunction) != 0) && parenStart < block.Length && block[parenStart] == (byte)'(')
+                {
+                    int j = parenStart + 1;
                     int depth = 1;
                     var funcSearchSpan = block[j..];
 
@@ -366,6 +373,9 @@ public static class AssEventParser
         var trimmedSpan = param.Slice(start, length);
         var trimmedMemory = paramMemory.IsEmpty ? default : paramMemory.Slice(start, length);
 
+        if (tag == AssTag.FontScale)
+            return AssTagValue.Empty;
+
         if (IsAlphaTag(tag) && AssRGB8.TryParseAlphaByte(trimmedSpan, out var alpha))
             return AssTagValue.FromByte(alpha);
 
@@ -389,7 +399,18 @@ public static class AssEventParser
             return AssTagValue.Empty;
         }
         if (desc.ValueType == typeof(byte) && Utf8Parser.TryParse(trimmedSpan, out int byv, out _)) return AssTagValue.FromByte((byte)byv);
-        if (desc.ValueType == typeof(AssRGB8)) return AssTagValue.FromColor(AssRGB8.Parse(trimmedSpan));
+        if (desc.ValueType == typeof(AssRGB8))
+        {
+            if (AssRGB8.TryParseTagColor(trimmedSpan, out var color, out var ignoredHighByte))
+            {
+                if (ignoredHighByte)
+                {
+                    Debug.WriteLine("ASS color tag contains more than 6 hex digits; high byte ignored.");
+                }
+                return AssTagValue.FromColor(color);
+            }
+            return AssTagValue.Empty;
+        }
         if (desc.ValueType == typeof(ReadOnlyMemory<byte>))
         {
             return AssTagValue.FromBytes(trimmedMemory.IsEmpty ? trimmedSpan.ToArray() : trimmedMemory);

@@ -1,4 +1,5 @@
 using Mobsub.SubtitleParseNT2;
+using System.Buffers.Text;
 
 namespace Mobsub.SubtitleParseNT2.AssUtils;
 
@@ -198,59 +199,30 @@ public static class AssFunctionTagParsers
         if (!Utils.TryGetParenContent(payload, out var inner))
             return false;
 
-        Utils.SkipSpaces(ref inner);
+        inner = Utils.TrimSpaces(inner);
         if (inner.IsEmpty)
             return false;
 
-        // Try optional leading scale.
-        // libass treats scale as integer, but some producers may output "2.0".
-        var probe = inner;
-        if (Utils.TryReadDouble(ref probe, out var sDouble))
+        int commaIndex = inner.IndexOf((byte)',');
+        if (commaIndex < 0)
         {
-            var afterScale = probe;
-            Utils.SkipSpaces(ref afterScale);
-            if (!afterScale.IsEmpty && afterScale[0] == (byte)',')
-            {
-                if (sDouble % 1 != 0)
-                    return false;
-
-                // consume comma and treat remainder as drawing
-                probe = afterScale[1..];
-                Utils.SkipSpaces(ref probe);
-                scale = (int)sDouble;
-                drawing = Utils.TrimSpaces(probe);
-
-                // Accept commas in drawing payload only if it clearly contains drawing commands.
-                // Reject pure numeric/comma lists to avoid misclassifying rect-like arguments.
-                return !drawing.IsEmpty && LooksLikeAssDrawing(drawing);
-            }
+            drawing = inner;
+            return !drawing.IsEmpty;
         }
 
-        drawing = Utils.TrimSpaces(inner);
-        return !drawing.IsEmpty && LooksLikeAssDrawing(drawing);
-    }
+        if (inner[(commaIndex + 1)..].IndexOf((byte)',') >= 0)
+            return false;
 
-    private static bool LooksLikeAssDrawing(ReadOnlySpan<byte> drawing)
-    {
-        // Heuristic: must contain at least one ASCII letter command (m/n/l/b/s/p/c)
-        // and must not be just numbers + separators.
-        bool hasCommand = false;
-        for (int i = 0; i < drawing.Length; i++)
-        {
-            byte b = drawing[i];
-            if (b >= (byte)'A' && b <= (byte)'Z')
-                b = (byte)(b | 0x20);
+        var scaleSpan = Utils.TrimSpaces(inner[..commaIndex]);
+        if (scaleSpan.IsEmpty)
+            return false;
 
-            if (b >= (byte)'a' && b <= (byte)'z')
-            {
-                // common ASS drawing commands
-                if (b is (byte)'m' or (byte)'n' or (byte)'l' or (byte)'b' or (byte)'s' or (byte)'p' or (byte)'c')
-                    hasCommand = true;
-                continue;
-            }
-        }
+        if (!Utf8Parser.TryParse(scaleSpan, out double sDouble, out int consumed) || consumed != scaleSpan.Length)
+            return false;
 
-        return hasCommand;
+        scale = Math.Max(1, (int)sDouble);
+        drawing = Utils.TrimSpaces(inner[(commaIndex + 1)..]);
+        return !drawing.IsEmpty;
     }
 
     /// <summary>
@@ -317,15 +289,12 @@ public static class AssFunctionTagParsers
             return true;
         }
 
-        // Times form requires integer t1.
-        if (first % 1 != 0)
-            return false;
-
         t1 = (int)first;
         hasTimes = true;
 
-        if (!Utils.TryReadInt(ref h, out t2))
+        if (!Utils.TryReadDouble(ref h, out var dt2))
             return false;
+        t2 = (int)dt2;
 
         Utils.SkipSpaces(ref h);
         if (h.IsEmpty)

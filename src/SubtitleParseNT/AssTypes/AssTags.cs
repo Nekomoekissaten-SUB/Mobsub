@@ -40,9 +40,9 @@ public enum AssTag
     FontShiftX, FontShiftY,
     FontEncoding, FontName,
     FontRotationX, FontRotationY, FontRotationZ, FontRotationZSimple,
-    FontScaleX, FontScaleY, // FontSizeScale
+    FontScaleX, FontScaleY, FontScale, // FontSizeScale
     FontSpacing, FontSize, Italic,
-    KaraokeO, KaraokeF, KaraokeFSimple, Karaoke, // KaraokeT
+    KaraokeO, KaraokeF, KaraokeFSimple, Karaoke, KaraokeT,
     Movement, OriginRotation, Position,
     PolygonBaselineOffset, Polygon, WrapStyle,
     Reset, // rnd
@@ -191,6 +191,8 @@ public static class AssTagRegistry
                 AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable),
             [AssTag.FontScaleY] = new("fscy"u8.ToArray(), typeof(double),
                 AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable),
+            [AssTag.FontScale] = new("fsc"u8.ToArray(), typeof(ReadOnlyMemory<byte>),
+                AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable),
             [AssTag.FontSpacing] = new("fsp"u8.ToArray(), typeof(double),
                 AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable),
             [AssTag.FontSize] = new("fs"u8.ToArray(), typeof(double),
@@ -204,6 +206,8 @@ public static class AssTagRegistry
             [AssTag.KaraokeFSimple] = new("K"u8.ToArray(), typeof(int),
                 AssTagKind.Ignored),
             [AssTag.Karaoke] = new("k"u8.ToArray(), typeof(int),
+                AssTagKind.Ignored),
+            [AssTag.KaraokeT] = new("kt"u8.ToArray(), typeof(int),
                 AssTagKind.Ignored),
             [AssTag.Movement] = new("move"u8.ToArray(), typeof(ReadOnlyMemory<byte>),
                 AssTagKind.Ignored),
