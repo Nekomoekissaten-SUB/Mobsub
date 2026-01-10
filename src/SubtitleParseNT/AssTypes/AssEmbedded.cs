@@ -77,73 +77,86 @@ public struct AssEmbeddedFile
     public void Encode(ReadOnlySpan<byte> sourceData)
     {
         Data.Clear();
-        var sb = new StringBuilder(80);
-        var buffer = new byte[3];
         var len = sourceData.Length;
         var pos = 0;
+        if (len == 0)
+            return;
+
+        var lineBuffer = new byte[80];
+        int lineLength = 0;
 
         while (pos < len)
         {
             var remain = len - pos;
             var readLen = remain >= 3 ? 3 : remain;
-            
-            // buffer[0] = sourceData[pos]; etc
-            // But we need to be careful with range.
-            
+
+            int needed = readLen == 3 ? 4 : readLen == 2 ? 3 : 2;
+            if (lineLength + needed > 80)
+            {
+                AddLine(lineBuffer, lineLength);
+                lineLength = 0;
+            }
+
             if (readLen == 3)
             {
-                EncodeChar3(sourceData.Slice(pos, 3), sb);
+                lineLength += EncodeChar3(sourceData.Slice(pos, 3), lineBuffer.AsSpan(lineLength));
                 pos += 3;
             }
             else if (readLen == 2)
             {
-                EncodeChar2(sourceData.Slice(pos, 2), sb);
+                lineLength += EncodeChar2(sourceData.Slice(pos, 2), lineBuffer.AsSpan(lineLength));
                 pos += 2;
             }
             else // 1
             {
-                EncodeChar1(sourceData.Slice(pos, 1), sb);
+                lineLength += EncodeChar1(sourceData.Slice(pos, 1), lineBuffer.AsSpan(lineLength));
                 pos += 1;
             }
 
-            if (sb.Length >= 80)
+            if (lineLength == 80)
             {
-                AddLine(sb);
+                AddLine(lineBuffer, lineLength);
+                lineLength = 0;
             }
         }
-        if (sb.Length > 0)
+        if (lineLength > 0)
         {
-            AddLine(sb);
+            AddLine(lineBuffer, lineLength);
         }
     }
 
-    private void AddLine(StringBuilder sb)
+    private void AddLine(byte[] buffer, int length)
     {
-        // Store as bytes (ASCII)
-        var bytes = Encoding.ASCII.GetBytes(sb.ToString()); // Allocation here inevitably
+        if (length <= 0)
+            return;
+
+        var bytes = new byte[length];
+        Buffer.BlockCopy(buffer, 0, bytes, 0, length);
         Data.Add(bytes);
-        sb.Clear();
     }
 
-   private static void EncodeChar1(ReadOnlySpan<byte> buffer, StringBuilder sb)
+   private static int EncodeChar1(ReadOnlySpan<byte> buffer, Span<byte> dest)
     {
-        sb.Append((char)(((buffer[0] >> 2) & 0x3f) + 33));
-        sb.Append((char)(((buffer[0] << 4) & 0x3f) + 33));
+        dest[0] = (byte)(((buffer[0] >> 2) & 0x3f) + 33);
+        dest[1] = (byte)(((buffer[0] << 4) & 0x3f) + 33);
+        return 2;
     }
 
-    private static void EncodeChar2(ReadOnlySpan<byte> buffer, StringBuilder sb)
+    private static int EncodeChar2(ReadOnlySpan<byte> buffer, Span<byte> dest)
     {
-        sb.Append((char)(((buffer[0] >> 2) & 0x3f) + 33));
-        sb.Append((char)(((buffer[0] << 4) & 0x3f | (buffer[1] >> 4) & 0x0f) + 33));
-        sb.Append((char)(((buffer[1] << 2) & 0x3f) + 33));
+        dest[0] = (byte)(((buffer[0] >> 2) & 0x3f) + 33);
+        dest[1] = (byte)(((buffer[0] << 4) & 0x3f | (buffer[1] >> 4) & 0x0f) + 33);
+        dest[2] = (byte)(((buffer[1] << 2) & 0x3f) + 33);
+        return 3;
     }
 
-    private static void EncodeChar3(ReadOnlySpan<byte> buffer, StringBuilder sb)
+    private static int EncodeChar3(ReadOnlySpan<byte> buffer, Span<byte> dest)
     {
-        sb.Append((char)(((buffer[0] >> 2) & 0x3f) + 33));
-        sb.Append((char)(((buffer[0] << 4) & 0x3f | (buffer[1] >> 4) & 0x0f) + 33));
-        sb.Append((char)(((buffer[1] << 2) & 0x3f | (buffer[2] >> 6) & 0x03) + 33));
-        sb.Append((char)(((buffer[2] << 0) & 0x3f) + 33));
+        dest[0] = (byte)(((buffer[0] >> 2) & 0x3f) + 33);
+        dest[1] = (byte)(((buffer[0] << 4) & 0x3f | (buffer[1] >> 4) & 0x0f) + 33);
+        dest[2] = (byte)(((buffer[1] << 2) & 0x3f | (buffer[2] >> 6) & 0x03) + 33);
+        dest[3] = (byte)(((buffer[2] << 0) & 0x3f) + 33);
+        return 4;
     }
 
     private static void DecodeChars(ReadOnlySpan<byte> s, byte[] buffer, ref int offset)

@@ -44,6 +44,8 @@ public sealed class AssData(ILogger? logger = null, AssParseTarget target = AssP
     }
 
     private byte[]? _sourceBuffer;
+    private string? _scriptTypeCache;
+    private byte[]? _scriptTypeBytes;
 
     public async Task<AssData> ReadAssFileAsync(Stream fs)
         => await ReadAssFileCoreAsync(fs, forcedEncoding: null, detector: null, fallbackEncoding: null);
@@ -108,6 +110,8 @@ public sealed class AssData(ILogger? logger = null, AssParseTarget target = AssP
     private AssData ParseBuffer(byte[] buffer, Encoding? forcedEncoding, Func<ReadOnlySpan<byte>, Encoding?>? detector, Encoding? fallbackEncoding)
     {
         _sourceBuffer = buffer;
+        _scriptTypeCache = null;
+        _scriptTypeBytes = null;
         var span = _sourceBuffer.AsSpan();
         int preambleLength;
 
@@ -219,6 +223,17 @@ public sealed class AssData(ILogger? logger = null, AssParseTarget target = AssP
         return span.Slice(0, preamble.Length).SequenceEqual(preamble) ? preamble.Length : 0;
     }
 
+    private ReadOnlySpan<byte> GetScriptTypeBytes()
+    {
+        var scriptType = ScriptInfo.ScriptType;
+        if (_scriptTypeBytes == null || !string.Equals(_scriptTypeCache, scriptType, StringComparison.Ordinal))
+        {
+            _scriptTypeCache = scriptType;
+            _scriptTypeBytes = Encoding.UTF8.GetBytes(scriptType);
+        }
+        return _scriptTypeBytes;
+    }
+
     private void ParseContent(ReadOnlyMemory<byte> line, int lineNumber, ref AssSection sectionType)
     {
         var sp = line.Span;
@@ -285,7 +300,7 @@ public sealed class AssData(ILogger? logger = null, AssParseTarget target = AssP
                 {
                     InitEvents();
                 }
-                Events!.Read(line, "[V4+ Styles]"u8, lineNumber);
+                Events!.Read(line, GetScriptTypeBytes(), lineNumber);
                 break;
             case AssSection.AegisubProjectGarbage:
                 ProjectGarbage.Read(line, lineNumber);
