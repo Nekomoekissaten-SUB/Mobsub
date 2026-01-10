@@ -161,45 +161,36 @@ public sealed class AssData(ILogger? logger = null, AssParseTarget target = AssP
             var sectionType = AssSection.None;
             var offset = preambleLength;
 
-            while (offset < span.Length)
+        while (offset < span.Length)
+        {
+            // Find next line break.
+            int nextLineLength;
+            int nextOffset;
+
+            var searchSpan = span[offset..];
+            int lfIndex = searchSpan.IndexOf((byte)'\n');
+            if (lfIndex == -1)
             {
-                // Find next line break
-                int nextLineLength = 0;
-                int nextOffset = offset;
-                bool foundLine = false;
+                // End of file without newline
+                nextLineLength = span.Length - offset;
+                nextOffset = span.Length;
+            }
+            else
+            {
+                nextLineLength = lfIndex; // Exclude \n
+                nextOffset = offset + lfIndex + 1;
 
-                // Simple search for \n or \r\n
-                // Optimized search could use SIMD (IndexOfAny), but loop is sufficient for text
-                int i = offset;
-                while (i < span.Length)
+                // Handle \r\n (if prev char was \r)
+                if (lfIndex > 0 && searchSpan[lfIndex - 1] == (byte)'\r')
                 {
-                    if (span[i] == (byte)'\n')
+                    nextLineLength--; // Exclude \r
+                    if (!_getFirstCarriageReturn)
                     {
-                        nextLineLength = i - offset; // Exclude \n
-                        nextOffset = i + 1;
-
-                        // Handle \r\n (if prev char was \r)
-                        if (nextLineLength > 0 && span[i - 1] == (byte)'\r')
-                        {
-                            nextLineLength--; // Exclude \r
-                            if (!_getFirstCarriageReturn)
-                            {
-                                CarriageReturn = true;
-                                _getFirstCarriageReturn = true;
-                            }
-                        }
-                        foundLine = true;
-                        break;
+                        CarriageReturn = true;
+                        _getFirstCarriageReturn = true;
                     }
-                    i++;
                 }
-
-                if (!foundLine)
-                {
-                    // End of file without newline
-                    nextLineLength = span.Length - offset;
-                    nextOffset = span.Length;
-                }
+            }
 
                 lineNumber++;
                 var lineSlice = new ReadOnlyMemory<byte>(_sourceBuffer, offset, nextLineLength);
