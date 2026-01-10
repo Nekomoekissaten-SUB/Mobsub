@@ -93,18 +93,21 @@ public sealed class AssData(ILogger? logger = null, AssParseTarget target = AssP
     }
     public AssData ReadAssText(ReadOnlySpan<byte> data)
     {
-        using var ms = new MemoryStream(data.ToArray(), writable: false);
-        return ReadAssFileAsync(ms).GetAwaiter().GetResult();
+        _getFirstCarriageReturn = false;
+        var buffer = data.ToArray();
+        return ParseBuffer(buffer, forcedEncoding: null, detector: null, fallbackEncoding: null);
     }
     public AssData ReadAssText(ReadOnlySpan<byte> data, Encoding encoding)
     {
-        using var ms = new MemoryStream(data.ToArray(), writable: false);
-        return ReadAssFileAsync(ms, encoding).GetAwaiter().GetResult();
+        _getFirstCarriageReturn = false;
+        var buffer = data.ToArray();
+        return ParseBuffer(buffer, encoding, detector: null, fallbackEncoding: null);
     }
     public AssData ReadAssText(ReadOnlySpan<byte> data, Func<ReadOnlySpan<byte>, Encoding?> detector, Encoding? fallbackEncoding = null)
     {
-        using var ms = new MemoryStream(data.ToArray(), writable: false);
-        return ReadAssFileAsync(ms, detector, fallbackEncoding).GetAwaiter().GetResult();
+        _getFirstCarriageReturn = false;
+        var buffer = data.ToArray();
+        return ParseBuffer(buffer, forcedEncoding: null, detector, fallbackEncoding);
     }
 
     private AssData ParseBuffer(byte[] buffer, Encoding? forcedEncoding, Func<ReadOnlySpan<byte>, Encoding?>? detector, Encoding? fallbackEncoding)

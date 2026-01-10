@@ -52,6 +52,7 @@ public static class AssEventParser
     public static ReadOnlyMemory<AssEventSegment> ParseLine(ReadOnlyMemory<byte> line)
         => ParseLineInternal(line.Span, line);
 
+    // Prefer the ReadOnlyMemory overload when possible to keep tag payloads as slices.
     public static ReadOnlyMemory<AssEventSegment> ParseLine(ReadOnlySpan<byte> line)
         => ParseLineInternal(line, default);
 
@@ -67,6 +68,7 @@ public static class AssEventParser
         action(buffer.Span);
     }
 
+    // Prefer the ReadOnlyMemory overload when possible to keep tag payloads as slices.
     public static void WithParsedSegments(ReadOnlySpan<byte> line, Action<ReadOnlySpan<AssEventSegment>> action)
     {
         using var buffer = ParseLinePooled(line);
@@ -171,7 +173,7 @@ public static class AssEventParser
             }
 
             int backslashPos = i + nextBackslash;
-            if (backslashPos + 1 < textLength && TextLookup.TryGetValue(text[backslashPos + 1], out var kind))
+            if (backslashPos + 1 < textLength && TryGetTextSegmentKind(text[backslashPos + 1], out var kind))
             {
                 if (backslashPos > runStart)
                 {
@@ -328,12 +330,24 @@ public static class AssEventParser
         return result;
     }
 
-    private static readonly Dictionary<byte, AssEventSegmentKind> TextLookup = new()
+    private static bool TryGetTextSegmentKind(byte b, out AssEventSegmentKind kind)
     {
-        [(byte)'N'] = AssEventSegmentKind.HardLineBreaker,
-        [(byte)'n'] = AssEventSegmentKind.SoftLineBreaker,
-        [(byte)'h'] = AssEventSegmentKind.NonBreakingSpace,
-    };
+        switch (b)
+        {
+            case (byte)'N':
+                kind = AssEventSegmentKind.HardLineBreaker;
+                return true;
+            case (byte)'n':
+                kind = AssEventSegmentKind.SoftLineBreaker;
+                return true;
+            case (byte)'h':
+                kind = AssEventSegmentKind.NonBreakingSpace;
+                return true;
+            default:
+                kind = default;
+                return false;
+        }
+    }
 
     internal static void LogWarning(string message)
     {

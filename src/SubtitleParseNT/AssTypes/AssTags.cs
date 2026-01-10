@@ -124,6 +124,7 @@ public readonly struct AssTagValue
 
 public static class AssTagRegistry
 {
+    private const int TagTrieSize = 256;
     private static readonly FrozenDictionary<AssTag, AssTagDescriptor> tags = FrozenDictionary.ToFrozenDictionary(
         new Dictionary<AssTag, AssTagDescriptor>
         {
@@ -242,7 +243,7 @@ public static class AssTagRegistry
 
     private class Node
     {
-        public Dictionary<byte, Node> Children = new();
+        public Node?[] Children = new Node?[TagTrieSize];
         public AssTagDescriptor? Descriptor;
         public AssTag? TagEnum;
     }
@@ -262,7 +263,8 @@ public static class AssTagRegistry
         var node = root;
         foreach (var b in name)
         {
-            if (!node.Children.TryGetValue(b, out var child))
+            var child = node.Children[b];
+            if (child == null)
             {
                 child = new Node();
                 node.Children[b] = child;
@@ -282,9 +284,9 @@ public static class AssTagRegistry
 
         for (int i = 0; i < span.Length; i++)
         {
-            if (!node.Children.TryGetValue(span[i], out var child))
+            var child = node.Children[span[i]];
+            if (child == null)
                 break;
-
             node = child;
             if (node.Descriptor != null)
             {
