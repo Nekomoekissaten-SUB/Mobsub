@@ -11,11 +11,25 @@ public sealed class AssFontProcessor(byte wrapStyle, AssStyles styles) : IAssTag
     private AssFontInfo baseInfo;
     private AssFontInfo current;
     private readonly Dictionary<AssFontInfo, Dictionary<Rune, List<int>>> maps = [];
+    private IReadOnlyDictionary<AssFontInfo, HashSet<Rune>>? _resultsCache;
+    private bool _resultsDirty = true;
     public int FirstEventLineNumber = -1;
     private int lineNumber = 0;
     private readonly Dictionary<Rune, HashSet<int>> runeLocations = [];
     public bool AnalyzeWithEncoding = false;
-    public IReadOnlyDictionary<AssFontInfo, HashSet<Rune>> Results => maps.ToDictionary(keyValuePair => keyValuePair.Key, keyValuePair => new HashSet<Rune>(keyValuePair.Value.Keys));
+    public IReadOnlyDictionary<AssFontInfo, HashSet<Rune>> Results
+    {
+        get
+        {
+            if (_resultsDirty || _resultsCache == null)
+            {
+                _resultsCache = maps.ToDictionary(keyValuePair => keyValuePair.Key,
+                    keyValuePair => new HashSet<Rune>(keyValuePair.Value.Keys));
+                _resultsDirty = false;
+            }
+            return _resultsCache;
+        }
+    }
     public IReadOnlyDictionary<AssFontInfo, Dictionary<Rune, List<int>>> ResultsWithLineNumber => maps;
 
     public void InitForLine(ReadOnlySpan<byte> styleName)
@@ -89,6 +103,7 @@ public sealed class AssFontProcessor(byte wrapStyle, AssStyles styles) : IAssTag
 
     private void RecordRune(Rune rune)
     {
+        _resultsDirty = true;
         if (!maps.TryGetValue(current, out var set))
         {
             set = [];
@@ -133,7 +148,12 @@ public sealed class AssFontProcessor(byte wrapStyle, AssStyles styles) : IAssTag
     );
     public int[]? GetExistsLines(Rune rune) => runeLocations.TryGetValue(rune, out var lines) ? lines.ToArray() : null;
 
-    public void ResetResults() => maps.Clear();
+    public void ResetResults()
+    {
+        maps.Clear();
+        _resultsCache = null;
+        _resultsDirty = true;
+    }
 
     public void GetUsedFontInfos(ReadOnlySpan<byte> line) => GetUsedFontInfosCore(line, default);
 

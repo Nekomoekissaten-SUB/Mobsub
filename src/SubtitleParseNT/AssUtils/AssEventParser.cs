@@ -366,7 +366,7 @@ public static class AssEventParser
         var trimmedSpan = param.Slice(start, length);
         var trimmedMemory = paramMemory.IsEmpty ? default : paramMemory.Slice(start, length);
 
-        if (TryParseFunctionTag(tag, trimmedSpan, trimmedMemory, out var funcValue))
+        if (IsFunctionTag(tag) && TryParseFunctionTag(tag, trimmedSpan, trimmedMemory, out var funcValue))
             return AssTagValue.FromFunction(funcValue);
 
         if (desc.ValueType == typeof(int) && Utf8Parser.TryParse(trimmedSpan, out int iv, out _)) return AssTagValue.FromInt(iv);
@@ -501,6 +501,11 @@ public static class AssEventParser
 
         return false;
     }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool IsFunctionTag(AssTag tag)
+        => tag is AssTag.Position or AssTag.OriginRotation or AssTag.Movement or AssTag.Fade or AssTag.Fad
+            or AssTag.Clip or AssTag.InverseClip or AssTag.Transform;
 
     private static ReadOnlyMemory<byte> GetSliceMemory(ReadOnlySpan<byte> fullSpan, ReadOnlyMemory<byte> fullMemory, ReadOnlySpan<byte> sliceSpan)
     {

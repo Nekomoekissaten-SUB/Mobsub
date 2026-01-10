@@ -29,53 +29,49 @@ public struct AssEmbeddedFile
 
     public byte[] GetDecodedData()
     {
-        var totalLen = 0;
-        foreach (var chunk in Data)
+        int actualEncodedLen = 0;
+        for (var i = 0; i < Data.Count; i++)
         {
-            totalLen += chunk.Length;
+            // We need to trim spaces/newlines? 
+            // AssData only strips newline characters (\r, \n).
+            // Embedded data lines shouldn't have leading/trailing spaces usually.
+            // But Utils.TrimSpaces can be safe.
+            var span = Utils.TrimSpaces(Data[i].Span);
+            if (span.IsEmpty) continue;
+
+            if (i != Data.Count - 1 && span.Length != 80)
+            {
+                // Mimic original strict check
+                throw new Exception($"Embedded data is broken! Line {i} length is {span.Length} (expected 80)");
+            }
+
+            actualEncodedLen += span.Length;
         }
-        
-        // Approximate decoded size
-        var estLen = totalLen * 3 / 4;
-        using var ms = new MemoryStream(estLen);
+
+        if (actualEncodedLen == 0)
+            return Array.Empty<byte>();
+
+        var expectedLen = (int)Math.Truncate(actualEncodedLen * 3 / 4d);
+        if (expectedLen == 0)
+            return Array.Empty<byte>();
+
+        var decoded = new byte[expectedLen];
+        int offset = 0;
 
         for (var i = 0; i < Data.Count; i++)
         {
-             // We need to trim spaces/newlines? 
-             // AssData only strips newline characters (\r, \n).
-             // Embedded data lines shouldn't have leading/trailing spaces usually.
-             // But Utils.TrimSpaces can be safe.
-             
-             var span = Utils.TrimSpaces(Data[i].Span);
-             if (span.IsEmpty) continue;
+            var span = Utils.TrimSpaces(Data[i].Span);
+            if (span.IsEmpty) continue;
 
-             if (i != Data.Count - 1 && span.Length != 80)
-             {
-                 // Mimic original strict check
-                 throw new Exception($"Embedded data is broken! Line {i} length is {span.Length} (expected 80)");
-             }
-
-             DecodeChars(span, ms);
+            DecodeChars(span, decoded, ref offset);
+            if (offset >= decoded.Length)
+                break;
         }
 
-        // Original logic truncates exact size? 
-        // var orgLen = (int)Math.Truncate(length * 3 / 4d);
-        // memStream.SetLength(orgLen); 
-        // This truncation might be chopping off padding? 
-        // Let's replicate original logic if possible, but total encoded length vs decoded might differ slightly due to padding?
-        // Actually the logic uses *total encoded length* to calculate expected decoded length.
-        
-        // Let's recalculate totalLen based on actual trimmed spans to be accurate.
-        int actualEncodedLen = 0;
-        foreach(var chunk in Data) actualEncodedLen += Utils.TrimSpaces(chunk.Span).Length;
-        
-        var expectedLen = (int)Math.Truncate(actualEncodedLen * 3 / 4d);
-        if (ms.Length > expectedLen)
-        {
-             ms.SetLength(expectedLen);
-        }
-        
-        return ms.ToArray();
+        if (offset < decoded.Length)
+            return decoded.AsSpan(0, offset).ToArray();
+
+        return decoded;
     }
 
     public void Encode(ReadOnlySpan<byte> sourceData)
@@ -150,10 +146,16 @@ public struct AssEmbeddedFile
         sb.Append((char)(((buffer[2] << 0) & 0x3f) + 33));
     }
 
-    private static void DecodeChars(ReadOnlySpan<byte> s, MemoryStream memStream)
+    private static void DecodeChars(ReadOnlySpan<byte> s, byte[] buffer, ref int offset)
     {
+        if (offset >= buffer.Length)
+            return;
+
         for (var i = 0; i < s.Length; i += 4)
         {
+            if (offset >= buffer.Length)
+                return;
+
             var r = (i + 4 <= s.Length) ? s.Slice(i, 4) : s[i..];
             
             int n0 = (r.Length > 0 ? r[0] : 33) - 33;
@@ -164,10 +166,10 @@ public struct AssEmbeddedFile
             var b0 = (byte)((n0 << 2) & 0xff | (n1 >> 4) & 0x03);
             var b1 = (byte)((n1 << 4) & 0xff | (n2 >> 2) & 0x0f);
             var b2 = (byte)((n2 << 6) & 0xff | (n3 >> 0) & 0x3f);
-            
-            memStream.WriteByte(b0);
-            memStream.WriteByte(b1);
-            memStream.WriteByte(b2);
+
+            if (offset < buffer.Length) buffer[offset++] = b0;
+            if (offset < buffer.Length) buffer[offset++] = b1;
+            if (offset < buffer.Length) buffer[offset++] = b2;
         }
     }
 }
