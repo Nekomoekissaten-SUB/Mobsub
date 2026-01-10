@@ -115,37 +115,41 @@ public static class AssEventParser
 
         while (i < line.Length)
         {
-            if (line[i] == (byte)'{')
+            int openIndex = line.Slice(i).IndexOf((byte)'{');
+            if (openIndex == -1)
             {
-                var searchSpan = line[(i + 1)..];
-                int k = searchSpan.IndexOfAny((byte)'}', (byte)'{');
-
-                if (k != -1 && searchSpan[k] == (byte)'}')
-                {
-                    int j = i + 1 + k;
-
-                    if (i > runStart)
-                    {
-                        ParseTextSegment(line[runStart..i], runStart, ref buffer, ref count);
-                    }
-
-                    var block = line.Slice(i + 1, j - i - 1);
-                    var tags = pooledTags
-                        ? ParseTagBlockPooled(block, i + 1, lineMemory)
-                        : ParseTagBlock(block, i + 1, lineMemory);
-
-                    AddSegment(ref buffer, ref count, new AssEventSegment(new Range(i, j + 1), AssEventSegmentKind.TagBlock, tags));
-
-                    i = j + 1;
-                    runStart = i;
-                }
-                else
-                {
-                    // not found '}' or found another '{' first
-                    i++;
-                }
+                i = line.Length;
+                break;
             }
-            else i++;
+
+            i += openIndex;
+            var searchSpan = line[(i + 1)..];
+            int k = searchSpan.IndexOfAny((byte)'}', (byte)'{');
+
+            if (k != -1 && searchSpan[k] == (byte)'}')
+            {
+                int j = i + 1 + k;
+
+                if (i > runStart)
+                {
+                    ParseTextSegment(line[runStart..i], runStart, ref buffer, ref count);
+                }
+
+                var block = line.Slice(i + 1, j - i - 1);
+                var tags = pooledTags
+                    ? ParseTagBlockPooled(block, i + 1, lineMemory)
+                    : ParseTagBlock(block, i + 1, lineMemory);
+
+                AddSegment(ref buffer, ref count, new AssEventSegment(new Range(i, j + 1), AssEventSegmentKind.TagBlock, tags));
+
+                i = j + 1;
+                runStart = i;
+            }
+            else
+            {
+                // not found '}' or found another '{' first
+                i++;
+            }
         }
 
         if (i > runStart)
@@ -208,17 +212,15 @@ public static class AssEventParser
         int count = 0;
 
         int i = 0;
-        var remainingBlock = block;
-
-        while (!remainingBlock.IsEmpty)
+        while (i < block.Length)
         {
-            int tagStartOffset = remainingBlock.IndexOf((byte)'\\');
+            int tagStartOffset = block[i..].IndexOf((byte)'\\');
             if (tagStartOffset == -1)
             {
                 break;
             }
 
-            i = (int)(block.Length - remainingBlock.Length) + tagStartOffset;
+            i += tagStartOffset;
             int tagStart = i;
 
             i++; // skip '\\'
@@ -232,7 +234,6 @@ public static class AssEventParser
             int nameLen = i - nameStart;
             if (nameLen == 0)
             {
-                remainingBlock = block[i..];
                 continue;
             }
 
@@ -309,7 +310,6 @@ public static class AssEventParser
             {
                 i = paramEnd;
             }
-            remainingBlock = block.Slice(i);
         }
 
         if (count == 0)

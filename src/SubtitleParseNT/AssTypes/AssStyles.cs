@@ -46,7 +46,7 @@ public class AssStyles(ILogger? logger = null)
 
         if (sp[..sepIndex].SequenceEqual("Format"u8))
         {
-            Formats = Utils.GetString(sp[(sepIndex + 1)..]).Split(',').Select(s => s.Trim()).ToArray();
+            Formats = ParseFormats(sp[(sepIndex + 1)..]);
             logger?.ZLogDebug($"Styles: Line {lineNumber} is a format line, parse completed");
         }
         else
@@ -71,6 +71,43 @@ public class AssStyles(ILogger? logger = null)
         }
         return dict;
     }
+
+    private static string[] ParseFormats(ReadOnlySpan<byte> span)
+    {
+        int count = 1;
+        for (int i = 0; i < span.Length; i++)
+        {
+            if (span[i] == (byte)',')
+                count++;
+        }
+
+        var result = new string[count];
+        int start = 0;
+        int index = 0;
+
+        for (int i = 0; i <= span.Length; i++)
+        {
+            if (i == span.Length || span[i] == (byte)',')
+            {
+                var token = span.Slice(start, i - start);
+                int tokenStart = 0;
+                int tokenEnd = token.Length;
+                while (tokenStart < tokenEnd && IsFormatSpace(token[tokenStart]))
+                    tokenStart++;
+                while (tokenEnd > tokenStart && IsFormatSpace(token[tokenEnd - 1]))
+                    tokenEnd--;
+
+                result[index++] = tokenEnd > tokenStart
+                    ? Utils.GetString(token.Slice(tokenStart, tokenEnd - tokenStart))
+                    : string.Empty;
+                start = i + 1;
+            }
+        }
+
+        return result;
+    }
+
+    private static bool IsFormatSpace(byte b) => b == (byte)' ' || b == (byte)'\t';
 
     private void EnsureStyleMap()
     {
