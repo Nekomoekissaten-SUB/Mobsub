@@ -1,7 +1,7 @@
-﻿using System.Diagnostics;
+﻿﻿using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
-namespace Mobsub.SubtitleParseNT2.AssTypes;
+namespace Mobsub.SubtitleParse.AssTypes;
 
 public struct AssRGB8(byte red, byte green, byte blue, byte alpha)
 {

@@ -3,27 +3,27 @@ using ZLogger;
 
 namespace Mobsub.SubtitleParse.AssTypes;
 
-public class AssScriptInfo(ILogger? logger = null)
+public sealed class AssScriptInfo(ILogger? logger = null)
 {
-    private readonly string[] scriptTypes = ["v4.00", "v4.00+", "v4.00++"];
+    private static readonly string[] ScriptTypes = ["v4.00", "v4.00+", "v4.00++"];
     private string scriptType = "v4.00";
     private int? layoutResX = null;
     private int? layoutResY = null;
     private float timer = 100.0000f;
-    private int? wrapStyle = null;
+    private byte? wrapStyle = null;
     
     public string ScriptType
     {
         get => scriptType;
         set
         {
-            if (!scriptTypes.Contains(value, StringComparer.OrdinalIgnoreCase))
+            if (!ScriptTypes.Contains(value, StringComparer.OrdinalIgnoreCase))
             {
                 logger?.ZLogError($"ScriptType: {value} is invalid");
             }
-            if (value.AsSpan()[0] == 'V')
+            if (value.Length > 0 && value.AsSpan()[0] == 'V')
             {
-                logger?.ZLogWarning($"ScriptType is {value}, it should be start with 'v'");
+                 logger?.ZLogWarning($"ScriptType is {value}, it should be start with 'v'");
             }
             scriptType = value;
         }
@@ -45,7 +45,7 @@ public class AssScriptInfo(ILogger? logger = null)
         get => timer;
         set => timer = (float)Math.Round(value, 4);
     }
-    public int WrapStyle
+    public byte WrapStyle
     {
         get => wrapStyle ?? 0;
         set
@@ -74,69 +74,129 @@ public class AssScriptInfo(ILogger? logger = null)
     public Dictionary<string, string> Others = [];
     // public int status = 0;
     public HashSet<string> Orders = [];
-    
-    internal const string sectionName = "[Script Info]";
 
-    public void Read(ReadOnlySpan<char> sp, int lineNumber)
+    public void Read(ReadOnlyMemory<byte> line, int lineNumber)
     {
+        var sp = Utils.TrimSpaces(line.Span);
+        if (sp.IsEmpty) return;
+        
         switch (sp[0])
         {
-            case '!':
-                CustomData.Add(sp[1..].Trim().ToString());
+            case (byte)'!':
+                CustomData.Add(Utils.GetString(line, Range.StartAt(1), true));
                 logger?.ZLogDebug($"Line {lineNumber} is customized metadata");
-                break;
-            case ';':
-                Comment.Add(sp[1..].Trim().ToString());
-                logger?.ZLogDebug($"Line {lineNumber} is comment");
-                break;
-            default:
-                if (Utils.TrySplitKeyValue(sp, out var k, out var v))
+                return;
+            case (byte)';':
+                Comment.Add(Utils.GetString(line, Range.StartAt(1), true));
+                return;
+        }
+
+        if (sp.IndexOf((byte)':') is int idx && idx > 0)
+        {
+            var k = Utils.GetString(sp[..idx]);
+            var valueSpan = Utils.TrimSpaces(sp[(idx + 1)..]);
+            
+            // Fast path for known integer properties to avoid string allocation for Value
+            if (k.Equals(AssConstants.ScriptInfo.PlayResX, StringComparison.OrdinalIgnoreCase) && Utils.TryReadInt(ref valueSpan, out int prx))
+            {
+                PlayResX = prx;
+            }
+            else if (k.Equals(AssConstants.ScriptInfo.PlayResY, StringComparison.OrdinalIgnoreCase) && Utils.TryReadInt(ref valueSpan, out int pry))
+            {
+                PlayResY = pry;
+            }
+            else if (k.Equals(AssConstants.ScriptInfo.LayoutResX, StringComparison.OrdinalIgnoreCase) && Utils.TryReadInt(ref valueSpan, out int lrx))
+            {
+                LayoutResX = lrx;
+            }
+            else if (k.Equals(AssConstants.ScriptInfo.LayoutResY, StringComparison.OrdinalIgnoreCase) && Utils.TryReadInt(ref valueSpan, out int lry))
+            {
+                LayoutResY = lry;
+            }
+            else if (k.Equals(AssConstants.ScriptInfo.Timer, StringComparison.OrdinalIgnoreCase) && Utils.TryReadDouble(ref valueSpan, out double t))
+            {
+                Timer = (float)t;
+            }
+            else if (k.Equals(AssConstants.ScriptInfo.WrapStyle, StringComparison.OrdinalIgnoreCase) && Utils.TryReadInt(ref valueSpan, out int ws))
+            {
+                WrapStyle = (byte)ws;
+            }
+            else if (k.Equals(AssConstants.ScriptInfo.ScaledBorderAndShadow, StringComparison.OrdinalIgnoreCase))
+            {
+                ScaledBorderAndShadow = valueSpan.SequenceEqual("yes"u8);
+            }
+             else if (k.Equals(AssConstants.ScriptInfo.Kerning, StringComparison.OrdinalIgnoreCase))
+            {
+                Kerning = valueSpan.SequenceEqual("yes"u8);
+            }
+            else if (k.Equals(AssConstants.ScriptInfo.YCbCrMatrix, StringComparison.OrdinalIgnoreCase))
+            {
+                int dotIdx = valueSpan.IndexOf((byte)'.');
+                if (dotIdx < 0)
                 {
-                    if (Utils.IsStringInFields(new AssConstants.ScriptInfo(), typeof(AssConstants.ScriptInfo), k))
-                    {
-                        if (k.AsSpan().SequenceEqual(AssConstants.ScriptInfo.YCbCrMatrix.AsSpan()))
-                        {
-                            var idx = v.AsSpan().IndexOf('.');
-                            if (idx < 0)
-                            {
-                                YCbCrMatrix.Matrix = v;
-                            }
-                            else
-                            {
-                                YCbCrMatrix.Full = !v.AsSpan(0, idx).SequenceEqual("TV".AsSpan());
-                                YCbCrMatrix.Matrix = v.AsSpan()[(idx + 1)..].ToString();
-                            }
-                        }
-                        else
-                        {
-                            Utils.SetProperty(this, typeof(AssScriptInfo), k.Contains(' ') ? k.Replace(" ", "") : k, v);
-                        }
-                    }
-                    else
-                    {
-                        Others[k] = v;
-                    }
-                    
-                    if (!Orders.Add(k))
-                    {
-                        logger?.ZLogError($"Duplicate key in Script Info: {k}");
-                    }
+                    YCbCrMatrix.Matrix = Utils.GetString(valueSpan);
                 }
                 else
                 {
-                    logger?.ZLogError($"Unknown line: {sp.ToString()}");
+                    YCbCrMatrix.Full = !valueSpan[..dotIdx].SequenceEqual("TV"u8);
+                    YCbCrMatrix.Matrix = Utils.GetString(valueSpan, Range.StartAt(dotIdx + 1));
                 }
-                logger?.ZLogDebug($"Line {lineNumber} is a key-pair, key {k} parse completed");
-                break;
+            }
+            else if (k.Equals(AssConstants.ScriptInfo.ScriptType, StringComparison.OrdinalIgnoreCase))
+            {
+                ScriptType = Utils.GetString(valueSpan);
+            }
+             else if (k.Equals(AssConstants.ScriptInfo.Title, StringComparison.OrdinalIgnoreCase))
+            {
+                Title = Utils.GetString(valueSpan);
+            }
+            else if (k.Equals(AssConstants.ScriptInfo.OriginalScript, StringComparison.OrdinalIgnoreCase))
+            {
+                OriginalScript = Utils.GetString(valueSpan);
+            }
+            else if (k.Equals(AssConstants.ScriptInfo.OriginalTranslation, StringComparison.OrdinalIgnoreCase))
+            {
+                OriginalTranslation = Utils.GetString(valueSpan);
+            }
+            else if (k.Equals(AssConstants.ScriptInfo.OriginalEditing, StringComparison.OrdinalIgnoreCase))
+            {
+                OriginalEditing = Utils.GetString(valueSpan);
+            }
+            else if (k.Equals(AssConstants.ScriptInfo.OriginalTiming, StringComparison.OrdinalIgnoreCase))
+            {
+                OriginalTiming = Utils.GetString(valueSpan);
+            }
+             else if (k.Equals(AssConstants.ScriptInfo.ScriptUpdatedBy, StringComparison.OrdinalIgnoreCase))
+            {
+                ScriptUpdatedBy = Utils.GetString(valueSpan);
+            }
+            else if (k.Equals(AssConstants.ScriptInfo.UpdateDetails, StringComparison.OrdinalIgnoreCase))
+            {
+                UpdateDetails = Utils.GetString(valueSpan);
+            }
+            else
+            {
+                 // Unknown key
+                 Others[k] = Utils.GetString(valueSpan);
+            }
+
+            if (!Orders.Add(k))
+            {
+                logger?.ZLogWarning($"Duplicate key in Script Info: {k}");
+            }
+        }
+        else
+        {
+             logger?.ZLogError($"Unknown line #{lineNumber}: '{Utils.GetString(line)}'");
         }
     }
 
     public void Write(StreamWriter sw, char[] newline)
     {
-        logger?.ZLogInformation($"Start write section {sectionName}");
-        sw.Write(sectionName);
+        logger?.ZLogInformation($"Start write section {AssConstants.SectionScriptInfo}");
+        sw.Write(AssConstants.SectionScriptInfo);
         sw.Write(newline);
-        
+
         foreach (var s in Comment)
         {
             sw.Write($"; {s}");
@@ -178,7 +238,7 @@ public class AssScriptInfo(ILogger? logger = null)
                 case AssConstants.ScriptInfo.YCbCrMatrix:
                     sw.Write($"{k}: {YCbCrMatrix.ToStringBuilder()}");
                     break;
-                
+
                 case AssConstants.ScriptInfo.Title:
                     sw.Write($"Title: {Title}");
                     break;
@@ -225,29 +285,29 @@ public class AssScriptInfo(ILogger? logger = null)
 
     public AssScriptInfo DeepClone()
     {
-        return new AssScriptInfo(logger)
+        return new AssScriptInfo()
         {
-            ScriptType = this.ScriptType,
-            PlayResX = this.PlayResX,
-            PlayResY = this.PlayResY,
-            LayoutResX = this.LayoutResX,
-            LayoutResY = this.LayoutResY,
-            Timer = this.Timer,
-            WrapStyle = this.WrapStyle,
-            ScaledBorderAndShadow = this.ScaledBorderAndShadow,
-            Kerning = this.Kerning,
-            YCbCrMatrix = (AssYCbCrMatrix)this.YCbCrMatrix.Clone(),
-            Title = this.Title,
-            OriginalScript = this.OriginalScript,
-            OriginalTranslation = this.OriginalTranslation,
-            OriginalEditing = this.OriginalEditing,
-            OriginalTiming = this.OriginalTiming,
-            ScriptUpdatedBy = this.ScriptUpdatedBy,
-            UpdateDetails = this.UpdateDetails,
-            Comment = new List<string>(this.Comment),
-            CustomData = new List<string>(this.CustomData),
-            Others = new Dictionary<string, string>(this.Others),
-            Orders = new HashSet<string>(this.Orders)
+            ScriptType = ScriptType,
+            PlayResX = PlayResX,
+            PlayResY = PlayResY,
+            LayoutResX = LayoutResX,
+            LayoutResY = LayoutResY,
+            Timer = Timer,
+            WrapStyle = WrapStyle,
+            ScaledBorderAndShadow = ScaledBorderAndShadow,
+            Kerning = Kerning,
+            YCbCrMatrix = (AssYCbCrMatrix)YCbCrMatrix.Clone(),
+            Title = Title,
+            OriginalScript = OriginalScript,
+            OriginalTranslation = OriginalTranslation,
+            OriginalEditing = OriginalEditing,
+            OriginalTiming = OriginalTiming,
+            ScriptUpdatedBy = ScriptUpdatedBy,
+            UpdateDetails = UpdateDetails,
+            Comment = new List<string>(Comment),
+            CustomData = new List<string>(CustomData),
+            Others = new Dictionary<string, string>(Others),
+            Orders = new HashSet<string>(Orders)
         };
     }
 }

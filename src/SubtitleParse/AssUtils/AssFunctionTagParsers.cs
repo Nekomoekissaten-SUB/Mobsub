@@ -1,6 +1,6 @@
-using Mobsub.SubtitleParseNT2;
+using Mobsub.SubtitleParse;
 
-namespace Mobsub.SubtitleParseNT2.AssUtils;
+namespace Mobsub.SubtitleParse.AssUtils;
 
 public static class AssFunctionTagParsers
 {

@@ -1,7 +1,7 @@
 using System.Collections.Generic;
-using Mobsub.SubtitleParseNT2.AssUtils;
+using Mobsub.SubtitleParse.AssUtils;
 
-namespace Mobsub.SubtitleParseNT2.AssTypes;
+namespace Mobsub.SubtitleParse.AssTypes;
 
 public class AssMetaData
 {

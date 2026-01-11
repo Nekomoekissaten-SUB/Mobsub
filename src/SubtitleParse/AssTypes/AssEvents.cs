@@ -1,8 +1,8 @@
-﻿using System.Text;
+﻿﻿using System.Text;
 using Microsoft.Extensions.Logging;
 using ZLogger;
 
-namespace Mobsub.SubtitleParseNT2.AssTypes;
+namespace Mobsub.SubtitleParse.AssTypes;
 
 public class AssEvents(ILogger? logger = null)
 {
@@ -69,7 +69,7 @@ public class AssEvents(ILogger? logger = null)
         return [.. results];
     }
 
-    public void Write(StreamWriter sw, char[] newline)
+    public void Write(StreamWriter sw, char[] newline, bool ctsRounding)
     {
         sw.Write(AssConstants.SectionEvent);
         sw.Write(newline);
@@ -77,7 +77,7 @@ public class AssEvents(ILogger? logger = null)
         sw.Write(newline);
         foreach (var evt in Collection)
         {
-            Helper.Write(sw, evt, Formats, true);
+            Helper.Write(sw, evt, Formats, ctsRounding);
             sw.Write(newline);
         }
     }

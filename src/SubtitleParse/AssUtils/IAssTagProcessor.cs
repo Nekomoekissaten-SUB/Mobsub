@@ -1,6 +1,6 @@
-﻿using Mobsub.SubtitleParseNT2.AssTypes;
+﻿﻿using Mobsub.SubtitleParse.AssTypes;
 
-namespace Mobsub.SubtitleParseNT2.AssUtils;
+namespace Mobsub.SubtitleParse.AssUtils;
 
 public interface IAssTagProcessor
 {

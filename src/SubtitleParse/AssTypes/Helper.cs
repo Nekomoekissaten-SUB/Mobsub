@@ -1,4 +1,4 @@
-﻿namespace Mobsub.SubtitleParseNT2.AssTypes;
+﻿﻿namespace Mobsub.SubtitleParse.AssTypes;
 
 public static class Helper
 {

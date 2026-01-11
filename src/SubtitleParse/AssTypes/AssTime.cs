@@ -1,3 +1,4 @@
+using Mobsub.SubtitleParse;
 using System.Text;
 
 namespace Mobsub.SubtitleParse.AssTypes;
@@ -105,6 +106,47 @@ public readonly struct AssTime
         return new AssTime(ms);
     }
 
+    public static AssTime ParseFromAss(ReadOnlySpan<byte> sp)
+    {
+        int firstColon = -1;
+        for (int i = 0; i < sp.Length; i++)
+        {
+            if (sp[i] == (byte)':')
+            {
+                firstColon = i;
+                break;
+            }
+        }
+        if (firstColon == -1) throw new FormatException($"Invalid time format (missing colon): {Encoding.ASCII.GetString(sp)}");
+
+        int hours = 0;
+        for (int i = 0; i < firstColon; i++)
+        {
+            if (sp[i] < (byte)'0' || sp[i] > (byte)'9')
+                throw new FormatException($"Invalid hour digit: {(char)sp[i]}");
+            hours = hours * 10 + (sp[i] - (byte)'0');
+        }
+
+        if (sp.Length != firstColon + 9)
+            throw new FormatException($"Invalid time length: Expected {firstColon + 9}, got {sp.Length}");
+
+        if (sp[firstColon + 3] != (byte)':')
+            throw new FormatException($"Expected ':' at position {firstColon + 3}");
+        if (sp[firstColon + 6] != (byte)'.')
+            throw new FormatException($"Expected '.' at position {firstColon + 6}");
+
+        int minutes = ParseDigitPair(sp, firstColon + 1);
+        int seconds = ParseDigitPair(sp, firstColon + 4);
+        int centiseconds = ParseDigitPair(sp, firstColon + 7);
+
+        int totalMs = hours * 3600000
+                    + minutes * 60000
+                    + seconds * 1000
+                    + centiseconds * 10;
+
+        return new AssTime(totalMs);
+    }
+
     public string ToString(SubtitleType st, bool ctsRounding)
     {
         var sb = new StringBuilder();
@@ -133,8 +175,19 @@ public readonly struct AssTime
 
         WriteChar(sb, ctsRounding ? DigitRounding(time.Millisecond) : time.Millisecond, 3);
     }
-    
-    private static void WriteChar(StringBuilder sb, int val, int length)
+    public static void WriteAssTime(TextWriter writer, AssTime time, bool ctsRounding)
+    {
+        writer.Write(time.Hour);
+        writer.Write(':');
+        WriteChar(writer, time.Minute, 2);
+        writer.Write(':');
+        WriteChar(writer, time.Second, 2);
+        writer.Write('.');
+
+        WriteChar(writer, ctsRounding ? DigitRounding(time.Millisecond) : time.Millisecond, 3);
+    }
+
+    private static char[] GetCharArray(int val, int length)
     {
         var ca = new char[length];
         
@@ -150,10 +203,19 @@ public readonly struct AssTime
             val %= divisor;
             divisor /= 10;
         }
-
+        return ca;
+    }
+    private static void WriteChar(StringBuilder sb, int val, int length)
+    {
+        var ca = GetCharArray(val, length);
         sb.Append(ca[0..Math.Min(length, 2)]);
     }
-    
+    private static void WriteChar(TextWriter writer, int val, int length)
+    {
+        var ca = GetCharArray(val, length);
+        writer.Write(ca[0..Math.Min(length, 2)]);
+    }
+
     private static int DigitRounding(int i)
     {
         var last = i % 10;
@@ -163,5 +225,14 @@ public readonly struct AssTime
     public double SubtractionMilliseconds(AssTime time)
     {
         return new TimeSpan(_ticks - time.Ticks).TotalMilliseconds;
+    }
+
+    private static int ParseDigitPair(ReadOnlySpan<byte> sp, int start)
+    {
+        int high = sp[start] - (byte)'0';
+        int low = sp[start + 1] - (byte)'0';
+        if (high < 0 || high > 9 || low < 0 || low > 9)
+            throw new FormatException($"Invalid digits: {(char)sp[start]}{(char)sp[start + 1]}");
+        return high * 10 + low;
     }
 }

@@ -1,7 +1,10 @@
-﻿using System.Diagnostics;
-using CommunityToolkit.Diagnostics;
+﻿﻿using CommunityToolkit.Diagnostics;
 using Mobsub.Helper;
 using Mobsub.SubtitleParse.PGS.DataTypes;
+using System.Buffers;
+using System.Numerics;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using static Mobsub.Helper.ColorConv;
 
 namespace Mobsub.SubtitleParse.PGS;
@@ -20,15 +23,26 @@ public class Parse(BigEndianBinaryReader reader, ParseFlag flag = ParseFlag.Only
 {
     private ParseFlag parseFlag = flag;
 
-    private int row = 0;
-    private int col = 0;
     private PresentationCompositionSegment curPCS;
     private Dictionary<byte, PaletteDefinitionSegment> curPalettes = [];
+    private readonly uint[] paletteLutPacked = new uint[256];
+    private byte currentPaletteId;
+
+    private sealed class ObjectAssembly
+    {
+        public ushort ObjectId;
+        public byte Version;
+        public int Width;
+        public int Height;
+        // Buffer to accumulate RLE fragments (pooled or growable)
+        public ArrayBufferWriter<byte> RleBuffer = new(1024);
+    }
+    private readonly Dictionary<ushort, ObjectAssembly> assemblies = [];
+
     private uint previousObjectDataLength = 0;
     private int imageIndex = 0;
     private SimpleBitmap? image;
     internal string? saveDir;
-    
     public bool Standalone = true;
     public byte ImageBinarizeThreshold = 0;
 
@@ -62,7 +76,7 @@ public class Parse(BigEndianBinaryReader reader, ParseFlag flag = ParseFlag.Only
             PaletteID = reader.ReadByte(),
             NumberOfCompositionObjects = reader.ReadByte()
         };
-        
+
         if (pcs.NumberOfCompositionObjects == 0) { return; }
         if (pcs.NumberOfCompositionObjects > 2) { throw new InvalidDataException(); }
         pcs.compositionObjects = new CompositionObject[pcs.NumberOfCompositionObjects];
@@ -86,26 +100,22 @@ public class Parse(BigEndianBinaryReader reader, ParseFlag flag = ParseFlag.Only
             pcs.compositionObjects[i] = obj;
         }
 
-        if (parseFlag.HasFlag(ParseFlag.DecodeImages))
+        if ((parseFlag & ParseFlag.DecodeImages) == 0) return;
+        switch (pcs.CompositionState)
         {
-            switch (pcs.CompositionState)
-            {
-                case CompositionType.EpochStart:
-                case CompositionType.AcquisitionPoint:
-                    curPCS = pcs;
-                    break;
-                case CompositionType.Normal:
-                    curPCS.PaletteID = pcs.PaletteID;
-                    if (pcs.PaletteUpdateFlag == PaletteUpdateFlag.False)
-                    {
-                        curPCS.NumberOfCompositionObjects = pcs.NumberOfCompositionObjects;
-                        curPCS.compositionObjects = pcs.compositionObjects;
-                    }
-                    break;
-            }
+            case CompositionType.EpochStart:
+            case CompositionType.AcquisitionPoint:
+                curPCS = pcs;
+                break;
+            case CompositionType.Normal:
+                curPCS.PaletteID = pcs.PaletteID;
+                if (pcs.PaletteUpdateFlag == PaletteUpdateFlag.False)
+                {
+                    curPCS.NumberOfCompositionObjects = pcs.NumberOfCompositionObjects;
+                    curPCS.compositionObjects = pcs.compositionObjects;
+                }
+                break;
         }
-
-        return;
     }
     public void ParseWDS(SegmentHeader header, out WindowDefinitionSegment wds)
     {
@@ -139,40 +149,42 @@ public class Parse(BigEndianBinaryReader reader, ParseFlag flag = ParseFlag.Only
             PaletteVersionNumber = reader.ReadByte(),
         };
         var count = (header.Size - 2) / 5;
+        if (count <= 0) return;
 
-        if (count > 0)
+        var entries = new Palette[count];
+        for (int i = 0; i < entries.Length; i++)
         {
-            pds.Palettes = new Palette[count];
-            for (var i = 0; i < count; i++)
+            var e = new Palette
             {
-                pds.Palettes[i] = new Palette
-                {
-                    PaletteEntryID = reader.ReadByte(),
-                    LuminanceY = reader.ReadByte(),
-                    ColorDifferenceRedCr = reader.ReadByte(),
-                    ColorDifferenceBlueCb = reader.ReadByte(),
-                    TransparencyAlpha = reader.ReadByte(),
-                };
-            }
+                PaletteEntryID = reader.ReadByte(),
+                LuminanceY = reader.ReadByte(),
+                ColorDifferenceRedCr = reader.ReadByte(),
+                ColorDifferenceBlueCb = reader.ReadByte(),
+                TransparencyAlpha = reader.ReadByte(),
+            };
+            entries[i] = e;
 
-            if (parseFlag.HasFlag(ParseFlag.DecodeImages))
+            if ((parseFlag & ParseFlag.DecodeImages) != 0)
             {
-                if (!curPalettes.TryAdd(pds.PaletteID, pds))
-                {
-                    if (pds.PaletteVersionNumber > curPalettes[pds.PaletteID].PaletteVersionNumber)
-                    {
-                        curPalettes[pds.PaletteID] = pds;
-                    }
-                }
+                var argb = YCbCr2ARGB2(e);
+                paletteLutPacked[e.PaletteEntryID] = (uint)(argb.Blue | (argb.Green << 8) | (argb.Red << 16) | (argb.Alpha << 24));
             }
         }
-        return;
+
+        if ((parseFlag & ParseFlag.DecodeImages) == 0) return;
+        if (!curPalettes.TryAdd(pds.PaletteID, pds))
+        {
+            if (pds.PaletteVersionNumber > curPalettes[pds.PaletteID].PaletteVersionNumber)
+            {
+                curPalettes[pds.PaletteID] = pds;
+            }
+        }
+        currentPaletteId = pds.PaletteID;
     }
     public void ParseODS(SegmentHeader header, out ObjectDefinitionSegment ods)
     {
         ods = new ObjectDefinitionSegment
         {
-            //Header = header,
             ObjectID = reader.ReadUInt16(),
             ObjectVersionNumber = reader.ReadByte(),
             LastInSequenceFlag = (SequenceFlag)reader.ReadByte(),
@@ -181,114 +193,67 @@ public class Parse(BigEndianBinaryReader reader, ParseFlag flag = ParseFlag.Only
             Height = reader.ReadUInt16()
         };
 
-        var start = reader.BaseStream.Position;
-        if (parseFlag.HasFlag(ParseFlag.OnlyRead))
+        int payloadLen = (int)ods.ObjectDataLength - 4;
+        var payload = reader.ReadBytes(payloadLen);
+
+        Standalone = (uint)ods.ObjectDataLength != previousObjectDataLength;
+        previousObjectDataLength = (uint)ods.ObjectDataLength;
+
+        var flag = ods.LastInSequenceFlag;
+        bool isFirst = (flag & SequenceFlag.First) != 0;
+        bool isLast = (flag & SequenceFlag.Last) != 0;
+
+        if (isFirst || isLast)
         {
-            ods.ObjectData = reader.ReadBytes((int)ods.ObjectDataLength - 4);
-        }
-        
-        if (parseFlag.HasFlag(ParseFlag.DecodeImages))
-        {
-            if (!parseFlag.HasFlag(ParseFlag.WithoutSaveFile) && saveDir is null) { ThrowHelper.ThrowArgumentNullException(nameof(saveDir)); }
-            reader.BaseStream.Position = start;
-            row = col = 0;
-            
-            if ((uint)ods.ObjectDataLength != previousObjectDataLength)
+            if (!assemblies.TryGetValue(ods.ObjectID, out var asm) || isFirst)
             {
-                Standalone = true;
-                previousObjectDataLength = (uint)ods.ObjectDataLength;
-
-                image = new SimpleBitmap(ods.Width, ods.Height);
-                DecodeImage((uint)ods.ObjectDataLength - 4);
-                if (ImageBinarizeThreshold > 0) image.Binarize(ImageBinarizeThreshold);
-                
-                if (parseFlag.HasFlag(ParseFlag.WithoutSaveFile)) return;
-                var imgPath = Path.Combine(saveDir!, $"{imageIndex}.bmp");
-                image.Save(imgPath);
-                imageIndex++;
-            }
-            else
-            {
-                reader.ReadBytes((int)ods.ObjectDataLength - 4);
-            }
-        }
-        
-        return;
-    }
-
-    /// <summary>
-    /// Decode four-stage run-length encoding
-    /// </summary>
-    /// <param name="length"></param>
-    private void DecodeImage(uint length)
-    {
-        byte b;
-        var pallettes = curPalettes[curPCS.PaletteID].Palettes.ToDictionary(entry => entry.PaletteEntryID, entry => YCbCr2ARGB2(entry));
-        var start = reader.BaseStream.Position;
-
-        while (reader.BaseStream.Position < start + length)
-        {
-            b = reader.ReadByte();
-            if (b != 0)
-            {
-                image!.SetPixel(col, row, pallettes[b]);
-                col++;
-                continue;
-            }
-
-            b = reader.ReadByte();
-            var flagA = (b & (1 << 7)) != 0;
-            var flagB = (b & (1 << 6)) != 0;
-
-
-            if (b == 0)
-            {
-                col = 0;
-                row += 1;
-            }
-            else
-            {
-                var count = b & 0b_11_1111;
-
-                ARGB8b color;
-                switch (flagA)
+                asm = new ObjectAssembly
                 {
-                    case false:
-                        switch (flagB)
-                        {
-                            case true:
-                                b = reader.ReadByte();
-                                count = (count << 8) | b;
-                                goto case false;
-                            case false:
-                                color = pallettes[0];
-                                break;
-                        }
-                        break;
-                    default:
-                        switch (flagB)
-                        {
-                            case true:
-                                b = reader.ReadByte();
-                                count = (count << 8) | b;
-                                goto case false;
-                            case false:
-                                color = pallettes[reader.ReadByte()];
-                                break;
-                        }
-                        break;
-                }
-
-                image!.DrawHorizontalLine(col, row, col + count - 1, color);
-                col += count;
+                    ObjectId = ods.ObjectID,
+                    Version = ods.ObjectVersionNumber,
+                    Width = ods.Width,
+                    Height = ods.Height,
+                    RleBuffer = new ArrayBufferWriter<byte>(payloadLen)
+                };
+                assemblies[ods.ObjectID] = asm;
             }
+
+            asm.RleBuffer.Write(payload);
+
+            if (isLast)
+            {
+                var rle = asm.RleBuffer.WrittenSpan;
+                assemblies.Remove(ods.ObjectID);
+
+                if (Standalone)
+                    DecodeAndSave(rle, asm.Width, asm.Height);
+            }
+        }
+        else if (Standalone)
+        {
+            DecodeAndSave(payload, ods.Width, ods.Height);
+        }
+    }
+    private void DecodeAndSave(ReadOnlySpan<byte> rle, int width, int height)
+    {
+        image = new SimpleBitmap(width, height);
+        DecodeImageSpan(rle, image, paletteLutPacked);
+
+        if (ImageBinarizeThreshold > 0)
+            image.BinarizeVector2(ImageBinarizeThreshold);
+
+        if ((parseFlag & ParseFlag.WithoutSaveFile) == 0)
+        {
+            var imgPath = Path.Combine(saveDir!, $"{imageIndex}.bmp");
+            image.Save2(imgPath);
+            imageIndex++;
         }
     }
 
     private static ARGB8b YCbCr2ARGB2(Palette palette)
     {
         var yuv = new YCbCr8b(palette.LuminanceY, palette.ColorDifferenceBlueCb, palette.ColorDifferenceRedCr);
-        return YCbCr2RGB(yuv, Matrix.bt709, ColorRange.limited, palette.TransparencyAlpha);
+        return YCbCr2RGB_Int(yuv, Matrix.bt709, ColorRange.limited, palette.TransparencyAlpha);
     }
 
     internal static void CheckSize(ushort headerSize, ushort segSize)
@@ -297,4 +262,82 @@ public class Parse(BigEndianBinaryReader reader, ParseFlag flag = ParseFlag.Only
     }
 
     public SimpleBitmap? GetBitmap() => image;
+
+    private static void DecodeImageSpan(ReadOnlySpan<byte> data, SimpleBitmap dst, uint[] paletteLutPacked)
+    {
+        Span<uint> dstSpan = dst.GetPixelSpanUInt();
+        int width = dst.GetWidth();
+        int height = dst.GetHeight();
+
+        int i = 0;
+        int x = 0;
+        int y = 0;
+
+        while (i < data.Length && y < height)
+        {
+            byte b = data[i++];
+
+            if (b != 0)
+            {
+                dstSpan[y * width + x] = paletteLutPacked[b];
+                x++;
+                continue;
+            }
+
+            if (i >= data.Length) break;
+            byte b2 = data[i++];
+
+            if (b2 == 0)
+            {
+                x = 0;
+                y++;
+                continue;
+            }
+
+            int count = b2 & 0x3F;
+            if ((b2 & 0x40) != 0)
+            {
+                if (i >= data.Length) break;
+                count = (count << 8) | data[i++];
+            }
+
+            uint color;
+            if ((b2 & 0x80) == 0)
+            {
+                color = paletteLutPacked[0];
+            }
+            else
+            {
+                if (i >= data.Length) break;
+                color = paletteLutPacked[data[i++]];
+            }
+
+            int dstIndex = y * width + x;
+
+            if (dstIndex + count > dstSpan.Length)
+            {
+                count = dstSpan.Length - dstIndex;
+            }
+
+            FillRunVector(dstSpan, dstIndex, count, color);
+            x += count;
+        }
+    }
+
+    private static void FillRunVector(Span<uint> span, int start, int count, uint color)
+    {
+        var vecColor = new Vector<uint>(color);
+        int step = Vector<uint>.Count;
+        int i = 0;
+
+        for (; i + step <= count; i += step)
+        {
+            vecColor.CopyTo(span.Slice(start + i, step));
+        }
+
+        for (; i < count; i++)
+        {
+            span[start + i] = color;
+        }
+    }
 }

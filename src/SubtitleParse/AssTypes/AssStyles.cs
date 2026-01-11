@@ -1,10 +1,10 @@
-﻿using System;
+﻿﻿using System;
 using System.Collections.Generic;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using ZLogger;
 
-namespace Mobsub.SubtitleParseNT2.AssTypes;
+namespace Mobsub.SubtitleParse.AssTypes;
 
 public class AssStyles(ILogger? logger = null)
 {
@@ -247,6 +247,16 @@ public class AssStyles(ILogger? logger = null)
             style.Write(sw, Formats);
             sw.Write(newline);
         }
+    }
+
+    public AssStyles DeepClone()
+    {
+        var clone = new AssStyles();
+        clone.Formats = [.. Formats];
+        clone.Collection = new List<AssStyle>(Collection);
+        clone.Names = new HashSet<string>(Names);
+        clone.InvalidateStyleMap();
+        return clone;
     }
 
 }

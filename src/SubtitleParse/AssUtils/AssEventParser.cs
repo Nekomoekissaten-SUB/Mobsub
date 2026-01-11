@@ -1,4 +1,4 @@
-﻿using Mobsub.SubtitleParseNT2.AssTypes;
+﻿﻿using Mobsub.SubtitleParse.AssTypes;
 using System.Buffers;
 using System.Buffers.Text;
 using System.Runtime.CompilerServices;
@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using Microsoft.Extensions.Logging;
 
-namespace Mobsub.SubtitleParseNT2.AssUtils;
+namespace Mobsub.SubtitleParse.AssUtils;
 
 public static class AssEventParser
 {

@@ -1,5 +1,6 @@
 using System.Text;
 using Mobsub.SubtitleParse.AssTypes;
+using Mobsub.SubtitleParse.AssUtils;
 
 namespace Mobsub.SubtitleParse;
 
@@ -17,10 +18,10 @@ public class SubRipText
         public string[] Text { get; set; }
     }
 
-    public SubRipText ReadSrtFile(FileStream fs)
+    public SubRipText ReadSrtFile(Stream fs)
     {
-        using var sr = new StreamReader(fs);
         Utils.GuessEncoding(fs, out CharEncoding, out CarriageReturn);
+        using var sr = new StreamReader(fs, CharEncoding, detectEncodingFromByteOrderMarks: true, leaveOpen: true);
         SrtFrames = Parse(sr).ToArray();
         return this;
     }
@@ -39,12 +40,18 @@ public class SubRipText
         {
             if (int.TryParse(line, out int index))
             {
-                var timeCodeLine = sr.ReadLine().AsSpan();
-                var startTime = ParseTime(timeCodeLine, 0);
-                var endTime = ParseTime(timeCodeLine, 17);
-                
+                var timeCodeLine = sr.ReadLine();
+                if (timeCodeLine == null)
+                {
+                    yield break;
+                }
+
+                var timeSpan = timeCodeLine.AsSpan();
+                var startTime = ParseTime(timeSpan, 0);
+                var endTime = ParseTime(timeSpan, 17);
+
                 lines.Clear();
-                while ((line = sr.ReadLine()) != null && !string.IsNullOrEmpty(line))
+                while ((line = sr.ReadLine()) != null && line.Length > 0)
                 {
                     lines.Add(line);
                 }
@@ -91,6 +98,7 @@ public class SubRipText
         memStream.CopyTo(fileStream);
         fileStream.Close();
     }
+
     private static string WriteTime(AssTime timeSpan)
     {
         return $"{timeSpan.Hour:D2}:{timeSpan.Minute:D2}:{timeSpan.Second:D2},{timeSpan.Millisecond:D3}";
@@ -98,73 +106,85 @@ public class SubRipText
 
     public SubRipText FromAss(AssData ass)
     {
-        List<SrtFrame> sf = [];
+        List<SrtFrame> frames = [];
         List<string> text = [];
-        StringBuilder sb = new();
         var index = 1;
+
+        if (ass.Events == null)
+        {
+            SrtFrames = [];
+            return this;
+        }
+
         foreach (var evt in ass.Events.Collection)
         {
-            // skip comment and empty event lines
-            // Now not support tag convert
-            if (evt.WillSkip()) { continue; }
+            if (evt.StartSemicolon || !evt.IsDialogue)
+                continue;
 
-            if (evt.TextRanges.Length == 0)
+            ReadOnlyMemory<byte> textMemory;
+            if (!evt.LineRaw.IsEmpty)
             {
-                evt.UpdateTextRanges();
+                textMemory = evt.LineRaw[evt.TextReadOnly];
             }
-
-            foreach (var range in evt.TextRanges)
+            else
             {
-                var sp = evt.Text.AsSpan()[range];
-                
-                if (AssEvent.IsOverrideBlock(sp))
+                var textValue = evt.Text;
+                if (string.IsNullOrEmpty(textValue))
+                    continue;
+                textMemory = Encoding.UTF8.GetBytes(textValue);
+            }
+            if (textMemory.IsEmpty)
+                continue;
+
+            text.Clear();
+            var builder = new StringBuilder();
+
+            AssEventParser.WithParsedSegments(textMemory, (segments, lineSpan) =>
+            {
+                foreach (var seg in segments)
                 {
-                    //if (!ignoreTags)
-                    //{
-                    //    TagConvertToSrt(sp, sb);
-                    //}
-                }
-                else if (sp.Length == 2 && sp[0] == AssConstants.BackSlash)
-                {
-                    switch (sp[1])
+                    switch (seg.SegmentKind)
                     {
-                        case AssConstants.LineBreaker:
-                        case AssConstants.WordBreaker:
-                            if (sb.Length > 0)
-                                text.Add(sb.ToString().Trim()); sb.Clear();
+                        case AssEventSegmentKind.TagBlock:
                             break;
-                        default: break;
+                        case AssEventSegmentKind.Text:
+                            builder.Append(Utils.GetString(lineSpan[seg.LineRange]));
+                            break;
+                        case AssEventSegmentKind.HardLineBreaker:
+                        case AssEventSegmentKind.SoftLineBreaker:
+                            FlushLine(builder, text);
+                            break;
+                        case AssEventSegmentKind.NonBreakingSpace:
+                            builder.Append('\u00A0');
+                            break;
                     }
                 }
-                else
-                {
-                    sb.Append(sp);
-                }
-            }
-            
-            if (sb.Length > 0)
-                text.Add(sb.ToString().Trim()); sb.Clear();
+            });
 
-            sf.Add(new SrtFrame()
+            FlushLine(builder, text);
+
+            frames.Add(new SrtFrame
             {
                 Index = index,
                 StartTime = evt.Start,
                 EndTime = evt.End,
                 Text = text.ToArray(),
             });
-                
             index++;
-            text.Clear();
         }
 
         CarriageReturn = ass.CarriageReturn;
         CharEncoding = ass.CharEncoding;
-        SrtFrames = sf.ToArray();
+        SrtFrames = frames.ToArray();
         return this;
     }
-    //private static void TagConvertToSrt(Span<char> sp, StringBuilder sb, AssStyle style)
-    //{
 
-    //}
+    private static void FlushLine(StringBuilder builder, List<string> lines)
+    {
+        if (builder.Length == 0)
+            return;
+
+        lines.Add(builder.ToString().Trim());
+        builder.Clear();
+    }
 }
-

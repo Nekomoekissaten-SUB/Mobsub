@@ -1,8 +1,8 @@
-﻿using System;
+﻿﻿using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace Mobsub.SubtitleParseNT2.AssTypes;
+namespace Mobsub.SubtitleParse.AssTypes;
 
 public enum AssParseTarget : byte
 {

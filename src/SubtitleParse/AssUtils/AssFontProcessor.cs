@@ -1,8 +1,8 @@
-﻿using System.Buffers;
+﻿﻿using System.Buffers;
 using System.Text;
-using Mobsub.SubtitleParseNT2.AssTypes;
+using Mobsub.SubtitleParse.AssTypes;
 
-namespace Mobsub.SubtitleParseNT2.AssUtils;
+namespace Mobsub.SubtitleParse.AssUtils;
 
 public sealed class AssFontProcessor(byte wrapStyle, AssStyles styles) : IAssTagProcessor
 {

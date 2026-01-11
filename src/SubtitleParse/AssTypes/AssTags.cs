@@ -1,11 +1,11 @@
-﻿using System;
+﻿﻿using System;
 using System.Buffers.Text;
 using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Text;
 
-namespace Mobsub.SubtitleParseNT2.AssTypes;
+namespace Mobsub.SubtitleParse.AssTypes;
 
 public sealed class AssTagDescriptor(ReadOnlyMemory<byte> name, Type valueType, AssTagKind tagType)
 {
