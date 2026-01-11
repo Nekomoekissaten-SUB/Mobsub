@@ -6,10 +6,17 @@ public class MergeCommon
 {
     public static void MergeAss(AssData baseData, AssData[] mergeData, string mergeType, string[]? commentEventLineStyleHeader = null)
     {
+        var baseEvents = baseData.Events;
         if (commentEventLineStyleHeader != null)
         {
-            foreach (var evt in baseData.Events.Collection)
+            if (baseEvents is null)
             {
+                throw new InvalidDataException("Base ASS has no events section.");
+            }
+
+            for (var i = 0; i < baseEvents.Collection.Count; i++)
+            {
+                var evt = baseEvents.Collection[i];
                 if (!evt.IsDialogue) { continue; }
 
                 foreach (var header in commentEventLineStyleHeader)
@@ -21,6 +28,8 @@ public class MergeCommon
                         if (_syl.StartsWith(header.AsSpan(), StringComparison.OrdinalIgnoreCase) && (_charNextHeader == '-' || _charNextHeader == '_'))
                         {
                             evt.IsDialogue = false;
+                            baseEvents.Collection[i] = evt;
+                            break;
                         }
                     }
                 }
@@ -59,12 +68,18 @@ public class MergeCommon
 
             if (mergeType == "event" || mergeType == "all")
             {
-                if (!baseData.Events.Formats.SequenceEqual(md.Events.Formats))
+                if (baseEvents is null)
+                {
+                    throw new InvalidDataException("Base ASS has no events section.");
+                }
+
+                var mergeEvents = md.Events ?? throw new InvalidDataException("Merge ASS has no events section.");
+                if (!baseEvents.Formats.SequenceEqual(mergeEvents.Formats))
                 {
                     throw new Exception("Different events formats.");
                 }
 
-                baseData.Events.Collection.AddRange(md.Events.Collection);
+                baseEvents.Collection.AddRange(mergeEvents.Collection);
             }
         }
     }

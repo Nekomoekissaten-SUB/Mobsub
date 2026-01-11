@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+﻿﻿﻿using System.Diagnostics;
 using System.Text;
 using Mobsub.SubtitleParse.AssTypes;
 using Mobsub.SubtitleProcess.FormatData;
@@ -88,16 +88,17 @@ public class MergeByConfig(string configPath)
                 
                 var dataFrom = new AssData();
                 dataFrom.ReadAssFile(mf);
+                var dataEvents = dataFrom.Events ?? throw new InvalidDataException($"ASS events missing in {mf}.");
                 tsp = Utils.GetTimespan($"{kvpEp.Value[0]}frm", ConfigDataBase.Fps);
     
                 if (kvpEp.Value.Length == 3 && kvpEp.Value[2] != -1)
                 {
                     var start = new AssTime((int)Utils.FrameToMillisecond(kvpEp.Value[2], Utils.UnifiedFps(ConfigDataBase.Fps)));
-                    Tpp.ShiftAss(dataFrom.Events.Collection, tsp, start);
+                    Tpp.ShiftAss(dataEvents.Collection, tsp, start);
                 }
                 else
                 {
-                    Tpp.ShiftAss(dataFrom.Events.Collection, tsp);
+                    Tpp.ShiftAss(dataEvents.Collection, tsp);
                 }
     
                 mergeDataList.Add(dataFrom);

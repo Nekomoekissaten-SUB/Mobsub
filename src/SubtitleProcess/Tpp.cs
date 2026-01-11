@@ -10,8 +10,10 @@ public class Tpp
     {
         for (var i = 0; i < ets.Count; i++)
         {
-            ets[i].Start = ets[i].Start.Add(time);
-            ets[i].End = ets[i].End.Add(time);
+            var evt = ets[i];
+            evt.Start = evt.Start.Add(time);
+            evt.End = evt.End.Add(time);
+            ets[i] = evt;
         }
     }
 
@@ -19,16 +21,19 @@ public class Tpp
     {
         for (var i = 0; i < ets.Count; i++)
         {
-            var had = styles.Contains(ets[i].Style);
+            var evt = ets[i];
+            var had = styles.Contains(evt.Style);
             if (negation && !had)
             {
-                ets[i].Start = ets[i].Start.Add(time);
-                ets[i].End = ets[i].End.Add(time);
+                evt.Start = evt.Start.Add(time);
+                evt.End = evt.End.Add(time);
+                ets[i] = evt;
             }
             else if (!negation && had)
             {
-                ets[i].Start = ets[i].Start.Add(time);
-                ets[i].End = ets[i].End.Add(time);
+                evt.Start = evt.Start.Add(time);
+                evt.End = evt.End.Add(time);
+                ets[i] = evt;
             }
         }
     }
@@ -38,11 +43,13 @@ public class Tpp
         AssTime s;
         for (var i = ets.Count - 1; i >= 0; i--)
         {
-            s = ets[i].Start.Add(time);
+            var evt = ets[i];
+            s = evt.Start.Add(time);
             if (s.CompareTo(truncateStart) >= 0)
             {
-                ets[i].Start = s;
-                ets[i].End = ets[i].End.Add(time);
+                evt.Start = s;
+                evt.End = evt.End.Add(time);
+                ets[i] = evt;
             }
             else
             {
@@ -56,8 +63,9 @@ public class Tpp
         var fpsArray = fps.Split("/").Select(int.Parse).ToArray();
         for (var i = 0; i < ets.Count; i++)
         {
-            var start = ets[i].Start.Ticks / 10000;
-            var end = ets[i].End.Ticks / 10000;
+            var evt = ets[i];
+            var start = evt.Start.Ticks / 10000;
+            var end = evt.End.Ticks / 10000;
             
             int? vfrFrame1 = null;
             int? vfrFrame2 = null;
@@ -101,8 +109,9 @@ public class Tpp
             }
             
             Debug.Assert(vfrFrame1 != null && vfrFrame2 != null);
-            ets[i].Start = new AssTime((long)((double)vfrFrame1 * fpsArray[1] / fpsArray[0] * 10000000));
-            ets[i].End   = new AssTime((long)((double)vfrFrame2 * fpsArray[1] / fpsArray[0] * 10000000));
+            evt.Start = new AssTime((long)((double)vfrFrame1 * fpsArray[1] / fpsArray[0] * 10000000));
+            evt.End = new AssTime((long)((double)vfrFrame2 * fpsArray[1] / fpsArray[0] * 10000000));
+            ets[i] = evt;
         }
     }
 
