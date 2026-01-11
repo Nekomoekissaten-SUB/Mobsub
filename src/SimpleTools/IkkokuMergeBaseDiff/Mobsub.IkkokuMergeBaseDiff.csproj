@@ -5,10 +5,11 @@
         <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
         <ApplicationManifest>app.manifest</ApplicationManifest>
         <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
-        <TargetFrameworks>net10.0</TargetFrameworks>
+        <TargetFramework>net10.0</TargetFramework>
         <RootNamespace>Mobsub.IkkokuMergeBaseDiff</RootNamespace>
         <PackageId>Mobsub.IkkokuMergeBaseDiff</PackageId>
         <AssemblyName>IkkokuMergeBaseDiff</AssemblyName>
+        <PublishReadyToRun>true</PublishReadyToRun>
     </PropertyGroup>
 
     <ItemGroup>
@@ -18,7 +19,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\..\SubtitleParse\Mobsub.SubtitleParse.csproj" />
-      <ProjectReference Include="..\..\SubtitleProcessNotAot\Mobsub.SubtitleProcessNotAot.csproj" />
+      <ProjectReference Include="..\..\SubtitleProcess\Mobsub.SubtitleProcess.csproj" />
       <ProjectReference Include="..\..\Helper.Avalonia\Mobsub.Helper.Avalonia.csproj" />
     </ItemGroup>
 </Project>

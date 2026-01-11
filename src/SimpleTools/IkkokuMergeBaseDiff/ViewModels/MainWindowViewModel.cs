@@ -1,17 +1,15 @@
-﻿using System;
+﻿﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using LibGit2Sharp;
 using Microsoft.Extensions.DependencyInjection;
 using Mobsub.Helper.Avalonia.Services;
-using Mobsub.SubtitleProcessNotAot;
+using Mobsub.SubtitleProcess;
 
 namespace Mobsub.IkkokuMergeBaseDiff.ViewModels;
 
@@ -21,13 +19,12 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty] private string _gitRepositoryPath = string.Empty;
     [ObservableProperty] private string _zhConvertConfig = string.Empty;
     
-    private Repository? _repository;
     private string _workDirectoryRelativePath = string.Empty;
-    private List<Commit> _workDirectoryCommits = [];
-    public ObservableCollection<Commit> StartCommits { get; private set; } = [];
-    public ObservableCollection<Commit> EndCommits { get; private set; } = [];
-    [ObservableProperty] private Commit? _startCommit;
-    [ObservableProperty] private Commit? _endCommit;
+    private IReadOnlyList<MergeSimplifiedChineseGitDiff.GitCommitInfo> _workDirectoryCommits = Array.Empty<MergeSimplifiedChineseGitDiff.GitCommitInfo>();
+    public ObservableCollection<MergeSimplifiedChineseGitDiff.GitCommitInfo> StartCommits { get; private set; } = [];
+    public ObservableCollection<MergeSimplifiedChineseGitDiff.GitCommitInfo> EndCommits { get; private set; } = [];
+    [ObservableProperty] private MergeSimplifiedChineseGitDiff.GitCommitInfo? _startCommit;
+    [ObservableProperty] private MergeSimplifiedChineseGitDiff.GitCommitInfo? _endCommit;
 
     [RelayCommand]
     private async Task SelectWorkDirectory(CancellationToken token)
@@ -41,14 +38,21 @@ public partial class MainWindowViewModel : ViewModelBase
         if (localPath is null) return;
         WorkDirectory = localPath;
             
-        MergeSimplifiedChineseGitDiff.FindGitRootDirectory(localPath, out var rootPath, out var relativePath);
+        if (!MergeSimplifiedChineseGitDiff.FindGitRootDirectory(localPath, out var rootPath, out var relativePath))
+        {
+            GitRepositoryPath = string.Empty;
+            return;
+        }
+
         GitRepositoryPath = rootPath;
-        _repository = new Repository(GitRepositoryPath);
         _workDirectoryRelativePath = relativePath;
-        _workDirectoryCommits = await GetWorkDirectoryCommits(_repository, relativePath);
+        _workDirectoryCommits = await Task.Run(() =>
+            MergeSimplifiedChineseGitDiff.GetWorkDirectoryCommits(GitRepositoryPath, relativePath), token);
             
-        StartCommits = new ObservableCollection<Commit>(_workDirectoryCommits);
-        EndCommits = new ObservableCollection<Commit>(_workDirectoryCommits);
+        StartCommits = new ObservableCollection<MergeSimplifiedChineseGitDiff.GitCommitInfo>(_workDirectoryCommits);
+        EndCommits = new ObservableCollection<MergeSimplifiedChineseGitDiff.GitCommitInfo>(_workDirectoryCommits);
+        StartCommit = StartCommits.FirstOrDefault();
+        EndCommit = EndCommits.FirstOrDefault();
         
         OnPropertyChanged(nameof(StartCommits));
         OnPropertyChanged(nameof(EndCommits));
@@ -70,11 +74,11 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private async Task DisplayPatchChanges(CancellationToken token)
     {
-        if (_repository is null || StartCommit is null || EndCommit is null) return;
+        if (StartCommit is null || EndCommit is null) return;
         
         await Task.Run(() =>
         {
-            var diffs = MergeSimplifiedChineseGitDiff.GetDirectoryPatch(_repository, StartCommit.Id.Sha, EndCommit.Id.Sha, _workDirectoryRelativePath);
+            _ = BuildPatch();
         }, token);
     }
 
@@ -82,64 +86,34 @@ public partial class MainWindowViewModel : ViewModelBase
     private async Task MergePatch(CancellationToken token)
     {
         if (ZhConvertConfig == string.Empty) return;
-        if (_repository is null || StartCommit is null || EndCommit is null) return;
+        if (StartCommit is null || EndCommit is null) return;
         
         await Task.Run(() =>
         {
-           var pfParams = MergeSimplifiedChineseGitDiff.GetMergeGitDiffParams(ZhConvertConfig, true);
-           var diffs = MergeSimplifiedChineseGitDiff.GetDirectoryPatch(_repository, StartCommit.Id.Sha,
-               EndCommit.Id.Sha, _workDirectoryRelativePath);
-
-           var baseSuffix = ".SC.";
-           foreach (var diff in diffs)
-           {
-               if (diff.OldPath.Contains(".JPSC."))
-               {
-                   baseSuffix = ".JPSC.";
-                   break;
-               }
-           }
-
-           var targetSuffix = baseSuffix == ".SC." ? ".TC." : ".JPTC.";
-           
-           MergeSimplifiedChineseGitDiff.MergeGitDiffToCht(diffs, GitRepositoryPath, baseSuffix, targetSuffix, pfParams);
-        });
-    }
-    
-    private static async Task<List<Commit>> GetWorkDirectoryCommits(Repository repo, string relativePath)
-    {
-        var commits = new List<Commit>();
-        await Task.Run(() =>
-        {
-            foreach (var commit in repo.Commits)
+            var patch = BuildPatch();
+            var baseSuffix = ".SC.";
+            foreach (var diff in patch)
             {
-                var currentTree = commit.Tree;
-                var parentTree = commit.Parents.Any() ? commit.Parents.First().Tree : null;
-
-                var currentFolderEntry = currentTree[relativePath];
-
-                if (parentTree != null)
+                if (diff.Path.Contains(".JPSC.", StringComparison.OrdinalIgnoreCase))
                 {
-                    var parentFolderEntry = parentTree[relativePath];
-
-                    if (currentFolderEntry != null && parentFolderEntry != null)
-                    {
-                        if (!currentFolderEntry.Target.Sha.Equals(parentFolderEntry.Target.Sha))
-                        {
-                            commits.Add(commit);
-                        }
-                    }
-                    else if (currentFolderEntry != null || parentFolderEntry != null)
-                    {
-                        commits.Add(commit);
-                    }
-                }
-                else if (currentFolderEntry != null)
-                {
-                    commits.Add(commit);
+                    baseSuffix = ".JPSC.";
+                    break;
                 }
             }
+
+            var targetSuffix = baseSuffix == ".SC." ? ".TC." : ".JPTC.";
+            MergeSimplifiedChineseGitDiff.MergeGitDiffToCht(GitRepositoryPath, StartCommit.Sha,
+                EndCommit.Sha, _workDirectoryRelativePath, baseSuffix, targetSuffix, ZhConvertConfig);
         });
-        return commits;
+    }
+
+    private IReadOnlyList<MergeSimplifiedChineseGitDiff.GitDiffEntryInfo> BuildPatch()
+    {
+        if (StartCommit is null || EndCommit is null || string.IsNullOrEmpty(GitRepositoryPath))
+        {
+            return Array.Empty<MergeSimplifiedChineseGitDiff.GitDiffEntryInfo>();
+        }
+
+        return MergeSimplifiedChineseGitDiff.GetDirectoryDiffEntries(GitRepositoryPath, StartCommit.Sha, EndCommit.Sha, _workDirectoryRelativePath);
     }
 }
