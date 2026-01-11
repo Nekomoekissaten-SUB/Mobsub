@@ -2,7 +2,7 @@
 #:package ZLogger@2.5.10
 #:property CsWin32RunAsBuildTask=true
 #:property DisableRuntimeMarshalling=true
-#:project ../SubtitleParseNT/Mobsub.SubtitleParseNT2.csproj
+#:project ../SubtitleParse/Mobsub.SubtitleParse.csproj
 
 // Port from https://github.com/SAPikachu/iriya
 
@@ -10,8 +10,8 @@ using System.Runtime.Versioning;
 using System.Text;
 using Windows.Win32;
 using Windows.Win32.Graphics.Gdi;
-using Mobsub.SubtitleParseNT2.AssUtils;
-using Mobsub.SubtitleParseNT2.AssTypes;
+using Mobsub.SubtitleParse.AssUtils;
+using Mobsub.SubtitleParse.AssTypes;
 
 if (!OperatingSystem.IsWindowsVersionAtLeast(5, 0)){ throw new PlatformNotSupportedException("This tool only runs on Windows."); }
 
