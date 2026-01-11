@@ -1,4 +1,4 @@
-﻿using Mobsub.SubtitleParse.AssTypes;
+using Mobsub.SubtitleParse.AssTypes;
 using System.CommandLine;
 using Mobsub.SubtitleProcess;
 using Mobsub.SubtitleProcess.FormatData;
@@ -158,15 +158,16 @@ internal class TppCmd
         Console.WriteLine(f);
         var data = new AssData();
         data.ReadAssFile(f.FullName);
+        var events = data.Events ?? throw new InvalidDataException($"ASS events missing in {f.FullName}.");
 
         if (styles.Length > 0)
         {
             var negation = styles[0] == "!";
-            Tpp.ShiftAss(data.Events.Collection, tsp, negation ? styles[1..] : styles, negation);
+            Tpp.ShiftAss(events.Collection, tsp, negation ? styles[1..] : styles, negation);
         }
         else
         {
-            Tpp.ShiftAss(data.Events.Collection, tsp);
+            Tpp.ShiftAss(events.Collection, tsp);
         }
 
         data.WriteAssFile(opt.FullName);
@@ -177,8 +178,9 @@ internal class TppCmd
         Console.WriteLine(f);
         var data = new AssData();
         data.ReadAssFile(f.FullName);
+        var events = data.Events ?? throw new InvalidDataException($"ASS events missing in {f.FullName}.");
         var tcdata = ParseTcfile(tcfile.FullName);
-        Tpp.AssumeFPS(data.Events.Collection, tcdata, fps);
+        Tpp.AssumeFPS(events.Collection, tcdata, fps);
         data.WriteAssFile(opt.FullName);
     }
 
@@ -187,12 +189,8 @@ internal class TppCmd
         using var fs = new FileStream(f, FileMode.Open, FileAccess.Read);
         var sr = new StreamReader(fs);
         var version = AVTimestamp.CheckVersion(sr);
-        if (version != 2)
-        {
-            throw new Exception("tcfile must be version 2");
-        }
         var data = new AVTimestamp();
-        data.ParseVersion2(sr);
+        data.Parse(sr, version);
         return data;
     }
 }

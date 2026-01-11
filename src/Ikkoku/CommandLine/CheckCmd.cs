@@ -1,4 +1,4 @@
-﻿using System.CommandLine;
+using System.CommandLine;
 using Mobsub.SubtitleProcess;
 
 namespace Mobsub.Ikkoku.CommandLine;

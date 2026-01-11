@@ -1,10 +1,9 @@
-﻿using Mobsub.Ikkoku.SubtileProcess;
+using Mobsub.SubtitleProcess;
 using Mobsub.SubtitleParse.AssTypes;
 using Mobsub.Helper.ZhConvert;
 using OpenCCSharp.Conversion;
 using System.CommandLine;
 using System.Text;
-using Mobsub.SubtitleProcess;
 
 namespace Mobsub.Ikkoku.CommandLine;
 
@@ -183,12 +182,15 @@ internal class CJKppCmd
         Console.WriteLine($"Output: {opt}");
         var data = new AssData();
         data.ReadAssFile(f.FullName);
+        var events = data.Events ?? throw new InvalidDataException($"ASS events missing in {f.FullName}.");
         var evtConverter = new ConvertSimplifiedChinese(converter);
         Dictionary<int, string[]> changesRecord = [];
 
-        foreach (var et in data.Events.Collection)
+        for (var i = 0; i < events.Collection.Count; i++)
         {
-            evtConverter.ZhConvertEventByOpenccSharp(et, changesRecord);
+            var evt = events.Collection[i];
+            evtConverter.ZhConvertEventByOpenccSharp(ref evt, changesRecord);
+            events.Collection[i] = evt;
         }
 
         data.WriteAssFile(opt.FullName);

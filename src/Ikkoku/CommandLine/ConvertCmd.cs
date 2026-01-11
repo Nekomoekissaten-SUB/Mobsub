@@ -1,8 +1,7 @@
-﻿using Mobsub.Ikkoku.SubtileProcess;
+using Mobsub.SubtitleProcess;
 using Mobsub.SubtitleParse.AssTypes;
 using Mobsub.SubtitleParse.PGS;
 using System.CommandLine;
-using Mobsub.SubtitleProcess;
 
 namespace Mobsub.Ikkoku.CommandLine;
 
@@ -97,7 +96,7 @@ internal class ConvertCmd
                         var fs = new FileStream(optFile.FullName, FileMode.Create, FileAccess.Write);
                         using (var memStream = new MemoryStream())
                         {
-                            using var sw = new StreamWriter(memStream, SubtitleParse.Utils.EncodingRefOS());
+                            using var sw = new StreamWriter(memStream, Mobsub.SubtitleParse.Utils.EncodingRefOS());
                             ConvertSub.ConvertAssToTxt(sw, ass);
                             sw.Flush();
                             memStream.Seek(0, SeekOrigin.Begin);

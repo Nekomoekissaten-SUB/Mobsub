@@ -1,6 +1,5 @@
-﻿using Mobsub.SubtitleParse.AssTypes;
+using Mobsub.SubtitleParse.AssTypes;
 using Mobsub.SubtitleProcess;
-using Mobsub.SubtitleProcessNotAot;
 using System.CommandLine;
 using System.Reflection.Metadata.Ecma335;
 
@@ -108,10 +107,8 @@ internal partial class MergeCmd
             Execute(baseFileValue, mergeFileValues, outputPath!, confFile, confVarValues, mergeSectionValue!);
         });
 
-# if NotAot
         // subcommand base-diff
         mergeCommand.Add(BuildSubGitDiff(path, conf));
-# endif
 
         // subcommand nijigasaki
         mergeCommand.Add(BuildNijigasaki(path, optPath, confVar));

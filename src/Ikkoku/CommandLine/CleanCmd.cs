@@ -1,8 +1,8 @@
-﻿using Mobsub.SubtitleParse.AssTypes;
+﻿﻿﻿using Mobsub.SubtitleParse.AssTypes;
 using System.Diagnostics;
-using Mobsub.Ikkoku.SubtileProcess;
-using System.CommandLine;
 using Mobsub.SubtitleProcess;
+using System.CommandLine;
+// using Mobsub.SubtitleProcess;
 
 namespace Mobsub.Ikkoku.CommandLine;
 
@@ -111,7 +111,7 @@ internal class CleanCmd
 
             case DirectoryInfo iptDir:
 
-                var subfiles = Utils.Traversal(iptDir, ext);
+                var subfiles = iptDir.GetFiles($"*{ext}", SearchOption.AllDirectories);
                 binDir = extractBinaries ? iptDir : binDir;
                 optPath ??= iptDir;
 
@@ -147,9 +147,10 @@ internal class CleanCmd
     private static void CleanOneAss(FileInfo f, FileInfo opt, DirectoryInfo? binDir, bool verbose, Clean.CleanAssArgs args)
     {
         Console.WriteLine(f);
-        var fs = new FileStream(f.FullName, FileMode.Open, FileAccess.ReadWrite);
+        // var fs = new FileStream(f.FullName, FileMode.Open, FileAccess.ReadWrite);
         var fileNoSuffix = f.Name.AsSpan()[..(f.Name.Length - 4)];
 
+        /*
         AssParseOption assOption = AssParseOption.None;
         if (args.dropDuplicateStyles)
         {
@@ -159,19 +160,20 @@ internal class CleanCmd
         {
             assOption |= AssParseOption.FixStyleName;
         }
-        var data = new AssData() { ParseOptions = assOption };
-        data.ReadAssFile(fs);
+        */
+        var data = new AssData();
+        data.ReadAssFileAsync(f.FullName).GetAwaiter().GetResult();
 
         if (binDir is not null)
         {
-            Clean.ExtractBinaries(data, binDir);
+            // Clean.ExtractBinaries(data, binDir);
         }
 
         Clean.CleanAss(data, fileNoSuffix, args, out string msg, out bool untouched);
 
         if (!untouched)
         {
-            data.WriteAssFile(opt.FullName);
+             data.WriteAssFile(opt.FullName, forceEnv: false, ctsRounding: false);
         }
 
         if (verbose)
