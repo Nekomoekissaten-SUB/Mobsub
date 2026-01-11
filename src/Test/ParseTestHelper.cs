@@ -30,7 +30,7 @@ public partial class ParseTest
         var lineNumber = 0;
         foreach (var str in stylesStr)
         {
-            assStyles.Read(str, lineNumber);
+            assStyles.Read(Encoding.UTF8.GetBytes(str), lineNumber);
             lineNumber += 1;
         }
 
@@ -39,10 +39,11 @@ public partial class ParseTest
     private static AssEvents ParseAssEvents(string[] eventsStr)
     {
         var assEvents = new AssEvents();
+        ReadOnlySpan<byte> scriptType = "v4.00++"u8;
         var lineNumber = 0;
         foreach (var str in eventsStr)
         {
-            assEvents.Read(str, "v4.00++", lineNumber);
+            assEvents.Read(Encoding.UTF8.GetBytes(str), scriptType, lineNumber);
             lineNumber += 1;
         }
 

@@ -1,4 +1,4 @@
-using Mobsub.SubtitleParseNT2.AssTypes;
+using Mobsub.SubtitleParse.AssTypes;
 using System.Text;
 
 namespace Mobsub.SubtitleParse.Test;

@@ -1,5 +1,5 @@
 using FluentAssertions;
-using Mobsub.SubtitleParseNT2.AssTypes;
+using Mobsub.SubtitleParse.AssTypes;
 
 namespace Mobsub.Test;
 

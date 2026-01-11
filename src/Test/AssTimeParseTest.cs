@@ -1,4 +1,4 @@
-﻿using Mobsub.SubtitleParse.AssTypes;
+﻿﻿using Mobsub.SubtitleParse.AssTypes;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -9,7 +9,7 @@ namespace Test;
 public partial class ParseTest
 {
     private AssTime _time = new(223748000000);
-    private Mobsub.SubtitleParseNT2.AssTypes.AssTime _time2 = new(223748000000);
+    private Mobsub.SubtitleParse.AssTypes.AssTime _time2 = new(223748000000);
 
     [TestMethod]
     public void AssTimeParseSpan()
@@ -23,7 +23,7 @@ public partial class ParseTest
     public void AssTimeParseSpanUtf8()
     {
         var str = "6:12:54.80"u8;
-        var time = Mobsub.SubtitleParseNT2.AssTypes.AssTime.ParseFromAss(str);
+        var time = Mobsub.SubtitleParse.AssTypes.AssTime.ParseFromAss(str);
         Assert.IsTrue(time.Equals(_time2));
     }
 }

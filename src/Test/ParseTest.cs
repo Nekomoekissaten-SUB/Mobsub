@@ -1,9 +1,9 @@
+using Microsoft.Extensions.Logging;
 using Mobsub.SubtitleParse;
 using Mobsub.SubtitleParse.AssTypes;
 using Mobsub.SubtitleParse.AssUtils;
-using Microsoft.Extensions.Logging;
-using ZLogger;
 using System.Runtime.CompilerServices;
+using ZLogger;
 
 namespace Mobsub.Test;
 
@@ -57,5 +57,26 @@ public partial class ParseTest
 
         [UnsafeAccessor(UnsafeAccessorKind.StaticMethod, Name = "AssParseStyleName")]
         extern static ReadOnlySpan<char> GetEventStyleName(Utils c, ReadOnlySpan<char> sp);
+    }
+
+    //[TestMethod]
+    //public void ParseEvent()
+    //{
+    //    var line = @"Dialogue: 1,0:13:10.60,0:13:13.61,Sign,,0,0,0,,{\an7\blur1\fn方正粗雅宋_GBK\fs50\fsp2\bord0\pos(44,754)\b1}值日\N{\fe134\fs60}瞳岛眉美、沃野禁止郎";
+    //    //var evt = new SubtitleParse.AssTypes.AssEvent();
+    //    var evts = new SubtitleParse.AssTypes.AssEvents();
+    //    //evt.Read(line, 0, evts.Formats);
+
+    //    var evt = new SubtitleParse.AssTypes.AssEventView(line, 0, "Dialogue", evts.Formats);
+    //}
+
+
+
+    [TestMethod]
+    public void ParseFile()
+    {
+        var file = @"F:\code\_test\parser\large_million_lines_simple.ass";
+        var ass = new SubtitleParse.AssTypes.AssData();
+        ass.ReadAssFileAsync(file).GetAwaiter().GetResult();
     }
 }

@@ -1,11 +1,11 @@
-﻿using FluentAssertions;
+﻿﻿using FluentAssertions;
 using Microsoft.Extensions.Logging;
-using Mobsub.SubtitleParseNT2.AssTypes;
-using Mobsub.SubtitleParseNT2.AssUtils;
+using Mobsub.SubtitleParse.AssTypes;
+using Mobsub.SubtitleParse.AssUtils;
 using System;
 using System.Text;
-using NT2AssTypes = Mobsub.SubtitleParseNT2.AssTypes;
-using NT2AssUtils = Mobsub.SubtitleParseNT2.AssUtils;
+using NT2AssTypes = Mobsub.SubtitleParse.AssTypes;
+using NT2AssUtils = Mobsub.SubtitleParse.AssUtils;
 
 namespace Mobsub.Test;
 
@@ -78,6 +78,19 @@ public partial class ParseTest
         processor.InitForLine(baseState);
         processor.GetUsedFontInfos(line);
         return processor.Results.ToDictionary();
+    }
+
+    private static HashSet<Rune> ConvertToRuneList(ReadOnlySpan<char> span)
+    {
+        HashSet<Rune> runes = [];
+        int charsConsumed;
+        for (var i = 0; i < span.Length; i += charsConsumed)
+        {
+            Rune.DecodeFromUtf16(span[i..], out var rune, out charsConsumed);
+            runes.Add(rune);
+        }
+
+        return runes;
     }
 
     [TestMethod]
