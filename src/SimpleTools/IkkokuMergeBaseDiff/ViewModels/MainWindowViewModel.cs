@@ -15,6 +15,8 @@ namespace Mobsub.IkkokuMergeBaseDiff.ViewModels;
 
 public partial class MainWindowViewModel : ViewModelBase
 {
+    private const int MaxCommitListCount = 500;
+
     [ObservableProperty] private string _workDirectory = string.Empty;
     [ObservableProperty] private string _gitRepositoryPath = string.Empty;
     [ObservableProperty] private string _zhConvertConfig = string.Empty;
@@ -47,7 +49,7 @@ public partial class MainWindowViewModel : ViewModelBase
         GitRepositoryPath = rootPath;
         _workDirectoryRelativePath = relativePath;
         _workDirectoryCommits = await Task.Run(() =>
-            MergeSimplifiedChineseGitDiff.GetWorkDirectoryCommits(GitRepositoryPath, relativePath), token);
+            MergeSimplifiedChineseGitDiff.GetWorkDirectoryCommits(GitRepositoryPath, relativePath, MaxCommitListCount, token), token);
             
         StartCommits = new ObservableCollection<MergeSimplifiedChineseGitDiff.GitCommitInfo>(_workDirectoryCommits);
         EndCommits = new ObservableCollection<MergeSimplifiedChineseGitDiff.GitCommitInfo>(_workDirectoryCommits);

@@ -3,6 +3,7 @@ using Mobsub.SubtitleParse.AssTypes;
 using OpenCCSharp.Conversion;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 using static XenoAtom.Interop.libgit2;
 
 namespace Mobsub.SubtitleProcess;
@@ -93,7 +94,11 @@ public static class MergeSimplifiedChineseGitDiff
         MergeGitDiffToCht(diffs, repoLocalPath, baseSuffix, targetSuffix, pfParams);
     }
 
-    public static IReadOnlyList<GitCommitInfo> GetWorkDirectoryCommits(string repoLocalPath, string relativePath)
+    public static IReadOnlyList<GitCommitInfo> GetWorkDirectoryCommits(
+        string repoLocalPath,
+        string relativePath,
+        int maxCount = 0,
+        CancellationToken cancellationToken = default)
     {
         var commits = new List<GitCommitInfo>();
         git_libgit2_init().Check();
@@ -114,6 +119,7 @@ public static class MergeSimplifiedChineseGitDiff
                     git_oid oid;
                     while (true)
                     {
+                        cancellationToken.ThrowIfCancellationRequested();
                         var res = git_revwalk_next(out oid, walk);
                         if (res.ErrorCode == git_error_code.GIT_ITEROVER)
                         {
@@ -130,6 +136,10 @@ public static class MergeSimplifiedChineseGitDiff
                                 continue;
                             }
                             commits.Add(ReadCommitInfo(commit, in oid));
+                            if (maxCount > 0 && commits.Count >= maxCount)
+                            {
+                                break;
+                            }
                         }
                         finally
                         {
