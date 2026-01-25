@@ -10,6 +10,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\SubtitleParse\Mobsub.SubtitleParse.csproj" />
+    <ProjectReference Include="..\Helper\Mobsub.Helper.csproj" />
   </ItemGroup>
 
   <ItemGroup>
