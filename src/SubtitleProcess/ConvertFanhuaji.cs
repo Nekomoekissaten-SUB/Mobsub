@@ -16,6 +16,9 @@ public class ConvertFanhuaji(FanhuajiOptions options)
         // Direct string list - avoid unnecessary byte[] encoding/decoding
         var pureTextPayloads = new List<string>();
 
+        // Track which events have empty text (need special handling)
+        var emptyTextIndices = new HashSet<int>();
+
         for (int i = 0; i < events.Count; i++)
         {
             var evt = events[i];
@@ -29,8 +32,18 @@ public class ConvertFanhuaji(FanhuajiOptions options)
             // Store tags for later restoration
             tagStorage.Add(tags);
 
-            // No byte[] conversion - pass string directly
-            pureTextPayloads.Add(textWithPlaceholders);
+            // IMPORTANT: If the pure text is empty (only contained tags), 
+            // use a special placeholder to prevent Fanhuaji from merging consecutive empty lines.
+            // This can happen when a line only has override tags like {\fad(100,100)}
+            if (string.IsNullOrEmpty(textWithPlaceholders))
+            {
+                emptyTextIndices.Add(eventsToConvert.Count - 1);
+                pureTextPayloads.Add("{{EMPTY}}");
+            }
+            else
+            {
+                pureTextPayloads.Add(textWithPlaceholders);
+            }
         }
 
         if (eventsToConvert.Count == 0) return;
@@ -88,8 +101,20 @@ public class ConvertFanhuaji(FanhuajiOptions options)
                     var evt = events[index];
                     var tags = tagStorage[lineIndex];
 
+                    string lineStr;
+                    // Check if this was an empty text line - restore empty string
+                    if (emptyTextIndices.Contains(lineIndex))
+                    {
+                        // Original was empty, just use empty string (tags will be restored)
+                        lineStr = string.Empty;
+                    }
+                    else
+                    {
+                        lineStr = lineSpan.ToString();
+                    }
+
                     // Restore tags from placeholders
-                    var restored = RestoreTags(lineSpan.ToString(), tags);
+                    var restored = RestoreTags(lineStr, tags);
 
                     evt.Text = restored;
 
