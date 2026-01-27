@@ -88,9 +88,9 @@ public class Utils
         }
 
         object? typedValue = null;
-        if (property.PropertyType == typeof(AssRGB8))
+        if (property.PropertyType == typeof(AssColor32))
         {
-            typedValue = AssRGB8.Parse(value);
+            typedValue = AssColor32.Parse(value);
         }
         else if (property.PropertyType == typeof(bool))
         {
@@ -144,9 +144,9 @@ public class Utils
         }
 
         object? typedValue = null;
-        if (property.PropertyType == typeof(AssRGB8))
+        if (property.PropertyType == typeof(AssColor32))
         {
-            typedValue = AssRGB8.Parse(value);
+            typedValue = AssColor32.Parse(value);
         }
         else if (property.PropertyType == typeof(bool))
         {

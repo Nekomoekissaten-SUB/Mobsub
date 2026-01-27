@@ -400,7 +400,7 @@ public static class AssEventParser
         if (tag == AssTag.FontScale)
             return AssTagValue.Empty;
 
-        if (IsAlphaTag(tag) && AssRGB8.TryParseAlphaByte(trimmedSpan, out var alpha, out var invalidAlpha))
+        if (IsAlphaTag(tag) && AssColor32.TryParseAlphaByte(trimmedSpan, out var alpha, out var invalidAlpha))
         {
             if (invalidAlpha && Logger != null)
             {
@@ -454,9 +454,9 @@ public static class AssEventParser
             }
             return AssTagValue.FromByte((byte)byv);
         }
-        if (desc.ValueType == typeof(AssRGB8))
+        if (desc.ValueType == typeof(AssColor32))
         {
-            if (AssRGB8.TryParseTagColor(trimmedSpan, out var color, out var ignoredHighByte, out var invalidColor))
+            if (AssColor32.TryParseTagColor(trimmedSpan, out var color, out var ignoredHighByte, out var invalidColor))
             {
                 if (invalidColor && Logger != null)
                 {

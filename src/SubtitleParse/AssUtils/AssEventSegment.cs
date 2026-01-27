@@ -42,7 +42,7 @@ public readonly struct AssTagSpan(AssTag tag, Range range, AssTagValue value)
             result = (T)o;
             return true;
         }
-        if (typeof(T) == typeof(AssRGB8) && Value.Kind == AssTagValueKind.Color)
+        if (typeof(T) == typeof(AssColor32) && Value.Kind == AssTagValueKind.Color)
         {
             object o = Value.ColorValue;
             result = (T)o;

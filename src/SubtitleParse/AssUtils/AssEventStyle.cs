@@ -7,10 +7,10 @@ namespace Mobsub.SubtitleParse.AssUtils;
 
 public readonly struct AssStyleSnapshot(AssStyle s)
 {
-    public AssRGB8 PrimaryColorWithAlpha { get; init; } = s.PrimaryColour;
-    public AssRGB8 SecondaryColorWithAlpha { get; init; } = s.SecondaryColour;
-    public AssRGB8 BorderColorWithAlpha { get; init; } = s.OutlineColour;
-    public AssRGB8 ShadowColorWithAlpha { get; init; } = s.BackColour;
+    public AssColor32 PrimaryColorWithAlpha { get; init; } = s.PrimaryColour;
+    public AssColor32 SecondaryColorWithAlpha { get; init; } = s.SecondaryColour;
+    public AssColor32 BorderColorWithAlpha { get; init; } = s.OutlineColour;
+    public AssColor32 ShadowColorWithAlpha { get; init; } = s.BackColour;
     public byte Alignment { get; init; } = s.Alignment;
     public double BlueEdges { get; init; } = 0;
     public double BlurEdgesGaussian { get; init; } = 0;

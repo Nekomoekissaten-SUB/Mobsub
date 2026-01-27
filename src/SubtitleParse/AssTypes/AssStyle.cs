@@ -12,10 +12,10 @@ public struct AssStyle
     public Range NameReadOnly { get; set; }
     public Range FontnameReadOnly { get; set; }
     public double Fontsize { get; set; }
-    public AssRGB8 PrimaryColour { get; set; }
-    public AssRGB8 SecondaryColour { get; set; }
-    public AssRGB8 OutlineColour { get; set; }
-    public AssRGB8 BackColour { get; set; }
+    public AssColor32 PrimaryColour { get; set; }
+    public AssColor32 SecondaryColour { get; set; }
+    public AssColor32 OutlineColour { get; set; }
+    public AssColor32 BackColour { get; set; }
     public bool Bold { get; set; }
     public bool Italic { get; set; }
     public bool Underline { get; set; }
@@ -118,10 +118,10 @@ public struct AssStyle
                 case "Name": NameReadOnly = new Range(range.Start.Value + sepIndex, range.End.Value + sepIndex); break;
                 case "Fontname": FontnameReadOnly = new Range(range.Start.Value + sepIndex, range.End.Value + sepIndex); break;
                 case "Fontsize": Fontsize = Utils.ParseDouble(value); break;
-                case "PrimaryColour": PrimaryColour = AssRGB8.Parse(value); break;
-                case "SecondaryColour": SecondaryColour = AssRGB8.Parse(value); break;
-                case "OutlineColour": OutlineColour = AssRGB8.Parse(value); break;
-                case "BackColour": BackColour = AssRGB8.Parse(value); break;
+                case "PrimaryColour": PrimaryColour = AssColor32.Parse(value); break;
+                case "SecondaryColour": SecondaryColour = AssColor32.Parse(value); break;
+                case "OutlineColour": OutlineColour = AssColor32.Parse(value); break;
+                case "BackColour": BackColour = AssColor32.Parse(value); break;
                 case "Bold": Bold = Utils.ParseSByte(value) == -1; break;
                 case "Italic": Italic = Utils.ParseSByte(value) == -1; break;
                 case "Underline": Underline = Utils.ParseSByte(value) == -1; break;

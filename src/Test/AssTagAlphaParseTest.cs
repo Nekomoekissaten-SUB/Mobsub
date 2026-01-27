@@ -9,7 +9,7 @@ public class AssTagAlphaParseTest
     [TestMethod]
     public void TryParseAlphaByte_ParsesAlphaTag()
     {
-        var ok = AssRGB8.TryParseAlphaByte("&H80&"u8, out var alpha);
+        var ok = AssColor32.TryParseAlphaByte("&H80&"u8, out var alpha);
         ok.Should().BeTrue();
         alpha.Should().Be(0x80);
     }
@@ -17,7 +17,7 @@ public class AssTagAlphaParseTest
     [TestMethod]
     public void TryParseAlphaByte_ParsesAlphaPrimaryTag()
     {
-        var ok = AssRGB8.TryParseAlphaByte("&H7F&"u8, out var alpha);
+        var ok = AssColor32.TryParseAlphaByte("&H7F&"u8, out var alpha);
         ok.Should().BeTrue();
         alpha.Should().Be(0x7F);
     }
@@ -25,7 +25,7 @@ public class AssTagAlphaParseTest
     [TestMethod]
     public void TryParseAlphaByte_ParsesRawHex()
     {
-        var ok = AssRGB8.TryParseAlphaByte("7F"u8, out var alpha);
+        var ok = AssColor32.TryParseAlphaByte("7F"u8, out var alpha);
         ok.Should().BeTrue();
         alpha.Should().Be(0x7F);
     }

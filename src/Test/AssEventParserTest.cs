@@ -66,7 +66,7 @@ public class AssEventParserTest
         var tags = segments[0].Tags!.Value.Span;
         tags.Length.Should().Be(2);
         tags[0].Tag.Should().Be(AssTag.ColorPrimaryAbbreviation);
-        tags[0].TryGet<AssRGB8>(out var color).Should().BeTrue();
+        tags[0].TryGet<AssColor32>(out var color).Should().BeTrue();
         color.R.Should().Be(0xFF);
         color.G.Should().Be(0x00);
         color.B.Should().Be(0x00);
@@ -89,7 +89,7 @@ public class AssEventParserTest
         var tags = segments[0].Tags!.Value.Span;
         tags.Length.Should().Be(1);
         tags[0].Tag.Should().Be(AssTag.ColorPrimaryAbbreviation);
-        tags[0].TryGet<AssRGB8>(out var color).Should().BeTrue();
+        tags[0].TryGet<AssColor32>(out var color).Should().BeTrue();
         color.R.Should().Be(0x44);
         color.G.Should().Be(0x33);
         color.B.Should().Be(0x22);
