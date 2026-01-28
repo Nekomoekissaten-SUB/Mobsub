@@ -153,8 +153,6 @@ public struct AssEvent
             sepIndex = nextSep + 1;
         }
         TextReadOnly = Range.StartAt(sepIndex);
-
-        TryStripAegisubExtradataMarkerFromText();
     }
 
     public Range[] TextRanges { get; set; } = [];
@@ -199,14 +197,15 @@ public struct AssEvent
 
     public AssEvent DeepClone() => this;
 
-    private void TryStripAegisubExtradataMarkerFromText()
+    public bool TryExtractAegisubExtradataMarkerFromText()
     {
         var textSpan = TextSpan;
         if (!TryParseAegisubExtradataMarker(textSpan, out var ids, out int markerLen))
-            return;
+            return false;
 
         AegisubExtradataIds = ids;
         _text = Utils.GetString(textSpan[markerLen..]);
+        return true;
     }
 
     private static bool TryParseAegisubExtradataMarker(ReadOnlySpan<byte> text, out uint[] ids, out int markerLengthBytes)

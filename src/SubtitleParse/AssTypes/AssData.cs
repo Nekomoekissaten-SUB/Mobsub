@@ -9,6 +9,8 @@ public sealed class AssData(ILogger? logger = null, AssParseTarget target = AssP
 {
     public bool CarriageReturn = true;
     public bool AllowUnknownSections = true;
+    public bool ExtractAegisubExtradataMarkers = false;
+    public bool PreserveAegisubExtradataMarkersOnWrite = true;
     private bool _getFirstCarriageReturn = false;
     public Encoding CharEncoding = Encoding.UTF8;
     public HashSet<AssSection> Sections = [];
@@ -40,7 +42,12 @@ public sealed class AssData(ILogger? logger = null, AssParseTarget target = AssP
                 break;
         }
 
-        Events = new(logger) { OnEventParsed = EventViewAction };
+        Events = new(logger)
+        {
+            OnEventParsed = EventViewAction,
+            ExtractAegisubExtradataMarkers = ExtractAegisubExtradataMarkers,
+            PreserveAegisubExtradataMarkersOnWrite = PreserveAegisubExtradataMarkersOnWrite
+        };
         eventInit = true;
     }
 

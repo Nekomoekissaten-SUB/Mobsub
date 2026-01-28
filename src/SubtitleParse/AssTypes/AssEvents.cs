@@ -17,6 +17,9 @@ public class AssEvents(ILogger? logger = null)
 
     public Action<AssEvent>? OnEventParsed { get; set; }
 
+    public bool ExtractAegisubExtradataMarkers { get; set; }
+    public bool PreserveAegisubExtradataMarkersOnWrite { get; set; } = true;
+
     public void Read(ReadOnlyMemory<byte> line, ReadOnlySpan<byte> scriptType, int lineNumber)
     {
         var sp = line.Span;
@@ -41,6 +44,8 @@ public class AssEvents(ILogger? logger = null)
         else
         {
             var evt = new AssEvent(line, lineNumber, sp[..sepIndex], Formats);
+            if (ExtractAegisubExtradataMarkers)
+                evt.TryExtractAegisubExtradataMarkerFromText();
             Dispatch(evt);
         }
     }
@@ -77,7 +82,7 @@ public class AssEvents(ILogger? logger = null)
         sw.Write(newline);
         foreach (var evt in Collection)
         {
-            Helper.Write(sw, evt, Formats, ctsRounding);
+            Helper.Write(sw, evt, Formats, ctsRounding, includeAegisubExtradataMarker: PreserveAegisubExtradataMarkersOnWrite);
             sw.Write(newline);
         }
     }

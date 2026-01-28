@@ -88,7 +88,7 @@ public static class Helper
                 writer.Write(',');
         }
     }
-    public static void Write(TextWriter writer, AssEvent evt, string[] fmts, bool ctsRounding)
+    public static void Write(TextWriter writer, AssEvent evt, string[] fmts, bool ctsRounding, bool includeAegisubExtradataMarker = false)
     {
         writer.Write(evt.IsDialogue ? "Dialogue: " : "Comment: ");
 
@@ -134,7 +134,7 @@ public static class Helper
                     writer.Write(evt.Effect);
                     break;
                 case "Text":
-                    if (evt.AegisubExtradataIds is { Length: > 0 })
+                    if (includeAegisubExtradataMarker && evt.AegisubExtradataIds is { Length: > 0 })
                     {
                         writer.Write('{');
                         foreach (var id in evt.AegisubExtradataIds)
