@@ -1,4 +1,5 @@
 using System.Buffers.Text;
+using System.IO;
 using System.Text;
 
 namespace Mobsub.SubtitleParse.AssTypes;
@@ -8,12 +9,46 @@ public sealed class AssAegisubExtradata
     public sealed record Entry(uint Id, string Key, string Value, char Type);
 
     private readonly Dictionary<uint, Entry> _entries = new();
+    private uint _nextId = 1;
 
     public IReadOnlyDictionary<uint, Entry> Entries => _entries;
 
-    public void Clear() => _entries.Clear();
+    public void Clear()
+    {
+        _entries.Clear();
+        _nextId = 1;
+    }
 
     public bool TryGet(uint id, out Entry entry) => _entries.TryGetValue(id, out entry!);
+
+    public void Set(uint id, string key, string value, char type = 'e')
+    {
+        _entries[id] = new Entry(id, key ?? string.Empty, value ?? string.Empty, type);
+        if (id >= _nextId)
+            _nextId = id + 1;
+    }
+
+    public bool Remove(uint id) => _entries.Remove(id);
+
+    public uint GetOrCreateId(string key, string value, char type = 'e')
+    {
+        key ??= string.Empty;
+        value ??= string.Empty;
+
+        foreach (var existing in _entries.Values)
+        {
+            if (string.Equals(existing.Key, key, StringComparison.Ordinal) &&
+                string.Equals(existing.Value, value, StringComparison.Ordinal) &&
+                (existing.Type == type || existing.Type == char.ToLowerInvariant(type) || existing.Type == char.ToUpperInvariant(type)))
+            {
+                return existing.Id;
+            }
+        }
+
+        var id = _nextId++;
+        _entries[id] = new Entry(id, key, value, type);
+        return id;
+    }
 
     public void Read(ReadOnlyMemory<byte> line, int lineNumber)
     {
@@ -26,34 +61,41 @@ public sealed class AssAegisubExtradata
             return;
 
         _entries[entry.Id] = entry;
+        if (entry.Id >= _nextId)
+            _nextId = entry.Id + 1;
     }
 
     public void WriteSection(StreamWriter sw, char[] newline)
     {
-        sw.Write(AssConstants.SectionAegisubExtradata);
-        sw.Write(newline);
+        WriteSection(sw, new string(newline));
+    }
+
+    public void WriteSection(TextWriter writer, string newline)
+    {
+        writer.Write(AssConstants.SectionAegisubExtradata);
+        writer.Write(newline);
 
         foreach (var e in _entries.Values.OrderBy(e => e.Id))
         {
-            sw.Write("Data: ");
-            sw.Write(e.Id);
-            sw.Write(',');
-            sw.Write(InlineStringEncode(e.Key));
-            sw.Write(',');
+            writer.Write("Data: ");
+            writer.Write(e.Id);
+            writer.Write(',');
+            writer.Write(InlineStringEncode(e.Key));
+            writer.Write(',');
 
             // Preserve the original encoding when possible.
             if (e.Type is 'u' or 'U')
             {
-                sw.Write('u');
-                sw.Write(UUEncode(Encoding.UTF8.GetBytes(e.Value ?? string.Empty)));
+                writer.Write('u');
+                writer.Write(UUEncode(Encoding.UTF8.GetBytes(e.Value ?? string.Empty)));
             }
             else
             {
-                sw.Write('e');
-                sw.Write(InlineStringEncode(e.Value ?? string.Empty));
+                writer.Write('e');
+                writer.Write(InlineStringEncode(e.Value ?? string.Empty));
             }
 
-            sw.Write(newline);
+            writer.Write(newline);
         }
     }
 
@@ -220,4 +262,3 @@ public sealed class AssAegisubExtradata
         return sb.ToString();
     }
 }
-
