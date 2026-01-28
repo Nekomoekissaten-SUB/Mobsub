@@ -4,6 +4,8 @@
   <Project Path="src\Ikkoku\Ikkoku.csproj" />
   <Project Path="src\SimpleTools\IkkokuMergeBaseDiff\Mobsub.IkkokuMergeBaseDiff.csproj" />
   <Project Path="src\SubtitleParse\Mobsub.SubtitleParse.csproj" />
+  <Project Path="src\SubtitleParse.TagGenerator\Mobsub.SubtitleParse.TagGenerator.csproj" />
+  <Project Path="src\SubtitleParse.Language\Mobsub.SubtitleParse.Language.csproj" />
   <Project Path="src\SubtitleProcess\Mobsub.SubtitleProcess.csproj" />
   <Project Path="src\Test\Test.csproj" />
 </Solution>
