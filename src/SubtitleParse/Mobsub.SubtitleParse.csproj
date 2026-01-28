@@ -23,6 +23,14 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Helper\Mobsub.Helper.csproj" />
+    <ProjectReference Include="..\SubtitleParse.TagGenerator\Mobsub.SubtitleParse.TagGenerator.csproj"
+                      OutputItemType="Analyzer"
+                      GlobalPropertiesToRemove="PublishAot"
+                      ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Mobsub.SubtitleParse.Language" />
   </ItemGroup>
 
 </Project>
