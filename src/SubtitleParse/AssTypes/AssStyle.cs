@@ -51,6 +51,18 @@ public struct AssStyle
         set => _fontname = value;
     }
 
+    public bool TryGetNameOverride(out ReadOnlySpan<char> name)
+    {
+        if (_name is null)
+        {
+            name = default;
+            return false;
+        }
+
+        name = _name.AsSpan();
+        return true;
+    }
+
     public ReadOnlySpan<byte> NameSpan => LineRaw.Span[NameReadOnly];
     public ReadOnlySpan<byte> FontnameSpan => LineRaw.Span[FontnameReadOnly];
 

@@ -63,11 +63,35 @@ public class AssStyles(ILogger? logger = null)
         var dict = new Dictionary<byte[], AssStyle>(Utf8StringEqualityComparer.Default);
         foreach (var s in Collection)
         {
-            var nameSpan = s.NameSpan;
-            // https://sourceforge.net/p/guliverkli2/code/HEAD/tree/src/subtitles/STS.cpp#l1447
-            if (!nameSpan.IsEmpty && nameSpan[0] == (byte)'*')
-                nameSpan = nameSpan[1..];
-            dict[nameSpan.ToArray()] = s;
+            if (s.IsCommentLine)
+                continue;
+
+            // Prefer the overridden (edited) name if present; otherwise use the original byte slice.
+            // In both cases, strip leading '*' per common ASS implementations.
+            if (s.TryGetNameOverride(out var nameOverride))
+            {
+                while (!nameOverride.IsEmpty && nameOverride[0] == '*')
+                    nameOverride = nameOverride[1..];
+
+                if (nameOverride.IsEmpty)
+                    continue;
+
+                var byteCount = Encoding.UTF8.GetByteCount(nameOverride);
+                var utf8 = new byte[byteCount];
+                Encoding.UTF8.GetBytes(nameOverride, utf8);
+                dict[utf8] = s;
+            }
+            else
+            {
+                var nameSpan = s.NameSpan;
+                while (!nameSpan.IsEmpty && nameSpan[0] == (byte)'*')
+                    nameSpan = nameSpan[1..];
+
+                if (nameSpan.IsEmpty)
+                    continue;
+
+                dict[nameSpan.ToArray()] = s;
+            }
         }
         return dict;
     }
@@ -236,10 +260,8 @@ public class AssStyles(ILogger? logger = null)
         return DefaultStyle;
     }
 
-    public void Write(StreamWriter sw, char[] newline)
     public void Write(StreamWriter sw, char[] newline, AssSection section = AssSection.StylesV4P)
     {
-        sw.Write(AssConstants.SectionStyleV4P);
         sw.Write(section switch
         {
             AssSection.StylesV4 => "[V4 Styles]",
