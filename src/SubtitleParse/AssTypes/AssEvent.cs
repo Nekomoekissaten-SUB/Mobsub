@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Buffers.Text;
 using System.Text;
 using Mobsub.SubtitleParse.AssUtils;
 
@@ -30,6 +31,8 @@ public struct AssEvent
     private string? _name;
     private string? _effect;
     private string? _text;
+
+    public uint[]? AegisubExtradataIds { get; set; }
 
     public string Style
     {
@@ -93,6 +96,7 @@ public struct AssEvent
         _name = null;
         _effect = null;
         _text = null;
+        AegisubExtradataIds = null;
 
         var sp = line.Span;
         if (header.SequenceEqual(";"u8))
@@ -149,6 +153,8 @@ public struct AssEvent
             sepIndex = nextSep + 1;
         }
         TextReadOnly = Range.StartAt(sepIndex);
+
+        TryStripAegisubExtradataMarkerFromText();
     }
 
     public Range[] TextRanges { get; set; } = [];
@@ -192,4 +198,56 @@ public struct AssEvent
     public static bool IsOverrideBlock(ReadOnlySpan<char> s) => s.Length >= 2 && s[0] == '{' && s[^1] == '}';
 
     public AssEvent DeepClone() => this;
+
+    private void TryStripAegisubExtradataMarkerFromText()
+    {
+        var textSpan = TextSpan;
+        if (!TryParseAegisubExtradataMarker(textSpan, out var ids, out int markerLen))
+            return;
+
+        AegisubExtradataIds = ids;
+        _text = Utils.GetString(textSpan[markerLen..]);
+    }
+
+    private static bool TryParseAegisubExtradataMarker(ReadOnlySpan<byte> text, out uint[] ids, out int markerLengthBytes)
+    {
+        ids = Array.Empty<uint>();
+        markerLengthBytes = 0;
+
+        if (text.Length < 4 || text[0] != (byte)'{' || text[1] != (byte)'=')
+            return false;
+
+        var list = new List<uint>();
+
+        int pos = 1;
+        while (pos < text.Length && text[pos] == (byte)'=')
+        {
+            pos++;
+            int start = pos;
+            while (pos < text.Length && text[pos] >= (byte)'0' && text[pos] <= (byte)'9')
+                pos++;
+            if (pos == start)
+                return false;
+
+            if (!Utf8Parser.TryParse(text.Slice(start, pos - start), out uint id, out int consumed) || consumed != (pos - start))
+                return false;
+
+            list.Add(id);
+
+            if (pos >= text.Length)
+                return false;
+
+            if (text[pos] == (byte)'}')
+            {
+                markerLengthBytes = pos + 1;
+                ids = list.Count > 0 ? list.ToArray() : Array.Empty<uint>();
+                return true;
+            }
+
+            if (text[pos] != (byte)'=')
+                return false;
+        }
+
+        return false;
+    }
 }

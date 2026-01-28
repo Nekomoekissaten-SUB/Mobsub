@@ -8,6 +8,7 @@ namespace Mobsub.SubtitleParse.AssTypes;
 public sealed class AssData(ILogger? logger = null, AssParseTarget target = AssParseTarget.Default)
 {
     public bool CarriageReturn = true;
+    public bool AllowUnknownSections = true;
     private bool _getFirstCarriageReturn = false;
     public Encoding CharEncoding = Encoding.UTF8;
     public HashSet<AssSection> Sections = [];
@@ -18,7 +19,7 @@ public sealed class AssData(ILogger? logger = null, AssParseTarget target = AssP
     public AssEmbeddedSection Fonts { get; set; } = new(AssEmbeddedFileType.Font);
     public AssEmbeddedSection Graphics { get; set; } = new(AssEmbeddedFileType.Graphics);
     public AssMetaData ProjectGarbage { get; set; } = new();
-    public AssMetaData Extradata { get; set; } = new();
+    public AssAegisubExtradata Extradata { get; set; } = new();
 
     public IAssTagProcessor? Processor { get; private set; }
     internal Action<AssEvent>? EventViewAction { get; private set; }
@@ -121,6 +122,16 @@ public sealed class AssData(ILogger? logger = null, AssParseTarget target = AssP
         var buffer = data.ToArray();
         return ParseBuffer(buffer, encoding, detector: null, fallbackEncoding: null);
     }
+
+    /// <summary>
+    /// Parse ASS from an existing byte[] without copying.
+    /// The input buffer is retained for the lifetime of this AssData instance.
+    /// </summary>
+    public AssData ReadAssBytes(byte[] data, Encoding encoding)
+    {
+        _getFirstCarriageReturn = false;
+        return ParseBuffer(data, encoding, detector: null, fallbackEncoding: null);
+    }
     public AssData ReadAssText(ReadOnlySpan<byte> data, Func<ReadOnlySpan<byte>, Encoding?> detector, Encoding? fallbackEncoding = null)
     {
         _getFirstCarriageReturn = false;
@@ -162,7 +173,7 @@ public sealed class AssData(ILogger? logger = null, AssParseTarget target = AssP
                 case AssSection.StylesV4:
                 case AssSection.StylesV4PP:
                     sw.Write(newline);
-                    Styles.Write(sw, newline);
+                    Styles.Write(sw, newline, s);
                     break;
                 case AssSection.Events:
                     if (Events == null)
@@ -184,7 +195,7 @@ public sealed class AssData(ILogger? logger = null, AssParseTarget target = AssP
                     break;
                 case AssSection.AegisubExtradata:
                     sw.Write(newline);
-                    WriteMetaSection(sw, AssConstants.SectionAegisubExtradata, Extradata, newline);
+                    Extradata.WriteSection(sw, newline);
                     break;
                 default:
                     break;
@@ -384,7 +395,7 @@ public sealed class AssData(ILogger? logger = null, AssParseTarget target = AssP
 
         if (sp[0] == '[')
         {
-            logger?.ZLogInformation($"Start parse section {sp.ToString()}");
+            logger?.ZLogInformation($"Start parse section {Utils.GetString(sp)}");
             if (sp.SequenceEqual("[Script Info]"u8))
             {
                 sectionType = AssSection.ScriptInfo;
@@ -392,6 +403,14 @@ public sealed class AssData(ILogger? logger = null, AssParseTarget target = AssP
             else if (sp.SequenceEqual("[V4+ Styles]"u8))
             {
                 sectionType = AssSection.StylesV4P;
+            }
+            else if (sp.SequenceEqual("[V4 Styles]"u8))
+            {
+                sectionType = AssSection.StylesV4;
+            }
+            else if (sp.SequenceEqual("[V4++ Styles]"u8))
+            {
+                sectionType = AssSection.StylesV4PP;
             }
             else if (sp.SequenceEqual("[Events]"u8))
             {
@@ -415,12 +434,18 @@ public sealed class AssData(ILogger? logger = null, AssParseTarget target = AssP
             }
             else
             {
-                throw new Exception($"Unknown section: {sp.ToString()}.");
+                if (AllowUnknownSections)
+                {
+                    sectionType = AssSection.None;
+                    return;
+                }
+
+                throw new Exception($"Unknown section: {Utils.GetString(sp)}.");
             }
 
-            if (!Sections.Add(sectionType))
+            if (sectionType != AssSection.None && !Sections.Add(sectionType))
             {
-                throw new Exception($"Duplicate section: {sp.ToString()}");
+                throw new Exception($"Duplicate section: {Utils.GetString(sp)}");
             }
             return;
         }

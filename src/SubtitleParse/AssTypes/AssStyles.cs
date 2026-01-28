@@ -237,8 +237,15 @@ public class AssStyles(ILogger? logger = null)
     }
 
     public void Write(StreamWriter sw, char[] newline)
+    public void Write(StreamWriter sw, char[] newline, AssSection section = AssSection.StylesV4P)
     {
         sw.Write(AssConstants.SectionStyleV4P);
+        sw.Write(section switch
+        {
+            AssSection.StylesV4 => "[V4 Styles]",
+            AssSection.StylesV4PP => "[V4++ Styles]",
+            _ => AssConstants.SectionStyleV4P
+        });
         sw.Write(newline);
         sw.Write($"Format: {string.Join(", ", Formats)}");
         sw.Write(newline);

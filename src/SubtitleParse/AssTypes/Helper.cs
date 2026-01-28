@@ -134,6 +134,16 @@ public static class Helper
                     writer.Write(evt.Effect);
                     break;
                 case "Text":
+                    if (evt.AegisubExtradataIds is { Length: > 0 })
+                    {
+                        writer.Write('{');
+                        foreach (var id in evt.AegisubExtradataIds)
+                        {
+                            writer.Write('=');
+                            writer.Write(id);
+                        }
+                        writer.Write('}');
+                    }
                     writer.Write(evt.Text);
                     break;
             }
