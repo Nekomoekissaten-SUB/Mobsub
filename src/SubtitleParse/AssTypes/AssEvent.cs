@@ -99,20 +99,20 @@ public struct AssEvent
         AegisubExtradataIds = null;
 
         var sp = line.Span;
-        if (header.SequenceEqual(";"u8))
+        if (header.SequenceEqual(AssConstants.EventsLineHeaders.Semicolon))
         {
             StartSemicolon = true;
             return;
         }
-        else if (header.SequenceEqual("Format"u8))
+        else if (header.SequenceEqual(AssConstants.EventsLineHeaders.Format))
         {
             return;
         }
-        else if (header.SequenceEqual("Dialogue"u8))
+        else if (header.SequenceEqual(AssConstants.EventsLineHeaders.Dialogue))
         {
             IsDialogue = true;
         }
-        else if (header.SequenceEqual("Comment"u8))
+        else if (header.SequenceEqual(AssConstants.EventsLineHeaders.Comment))
         {
             IsDialogue = false;
         }
@@ -135,18 +135,18 @@ public struct AssEvent
             var value = sp[sepIndex..nextSep];
             switch (formats[segCount])
             {
-                case "Layer": Layer = Utils.ParseInt(value); break;
-                case "Marked": break;
-                case "Start": Start = AssTime.ParseFromAss(value); break;
-                case "End": End = AssTime.ParseFromAss(value); break;
-                case "Style": StyleReadOnly = new Range(sepIndex, nextSep); break;
-                case "Name": NameReadOnly = new Range(sepIndex, nextSep); break;
-                case "MarginL": MarginL = Utils.ParseInt(value); break;
-                case "MarginR": MarginR = Utils.ParseInt(value); break;
-                case "MarginV": MarginV = Utils.ParseInt(value); break;
-                case "MarginT": MarginT = Utils.ParseInt(value); break;
-                case "MarginB": MarginB = Utils.ParseInt(value); break;
-                case "Effect": EffectReadOnly = new Range(sepIndex, nextSep); break;
+                case AssConstants.EventFields.Layer: Layer = Utils.ParseInt(value); break;
+                case AssConstants.EventFields.Marked: break;
+                case AssConstants.EventFields.Start: Start = AssTime.ParseFromAss(value); break;
+                case AssConstants.EventFields.End: End = AssTime.ParseFromAss(value); break;
+                case AssConstants.EventFields.Style: StyleReadOnly = new Range(sepIndex, nextSep); break;
+                case AssConstants.EventFields.Name: NameReadOnly = new Range(sepIndex, nextSep); break;
+                case AssConstants.EventFields.MarginL: MarginL = Utils.ParseInt(value); break;
+                case AssConstants.EventFields.MarginR: MarginR = Utils.ParseInt(value); break;
+                case AssConstants.EventFields.MarginV: MarginV = Utils.ParseInt(value); break;
+                case AssConstants.EventFields.MarginT: MarginT = Utils.ParseInt(value); break;
+                case AssConstants.EventFields.MarginB: MarginB = Utils.ParseInt(value); break;
+                case AssConstants.EventFields.Effect: EffectReadOnly = new Range(sepIndex, nextSep); break;
             }
 
             segCount++;

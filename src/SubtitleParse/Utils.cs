@@ -100,7 +100,7 @@ public class Utils
             }
             else
             {
-                typedValue = value.SequenceEqual("yes".AsSpan());
+                typedValue = value.SequenceEqual(AssConstants.BooleanLiterals.Yes.AsSpan());
             }
         }
         else if (property.PropertyType == typeof(AssTime))
@@ -156,7 +156,7 @@ public class Utils
             }
             else
             {
-                typedValue = value.SequenceEqual("yes"u8);
+                typedValue = value.SequenceEqual(AssConstants.BooleanLiterals.YesBytes);
             }
         }
         else if (property.PropertyType == typeof(AssTime))
@@ -284,9 +284,9 @@ public class Utils
 
     internal static Span<Range> SplitBySeparatorInternal(ReadOnlySpan<char> sp, out int splitCount)
     {
-        var count = sp.Count(',') + 1;
+        var count = sp.Count(AssConstants.Text.Comma) + 1;
         Span<Range> ranges = new Range[count];
-        splitCount = sp.Split(ranges, ',', StringSplitOptions.TrimEntries);
+        splitCount = sp.Split(ranges, AssConstants.Text.Comma, StringSplitOptions.TrimEntries);
         return ranges;
     }
 
@@ -294,10 +294,10 @@ public class Utils
     {
         // https://sourceforge.net/p/guliverkli2/code/HEAD/tree/src/subtitles/STS.cpp#l1524
         // https://sourceforge.net/p/guliverkli2/code/HEAD/tree/src/subtitles/STS.cpp#l1490
-        var spFixed = sp.TrimStart('*');
-        if (spFixed.Length == 0 || MemoryExtensions.Equals(spFixed, "default", StringComparison.OrdinalIgnoreCase))
+        var spFixed = sp.TrimStart(AssConstants.StyleNames.HiddenPrefix);
+        if (spFixed.Length == 0 || MemoryExtensions.Equals(spFixed, AssConstants.StyleNames.DefaultLowerString, StringComparison.OrdinalIgnoreCase))
         {
-            return "Default";
+            return AssConstants.StyleNames.DefaultString;
         }
         return spFixed;
     }

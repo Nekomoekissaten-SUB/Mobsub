@@ -5,8 +5,8 @@ namespace Mobsub.SubtitleParse.AssTypes;
 
 public sealed class AssScriptInfo(ILogger? logger = null)
 {
-    private static readonly string[] ScriptTypes = ["v4.00", "v4.00+", "v4.00++"];
-    private string scriptType = "v4.00";
+    private static readonly string[] ScriptTypes = [AssConstants.ScriptTypeV4, AssConstants.ScriptTypeV4P, AssConstants.ScriptTypeV4PP];
+    private string scriptType = AssConstants.ScriptTypeV4;
     private int? layoutResX = null;
     private int? layoutResY = null;
     private float timer = 100.0000f;
@@ -50,7 +50,7 @@ public sealed class AssScriptInfo(ILogger? logger = null)
         get => wrapStyle ?? 0;
         set
         {
-            if (scriptType.Equals("v4.00", StringComparison.OrdinalIgnoreCase))
+            if (scriptType.Equals(AssConstants.ScriptTypeV4, StringComparison.OrdinalIgnoreCase))
             {
                 logger?.ZLogError($"WrapStyle: ass / ssa version {scriptType} don’t support {value}");
             }
@@ -123,11 +123,11 @@ public sealed class AssScriptInfo(ILogger? logger = null)
             }
             else if (k.Equals(AssConstants.ScriptInfo.ScaledBorderAndShadow, StringComparison.OrdinalIgnoreCase))
             {
-                ScaledBorderAndShadow = valueSpan.SequenceEqual("yes"u8);
+                ScaledBorderAndShadow = valueSpan.SequenceEqual(AssConstants.BooleanLiterals.YesBytes);
             }
              else if (k.Equals(AssConstants.ScriptInfo.Kerning, StringComparison.OrdinalIgnoreCase))
             {
-                Kerning = valueSpan.SequenceEqual("yes"u8);
+                Kerning = valueSpan.SequenceEqual(AssConstants.BooleanLiterals.YesBytes);
             }
             else if (k.Equals(AssConstants.ScriptInfo.YCbCrMatrix, StringComparison.OrdinalIgnoreCase))
             {
@@ -230,10 +230,10 @@ public sealed class AssScriptInfo(ILogger? logger = null)
                     sw.Write($"{k}: {WrapStyle}");
                     break;
                 case AssConstants.ScriptInfo.ScaledBorderAndShadow:
-                    sw.Write($"{k}: {(ScaledBorderAndShadow ? "yes" : "no")}");
+                    sw.Write($"{k}: {(ScaledBorderAndShadow ? AssConstants.BooleanLiterals.Yes : AssConstants.BooleanLiterals.No)}");
                     break;
                 case AssConstants.ScriptInfo.Kerning:
-                    sw.Write($"{k}: {(Kerning ? "yes" : "no")}");
+                    sw.Write($"{k}: {(Kerning ? AssConstants.BooleanLiterals.Yes : AssConstants.BooleanLiterals.No)}");
                     break;
                 case AssConstants.ScriptInfo.YCbCrMatrix:
                     sw.Write($"{k}: {YCbCrMatrix.ToStringBuilder()}");

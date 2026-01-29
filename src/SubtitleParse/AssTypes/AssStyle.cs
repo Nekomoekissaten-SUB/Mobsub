@@ -105,12 +105,12 @@ public struct AssStyle
         _name = null;
         _fontname = null;
 
-        if (header.SequenceEqual("/"u8))
+        if (header.SequenceEqual(AssConstants.StylesLineHeaders.CommentSlash))
         {
             IsCommentLine = true;
             return;
         }
-        else if (header.SequenceEqual("Style"u8))
+        else if (header.SequenceEqual(AssConstants.StylesLineHeaders.Style))
         {
 
         }
@@ -127,33 +127,33 @@ public struct AssStyle
             var value = sp[range];
             switch (formats[segCount])
             {
-                case "Name": NameReadOnly = new Range(range.Start.Value + sepIndex, range.End.Value + sepIndex); break;
-                case "Fontname": FontnameReadOnly = new Range(range.Start.Value + sepIndex, range.End.Value + sepIndex); break;
-                case "Fontsize": Fontsize = Utils.ParseDouble(value); break;
-                case "PrimaryColour": PrimaryColour = AssColor32.Parse(value); break;
-                case "SecondaryColour": SecondaryColour = AssColor32.Parse(value); break;
-                case "OutlineColour": OutlineColour = AssColor32.Parse(value); break;
-                case "BackColour": BackColour = AssColor32.Parse(value); break;
-                case "Bold": Bold = Utils.ParseSByte(value) == -1; break;
-                case "Italic": Italic = Utils.ParseSByte(value) == -1; break;
-                case "Underline": Underline = Utils.ParseSByte(value) == -1; break;
-                case "StrikeOut": StrikeOut = Utils.ParseSByte(value) == -1; break;
-                case "ScaleX": ScaleX = Utils.ParseDouble(value); break;
-                case "ScaleY": ScaleY = Utils.ParseDouble(value); break;
-                case "Spacing": Spacing = Utils.ParseDouble(value); break;
-                case "Angle": Angle = Utils.ParseDouble(value); break;
-                case "BorderStyle": BorderStyle = Utils.ParseByte(value); break;
-                case "Outline": Outline = Utils.ParseDouble(value); break;
-                case "Shadow": Shadow = Utils.ParseDouble(value); break;
-                case "Alignment": Alignment = Utils.ParseByte(value); break;
-                case "MarginL": MarginL = Utils.ParseInt(value); break;
-                case "MarginR": MarginR = Utils.ParseInt(value); break;
-                case "MarginV": MarginV = Utils.ParseInt(value); break;
-                case "MarginT": MarginT = Utils.ParseInt(value); break;
-                case "MarginB": MarginB = Utils.ParseInt(value); break;
-                case "Encoding": Encoding = Utils.ParseInt(value); break;
-                case "AlphaLevel": AlphaLevel = Utils.ParseInt(value); break;
-                case "RelativeTo": RelativeTo = Utils.ParseInt(value); break;
+                case AssConstants.StyleFields.Name: NameReadOnly = new Range(range.Start.Value + sepIndex, range.End.Value + sepIndex); break;
+                case AssConstants.StyleFields.Fontname: FontnameReadOnly = new Range(range.Start.Value + sepIndex, range.End.Value + sepIndex); break;
+                case AssConstants.StyleFields.Fontsize: Fontsize = Utils.ParseDouble(value); break;
+                case AssConstants.StyleFields.PrimaryColour: PrimaryColour = AssColor32.Parse(value); break;
+                case AssConstants.StyleFields.SecondaryColour: SecondaryColour = AssColor32.Parse(value); break;
+                case AssConstants.StyleFields.OutlineColour: OutlineColour = AssColor32.Parse(value); break;
+                case AssConstants.StyleFields.BackColour: BackColour = AssColor32.Parse(value); break;
+                case AssConstants.StyleFields.Bold: Bold = Utils.ParseSByte(value) == -1; break;
+                case AssConstants.StyleFields.Italic: Italic = Utils.ParseSByte(value) == -1; break;
+                case AssConstants.StyleFields.Underline: Underline = Utils.ParseSByte(value) == -1; break;
+                case AssConstants.StyleFields.StrikeOut: StrikeOut = Utils.ParseSByte(value) == -1; break;
+                case AssConstants.StyleFields.ScaleX: ScaleX = Utils.ParseDouble(value); break;
+                case AssConstants.StyleFields.ScaleY: ScaleY = Utils.ParseDouble(value); break;
+                case AssConstants.StyleFields.Spacing: Spacing = Utils.ParseDouble(value); break;
+                case AssConstants.StyleFields.Angle: Angle = Utils.ParseDouble(value); break;
+                case AssConstants.StyleFields.BorderStyle: BorderStyle = Utils.ParseByte(value); break;
+                case AssConstants.StyleFields.Outline: Outline = Utils.ParseDouble(value); break;
+                case AssConstants.StyleFields.Shadow: Shadow = Utils.ParseDouble(value); break;
+                case AssConstants.StyleFields.Alignment: Alignment = Utils.ParseByte(value); break;
+                case AssConstants.StyleFields.MarginL: MarginL = Utils.ParseInt(value); break;
+                case AssConstants.StyleFields.MarginR: MarginR = Utils.ParseInt(value); break;
+                case AssConstants.StyleFields.MarginV: MarginV = Utils.ParseInt(value); break;
+                case AssConstants.StyleFields.MarginT: MarginT = Utils.ParseInt(value); break;
+                case AssConstants.StyleFields.MarginB: MarginB = Utils.ParseInt(value); break;
+                case AssConstants.StyleFields.Encoding: Encoding = Utils.ParseInt(value); break;
+                case AssConstants.StyleFields.AlphaLevel: AlphaLevel = Utils.ParseInt(value); break;
+                case AssConstants.StyleFields.RelativeTo: RelativeTo = Utils.ParseInt(value); break;
             }
 
             segCount++;

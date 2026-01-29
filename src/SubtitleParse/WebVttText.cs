@@ -241,7 +241,7 @@ public class WebVttText
         ass.ScriptInfo.Orders.Add(AssConstants.ScriptInfo.WrapStyle);
 
         ass.Styles = new AssStyles(logger);
-        var defaultStyle = new AssStyle(AssConstants.StyleDefaultV4P, "Style"u8, ass.Styles.Formats);
+        var defaultStyle = new AssStyle(AssConstants.StyleDefaultV4P, AssConstants.StylesLineHeaders.Style, ass.Styles.Formats);
         ass.Styles.Collection.Add(defaultStyle);
         ass.Styles.Names.Add(defaultStyle.Name);
         ass.Styles.InvalidateStyleMap();
@@ -251,9 +251,9 @@ public class WebVttText
         foreach (var frame in VttFrames)
         {
             var text = JoinLines(frame.Text);
-            var line = $"Dialogue: 0,{FormatAssTime(frame.StartTime)},{FormatAssTime(frame.EndTime)},Default,,0,0,0,,{text}";
+            var line = $"Dialogue: 0,{FormatAssTime(frame.StartTime)},{FormatAssTime(frame.EndTime)},{AssConstants.StyleNames.DefaultString},,0,0,0,,{text}";
             var lineBytes = Encoding.UTF8.GetBytes(line);
-            var evt = new AssEvent(lineBytes, lineNumber, "Dialogue"u8, ass.Events.Formats);
+            var evt = new AssEvent(lineBytes, lineNumber, AssConstants.EventsLineHeaders.Dialogue, ass.Events.Formats);
             ass.Events.Collection.Add(evt);
             lineNumber++;
         }
@@ -262,7 +262,7 @@ public class WebVttText
     }
 
     private static string JoinLines(string[] lines)
-        => lines.Length == 0 ? string.Empty : string.Join("\\N", lines);
+        => lines.Length == 0 ? string.Empty : string.Join(AssConstants.Text.AssHardLineBreak, lines);
 
     private static void FlushLine(StringBuilder builder, List<string> lines)
     {

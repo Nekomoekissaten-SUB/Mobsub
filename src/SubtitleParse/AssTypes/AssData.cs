@@ -190,11 +190,11 @@ public sealed class AssData(ILogger? logger = null, AssParseTarget target = AssP
                     break;
                 case AssSection.Fonts:
                     sw.Write(newline);
-                    WriteEmbeddedSection(sw, AssConstants.SectionFonts, "fontname", Fonts, newline);
+                    WriteEmbeddedSection(sw, AssConstants.SectionFonts, AssConstants.EmbeddedSectionHeaderKeys.FontName, Fonts, newline);
                     break;
                 case AssSection.Graphics:
                     sw.Write(newline);
-                    WriteEmbeddedSection(sw, AssConstants.SectionGraphics, "filename", Graphics, newline);
+                    WriteEmbeddedSection(sw, AssConstants.SectionGraphics, AssConstants.EmbeddedSectionHeaderKeys.FileName, Graphics, newline);
                     break;
                 case AssSection.AegisubProjectGarbage:
                     sw.Write(newline);
@@ -350,7 +350,7 @@ public sealed class AssData(ILogger? logger = null, AssParseTarget target = AssP
                 lineNumber++;
                 var lineSlice = new ReadOnlyMemory<byte>(_sourceBuffer, offset, nextLineLength);
 
-                if (lineNumber == 1 && !lineSlice.Span.SequenceEqual("[Script Info]"u8))
+                if (lineNumber == 1 && !lineSlice.Span.SequenceEqual(AssConstants.SectionHeadersBytes.ScriptInfo))
                 {
                     throw new Exception("Please check first line");
                 }
@@ -400,42 +400,42 @@ public sealed class AssData(ILogger? logger = null, AssParseTarget target = AssP
             return;
         }
 
-        if (sp[0] == '[')
+        if (sp[0] == AssConstants.SectionHeaderStartByte)
         {
             logger?.ZLogInformation($"Start parse section {Utils.GetString(sp)}");
-            if (sp.SequenceEqual("[Script Info]"u8))
+            if (sp.SequenceEqual(AssConstants.SectionHeadersBytes.ScriptInfo))
             {
                 sectionType = AssSection.ScriptInfo;
             }
-            else if (sp.SequenceEqual("[V4+ Styles]"u8))
+            else if (sp.SequenceEqual(AssConstants.SectionHeadersBytes.StyleV4P))
             {
                 sectionType = AssSection.StylesV4P;
             }
-            else if (sp.SequenceEqual("[V4 Styles]"u8))
+            else if (sp.SequenceEqual(AssConstants.SectionHeadersBytes.StyleV4))
             {
                 sectionType = AssSection.StylesV4;
             }
-            else if (sp.SequenceEqual("[V4++ Styles]"u8))
+            else if (sp.SequenceEqual(AssConstants.SectionHeadersBytes.StyleV4PP))
             {
                 sectionType = AssSection.StylesV4PP;
             }
-            else if (sp.SequenceEqual("[Events]"u8))
+            else if (sp.SequenceEqual(AssConstants.SectionHeadersBytes.Events))
             {
                 sectionType = AssSection.Events;
             }
-            else if (sp.SequenceEqual("[Fonts]"u8))
+            else if (sp.SequenceEqual(AssConstants.SectionHeadersBytes.Fonts))
             {
                 sectionType = AssSection.Fonts;
             }
-            else if (sp.SequenceEqual("[Graphics]"u8))
+            else if (sp.SequenceEqual(AssConstants.SectionHeadersBytes.Graphics))
             {
                 sectionType = AssSection.Graphics;
             }
-            else if (sp.SequenceEqual("[Aegisub Project Garbage]"u8))
+            else if (sp.SequenceEqual(AssConstants.SectionHeadersBytes.AegisubProjectGarbage))
             {
                 sectionType = AssSection.AegisubProjectGarbage;
             }
-            else if (sp.SequenceEqual("[Aegisub Extradata]"u8))
+            else if (sp.SequenceEqual(AssConstants.SectionHeadersBytes.AegisubExtradata))
             {
                 sectionType = AssSection.AegisubExtradata;
             }

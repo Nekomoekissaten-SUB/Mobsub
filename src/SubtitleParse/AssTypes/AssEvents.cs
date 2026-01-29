@@ -1,5 +1,6 @@
 ﻿﻿using System.Text;
 using Microsoft.Extensions.Logging;
+using Mobsub.SubtitleParse.AssUtils;
 using ZLogger;
 
 namespace Mobsub.SubtitleParse.AssTypes;
@@ -23,22 +24,22 @@ public class AssEvents(ILogger? logger = null)
     public void Read(ReadOnlyMemory<byte> line, ReadOnlySpan<byte> scriptType, int lineNumber)
     {
         var sp = line.Span;
-        if (sp[0] == ';')
+        if (sp[0] == AssConstants.CommentLinePrefixByte)
         {
-            var evt = new AssEvent(line, lineNumber, ";"u8, Formats);
+            var evt = new AssEvent(line, lineNumber, AssConstants.EventsLineHeaders.Semicolon, Formats);
             Dispatch(evt);
             return;
         }
 
         var sepIndex = sp.IndexOf((byte)':');
 
-        if (sp[..sepIndex].SequenceEqual("Format"u8))
+        if (sp[..sepIndex].SequenceEqual(AssConstants.EventsLineHeaders.Format))
         {
-            if (scriptType.SequenceEqual("v4.00++"u8))
+            if (scriptType.SequenceEqual(AssConstants.ScriptTypeBytes.V4PP))
                 throw new Exception($"Events: {AssConstants.ScriptTypeV4PP} not have format line");
             Formats = ParseFormatLine(sp[(sepIndex + 1)..]);
-            if (!Formats[^1].AsSpan().SequenceEqual("Text".AsSpan()))
-                throw new Exception("Events: Text must be last field.");
+            if (!Formats[^1].AsSpan().SequenceEqual(AssConstants.EventFields.Text.AsSpan()))
+                throw new Exception($"Events: {AssConstants.EventFields.Text} must be last field.");
             logger?.ZLogDebug($"Events: Parse format line fine");
         }
         else

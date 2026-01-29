@@ -5,20 +5,20 @@ namespace Mobsub.SubtitleParse.AssUtils;
 internal static class AssTextUtils
 {
     internal static ReadOnlySpan<char> TrimLeadingSpace(ReadOnlySpan<char> span)
-        => span.Length > 0 && span[0] == ' ' ? span[1..] : span;
+        => span.Length > 0 && span[0] == AssConstants.Text.Space ? span[1..] : span;
 
     internal static ReadOnlySpan<char> NormalizeStyleName(ReadOnlySpan<char> span)
     {
         span = span.Trim();
-        while (!span.IsEmpty && span[0] == '*')
+        while (!span.IsEmpty && span[0] == AssConstants.StyleNames.HiddenPrefix)
             span = span[1..];
         return span.Trim();
     }
 
     internal static bool IsKnownScriptType(ReadOnlySpan<char> v)
-        => v.Equals("v4.00", StringComparison.OrdinalIgnoreCase)
-        || v.Equals("v4.00+", StringComparison.OrdinalIgnoreCase)
-        || v.Equals("v4.00++", StringComparison.OrdinalIgnoreCase);
+        => v.Equals(AssConstants.ScriptTypeV4, StringComparison.OrdinalIgnoreCase)
+        || v.Equals(AssConstants.ScriptTypeV4P, StringComparison.OrdinalIgnoreCase)
+        || v.Equals(AssConstants.ScriptTypeV4PP, StringComparison.OrdinalIgnoreCase);
 
     internal static bool TryGetKnownScriptInfoKeyId(ReadOnlySpan<char> key, out int id)
     {
@@ -47,7 +47,9 @@ internal static class AssTextUtils
     internal static bool TryParseSectionHeader(ReadOnlySpan<char> header, out AssSection section)
     {
         if (header.SequenceEqual(AssConstants.SectionScriptInfo)) { section = AssSection.ScriptInfo; return true; }
+        if (header.SequenceEqual(AssConstants.SectionStyleV4)) { section = AssSection.StylesV4; return true; }
         if (header.SequenceEqual(AssConstants.SectionStyleV4P)) { section = AssSection.StylesV4P; return true; }
+        if (header.SequenceEqual(AssConstants.SectionStyleV4PP)) { section = AssSection.StylesV4PP; return true; }
         if (header.SequenceEqual(AssConstants.SectionEvent)) { section = AssSection.Events; return true; }
         if (header.SequenceEqual(AssConstants.SectionFonts)) { section = AssSection.Fonts; return true; }
         if (header.SequenceEqual(AssConstants.SectionGraphics)) { section = AssSection.Graphics; return true; }
@@ -63,7 +65,7 @@ internal static class AssTextUtils
         int commas = 0;
         for (int i = 0; i < payload.Length; i++)
         {
-            if (payload[i] == ',')
+            if (payload[i] == AssConstants.Text.Comma)
             {
                 commas++;
                 if (commas >= commasNeeded)
@@ -87,7 +89,7 @@ internal static class AssTextUtils
 
         while (i < payload.Length && currentField < fieldIndex)
         {
-            int comma = payload.Slice(i).IndexOf(',');
+            int comma = payload.Slice(i).IndexOf(AssConstants.Text.Comma);
             if (comma < 0)
                 return false;
             i += comma + 1;
@@ -105,7 +107,7 @@ internal static class AssTextUtils
             return true;
         }
 
-        int nextComma = payload.Slice(fieldStart).IndexOf(',');
+        int nextComma = payload.Slice(fieldStart).IndexOf(AssConstants.Text.Comma);
         if (nextComma < 0)
             return false;
 
@@ -125,7 +127,7 @@ internal static class AssTextUtils
 
         for (int i = 0; i <= csv.Length; i++)
         {
-            if (i == csv.Length || csv[i] == ',')
+            if (i == csv.Length || csv[i] == AssConstants.Text.Comma)
             {
                 if (current == index)
                 {
@@ -144,7 +146,7 @@ internal static class AssTextUtils
         int count = 1;
         for (int i = 0; i < csv.Length; i++)
         {
-            if (csv[i] == ',')
+            if (csv[i] == AssConstants.Text.Comma)
                 count++;
         }
 
@@ -154,7 +156,7 @@ internal static class AssTextUtils
 
         for (int i = 0; i <= csv.Length; i++)
         {
-            if (i == csv.Length || csv[i] == ',')
+            if (i == csv.Length || csv[i] == AssConstants.Text.Comma)
             {
                 var token = csv.Slice(start, i - start).Trim();
                 result[index++] = token.ToString();
@@ -177,7 +179,7 @@ internal static class AssTextUtils
     {
         for (int i = 0; i < formats.Length; i++)
         {
-            if (formats[i].Equals("Name", StringComparison.OrdinalIgnoreCase))
+            if (formats[i].Equals(AssConstants.StyleFields.Name, StringComparison.OrdinalIgnoreCase))
                 return i;
         }
         return -1;
@@ -193,11 +195,10 @@ internal static class AssTextUtils
         for (int i = 0; i < formats.Length; i++)
         {
             var f = formats[i];
-            if (startIndex < 0 && f.Equals("Start", StringComparison.OrdinalIgnoreCase)) startIndex = i;
-            else if (endIndex < 0 && f.Equals("End", StringComparison.OrdinalIgnoreCase)) endIndex = i;
-            else if (styleIndex < 0 && f.Equals("Style", StringComparison.OrdinalIgnoreCase)) styleIndex = i;
-            else if (textIndex < 0 && f.Equals("Text", StringComparison.OrdinalIgnoreCase)) textIndex = i;
+            if (startIndex < 0 && f.Equals(AssConstants.EventFields.Start, StringComparison.OrdinalIgnoreCase)) startIndex = i;
+            else if (endIndex < 0 && f.Equals(AssConstants.EventFields.End, StringComparison.OrdinalIgnoreCase)) endIndex = i;
+            else if (styleIndex < 0 && f.Equals(AssConstants.EventFields.Style, StringComparison.OrdinalIgnoreCase)) styleIndex = i;
+            else if (textIndex < 0 && f.Equals(AssConstants.EventFields.Text, StringComparison.OrdinalIgnoreCase)) textIndex = i;
         }
     }
 }
-
