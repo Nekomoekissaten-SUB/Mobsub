@@ -79,8 +79,7 @@ public class AssEvents(ILogger? logger = null)
     {
         sw.Write(AssConstants.SectionEvent);
         sw.Write(newline);
-        sw.Write($"Format: {string.Join(", ", Formats)}");
-        sw.Write(newline);
+        AssFormatLineWriter.WriteFormatLine(sw, Formats, newline);
         foreach (var evt in Collection)
         {
             Helper.Write(sw, evt, Formats, ctsRounding, includeAegisubExtradataMarker: PreserveAegisubExtradataMarkersOnWrite);

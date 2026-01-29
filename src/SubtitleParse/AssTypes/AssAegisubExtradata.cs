@@ -6,6 +6,8 @@ namespace Mobsub.SubtitleParse.AssTypes;
 
 public sealed class AssAegisubExtradata
 {
+    public const char InlineStringType = 'e';
+
     public sealed record Entry(uint Id, string Key, string Value, char Type);
 
     private readonly Dictionary<uint, Entry> _entries = new();
@@ -21,7 +23,7 @@ public sealed class AssAegisubExtradata
 
     public bool TryGet(uint id, out Entry entry) => _entries.TryGetValue(id, out entry!);
 
-    public void Set(uint id, string key, string value, char type = 'e')
+    public void Set(uint id, string key, string value, char type = InlineStringType)
     {
         _entries[id] = new Entry(id, key ?? string.Empty, value ?? string.Empty, type);
         if (id >= _nextId)
@@ -30,7 +32,7 @@ public sealed class AssAegisubExtradata
 
     public bool Remove(uint id) => _entries.Remove(id);
 
-    public uint GetOrCreateId(string key, string value, char type = 'e')
+    public uint GetOrCreateId(string key, string value, char type = InlineStringType)
     {
         key ??= string.Empty;
         value ??= string.Empty;
@@ -67,10 +69,39 @@ public sealed class AssAegisubExtradata
 
     public void WriteSection(StreamWriter sw, char[] newline)
     {
-        WriteSection(sw, new string(newline));
+        WriteSection(sw, newline);
     }
 
     public void WriteSection(TextWriter writer, string newline)
+    {
+        writer.Write(AssConstants.SectionAegisubExtradata);
+        writer.Write(newline);
+
+        foreach (var e in _entries.Values.OrderBy(e => e.Id))
+        {
+            writer.Write("Data: ");
+            writer.Write(e.Id);
+            writer.Write(',');
+            writer.Write(InlineStringEncode(e.Key));
+            writer.Write(',');
+
+            // Preserve the original encoding when possible.
+            if (e.Type is 'u' or 'U')
+            {
+                writer.Write('u');
+                writer.Write(UUEncode(Encoding.UTF8.GetBytes(e.Value ?? string.Empty)));
+            }
+            else
+            {
+                writer.Write('e');
+                writer.Write(InlineStringEncode(e.Value ?? string.Empty));
+            }
+
+            writer.Write(newline);
+        }
+    }
+
+    public void WriteSection(TextWriter writer, ReadOnlySpan<char> newline)
     {
         writer.Write(AssConstants.SectionAegisubExtradata);
         writer.Write(newline);

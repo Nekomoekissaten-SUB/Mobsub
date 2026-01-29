@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using Microsoft.Extensions.Logging;
+using Mobsub.SubtitleParse.AssUtils;
 using ZLogger;
 
 namespace Mobsub.SubtitleParse.AssTypes;
@@ -30,21 +31,21 @@ public class AssStyles(ILogger? logger = null)
         }
     }
     private AssStyle? _defaultStyle;
-    public AssStyle DefaultStyle => _defaultStyle ??= new(AssConstants.StyleDefaultV4P, "Style"u8, Formats);
+    public AssStyle DefaultStyle => _defaultStyle ??= new(AssConstants.StyleDefaultV4P, AssConstants.StylesLineHeaders.Style, Formats);
 
     public void Read(ReadOnlyMemory<byte> line, int lineNumber)
     {
         var sp = line.Span;
-        if (sp[0] == '/')
+        if (sp[0] == AssConstants.StylesLineHeaders.CommentLinePrefixByte)
         {
-            var style = new AssStyle(line, "/"u8, Formats);
+            var style = new AssStyle(line, AssConstants.StylesLineHeaders.CommentSlash, Formats);
             Collection.Add(style);
             return;
         }
 
         var sepIndex = sp.IndexOf((byte)':');
 
-        if (sp[..sepIndex].SequenceEqual("Format"u8))
+        if (sp[..sepIndex].SequenceEqual(AssConstants.StylesLineHeaders.Format))
         {
             Formats = ParseFormats(sp[(sepIndex + 1)..]);
             logger?.ZLogDebug($"Styles: Line {lineNumber} is a format line, parse completed");
@@ -187,7 +188,7 @@ public class AssStyles(ILogger? logger = null)
         while (!styleName.IsEmpty && styleName[0] == (byte)'*')
             styleName = styleName[1..];
 
-        var defLower = "default"u8;
+        var defLower = AssConstants.StyleNames.DefaultLower;
         if (styleName.Length == defLower.Length)
         {
             bool isDefault = true;
@@ -211,7 +212,7 @@ public class AssStyles(ILogger? logger = null)
 
             if (isDefault)
             {
-                styleName = "Default"u8;
+                styleName = AssConstants.StyleNames.Default;
             }
         }
 
@@ -264,13 +265,12 @@ public class AssStyles(ILogger? logger = null)
     {
         sw.Write(section switch
         {
-            AssSection.StylesV4 => "[V4 Styles]",
-            AssSection.StylesV4PP => "[V4++ Styles]",
+            AssSection.StylesV4 => AssConstants.SectionStyleV4,
+            AssSection.StylesV4PP => AssConstants.SectionStyleV4PP,
             _ => AssConstants.SectionStyleV4P
         });
         sw.Write(newline);
-        sw.Write($"Format: {string.Join(", ", Formats)}");
-        sw.Write(newline);
+        AssFormatLineWriter.WriteFormatLine(sw, Formats, newline);
         foreach (var style in Collection)
         {
             style.Write(sw, Formats);
