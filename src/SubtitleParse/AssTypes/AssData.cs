@@ -400,7 +400,7 @@ public sealed class AssData(ILogger? logger = null, AssParseTarget target = AssP
             return;
         }
 
-        if (sp[0] == AssConstants.SectionHeaderStartByte)
+        if (sp[0] == AssConstants.SectionHeaderStartByte && sp[^1] == AssConstants.SectionHeaderEndByte)
         {
             logger?.ZLogInformation($"Start parse section {Utils.GetString(sp)}");
             if (sp.SequenceEqual(AssConstants.SectionHeadersBytes.ScriptInfo))

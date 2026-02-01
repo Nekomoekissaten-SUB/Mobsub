@@ -9,6 +9,7 @@ public class AssConstants
     public const string FormatLinePrefix = "Format: ";
     public const byte CommentLinePrefixByte = (byte)';';
     public const byte SectionHeaderStartByte = (byte)'[';
+    public const byte SectionHeaderEndByte = (byte)']';
 
     public static class Text
     {

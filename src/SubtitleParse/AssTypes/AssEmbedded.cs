@@ -15,7 +15,7 @@ public struct AssEmbeddedFile
     public string Name { get; set; }
     public string OriginalName { get; set; }
     public AssEmbeddedFileType FileType { get; set; }
-    
+
     // Stores raw uuencoded lines to avoid allocation/decoding until needed
     public List<ReadOnlyMemory<byte>> Data { get; private set; }
 
@@ -29,47 +29,57 @@ public struct AssEmbeddedFile
 
     public byte[] GetDecodedData()
     {
-        int actualEncodedLen = 0;
-        for (var i = 0; i < Data.Count; i++)
+        // libass-compatible decode:
+        // Each 6-bit value is stored as (value + 33). Decoding is base64-like with no padding.
+        int encodedLen = 0;
+        for (int i = 0; i < Data.Count; i++)
         {
-            // We need to trim spaces/newlines? 
-            // AssData only strips newline characters (\r, \n).
-            // Embedded data lines shouldn't have leading/trailing spaces usually.
-            // But Utils.TrimSpaces can be safe.
-            var span = Utils.TrimSpaces(Data[i].Span);
-            if (span.IsEmpty) continue;
+            ReadOnlySpan<byte> span = Utils.TrimSpaces(Data[i].Span);
+            if (!span.IsEmpty)
+                encodedLen += span.Length;
+        }
 
-            if (i != Data.Count - 1 && span.Length != 80)
+        if (encodedLen == 0)
+            return Array.Empty<byte>();
+
+        if (encodedLen % 4 == 1)
+            throw new Exception("Bad embedded font data size (mod 4 == 1).");
+
+        int outputLen = checked((encodedLen / 4) * 3 + Math.Max(encodedLen % 4, 1) - 1);
+        if (outputLen == 0)
+            return Array.Empty<byte>();
+
+        byte[] decoded = new byte[outputLen];
+        int dst = 0;
+
+        Span<byte> buf = stackalloc byte[4];
+        int bufCount = 0;
+
+        for (int i = 0; i < Data.Count; i++)
+        {
+            ReadOnlySpan<byte> span = Utils.TrimSpaces(Data[i].Span);
+            if (span.IsEmpty)
+                continue;
+
+            for (int j = 0; j < span.Length; j++)
             {
-                // Mimic original strict check
-                throw new Exception($"Embedded data is broken! Line {i} length is {span.Length} (expected 80)");
+                buf[bufCount++] = span[j];
+                if (bufCount == 4)
+                {
+                    dst = DecodeCharsLibass(buf, decoded, dst, 4);
+                    bufCount = 0;
+                    if (dst >= decoded.Length)
+                        return decoded;
+                }
             }
-
-            actualEncodedLen += span.Length;
         }
 
-        if (actualEncodedLen == 0)
-            return Array.Empty<byte>();
-
-        var expectedLen = (int)Math.Truncate(actualEncodedLen * 3 / 4d);
-        if (expectedLen == 0)
-            return Array.Empty<byte>();
-
-        var decoded = new byte[expectedLen];
-        int offset = 0;
-
-        for (var i = 0; i < Data.Count; i++)
-        {
-            var span = Utils.TrimSpaces(Data[i].Span);
-            if (span.IsEmpty) continue;
-
-            DecodeChars(span, decoded, ref offset);
-            if (offset >= decoded.Length)
-                break;
-        }
-
-        if (offset < decoded.Length)
-            return decoded.AsSpan(0, offset).ToArray();
+        if (bufCount == 2)
+            _ = DecodeCharsLibass(buf, decoded, dst, 2);
+        else if (bufCount == 3)
+            _ = DecodeCharsLibass(buf, decoded, dst, 3);
+        else if (bufCount != 0)
+            throw new Exception("Bad embedded font data size.");
 
         return decoded;
     }
@@ -135,7 +145,7 @@ public struct AssEmbeddedFile
         Data.Add(bytes);
     }
 
-   private static int EncodeChar1(ReadOnlySpan<byte> buffer, Span<byte> dest)
+    private static int EncodeChar1(ReadOnlySpan<byte> buffer, Span<byte> dest)
     {
         dest[0] = (byte)(((buffer[0] >> 2) & 0x3f) + 33);
         dest[1] = (byte)(((buffer[0] << 4) & 0x3f) + 33);
@@ -159,31 +169,19 @@ public struct AssEmbeddedFile
         return 4;
     }
 
-    private static void DecodeChars(ReadOnlySpan<byte> s, byte[] buffer, ref int offset)
+    private static int DecodeCharsLibass(ReadOnlySpan<byte> src, byte[] dst, int dstIndex, int cntIn)
     {
-        if (offset >= buffer.Length)
-            return;
+        uint value = 0;
+        for (int i = 0; i < cntIn; i++)
+            value |= (uint)(((src[i] - 33) & 63) << (6 * (3 - i)));
 
-        for (var i = 0; i < s.Length; i += 4)
-        {
-            if (offset >= buffer.Length)
-                return;
+        dst[dstIndex++] = (byte)(value >> 16);
+        if (cntIn >= 3)
+            dst[dstIndex++] = (byte)((value >> 8) & 0xff);
+        if (cntIn >= 4)
+            dst[dstIndex++] = (byte)(value & 0xff);
 
-            var r = (i + 4 <= s.Length) ? s.Slice(i, 4) : s[i..];
-            
-            int n0 = (r.Length > 0 ? r[0] : 33) - 33;
-            int n1 = (r.Length > 1 ? r[1] : 33) - 33;
-            int n2 = (r.Length > 2 ? r[2] : 33) - 33;
-            int n3 = (r.Length > 3 ? r[3] : 33) - 33;
-
-            var b0 = (byte)((n0 << 2) & 0xff | (n1 >> 4) & 0x03);
-            var b1 = (byte)((n1 << 4) & 0xff | (n2 >> 2) & 0x0f);
-            var b2 = (byte)((n2 << 6) & 0xff | (n3 >> 0) & 0x3f);
-
-            if (offset < buffer.Length) buffer[offset++] = b0;
-            if (offset < buffer.Length) buffer[offset++] = b1;
-            if (offset < buffer.Length) buffer[offset++] = b2;
-        }
+        return dstIndex;
     }
 }
 
@@ -243,7 +241,7 @@ public class AssEmbeddedSection
             _currentFile.Value.Data.Add(line);
         }
     }
-    
+
     public void Finish()
     {
         if (_currentFile.HasValue)
