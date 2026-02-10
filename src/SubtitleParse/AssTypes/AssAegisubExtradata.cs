@@ -69,7 +69,9 @@ public sealed class AssAegisubExtradata
 
     public void WriteSection(StreamWriter sw, char[] newline)
     {
-        WriteSection(sw, newline);
+        ArgumentNullException.ThrowIfNull(sw);
+        newline ??= Array.Empty<char>();
+        WriteSection((TextWriter)sw, newline.AsSpan());
     }
 
     public void WriteSection(TextWriter writer, string newline)
