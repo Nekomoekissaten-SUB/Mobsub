@@ -1,7 +1,7 @@
 ﻿﻿using Mobsub.SubtitleParse.AssTypes;
 using System.IO.Hashing;
 
-namespace Mobsub.SubtitleParse.AssUtils;
+namespace Mobsub.SubtitleParse.AssText;
 
 public record struct AssFontInfo : IEquatable<AssFontInfo>
 {

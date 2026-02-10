@@ -1,11 +1,11 @@
 ﻿﻿using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Mobsub.SubtitleParse.AssTypes;
-using Mobsub.SubtitleParse.AssUtils;
+using Mobsub.SubtitleParse.AssText;
 using System;
 using System.Text;
 using NT2AssTypes = Mobsub.SubtitleParse.AssTypes;
-using NT2AssUtils = Mobsub.SubtitleParse.AssUtils;
+using NT2AssText = Mobsub.SubtitleParse.AssText;
 
 namespace Mobsub.Test;
 
@@ -99,7 +99,7 @@ public partial class ParseTest
         var ass = new NT2AssTypes.AssData();
         ass.ReadAssFileAsync(@"F:\code\_test\parser\large_million_lines_simple.ass").GetAwaiter().GetResult();
 
-        var processor = new NT2AssUtils.AssFontProcessor(ass.ScriptInfo.WrapStyle, ass.Styles) { AnalyzeWithEncoding = true };
+        var processor = new NT2AssText.AssFontProcessor(ass.ScriptInfo.WrapStyle, ass.Styles) { AnalyzeWithEncoding = true };
         processor.GetUsedFontInfos(ass.Events!);
         var infos = processor.Results;
     }

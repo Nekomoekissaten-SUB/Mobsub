@@ -6,7 +6,7 @@ using Mobsub.SubtitleParse.AssTypes;
 namespace Mobsub.Test;
 
 [TestClass]
-public class AssEventParserTest
+public class AssEventTextParserTest
 {
     [TestMethod]
     public void ParseLine_DoesNotDuplicateSegments()

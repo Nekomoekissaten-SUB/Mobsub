@@ -1,9 +1,8 @@
 ﻿﻿using System.Buffers;
 using System.Text;
-using Mobsub.SubtitleParse.AssText;
 using Mobsub.SubtitleParse.AssTypes;
 
-namespace Mobsub.SubtitleParse.AssUtils;
+namespace Mobsub.SubtitleParse.AssText;
 
 public sealed class AssFontProcessor(byte wrapStyle, AssStyles styles) : IAssEventTextProcessor
 {
