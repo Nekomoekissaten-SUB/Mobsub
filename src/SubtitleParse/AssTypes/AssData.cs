@@ -1,5 +1,6 @@
 ﻿﻿using System.Text;
 using Microsoft.Extensions.Logging;
+using Mobsub.SubtitleParse.AssText;
 using Mobsub.SubtitleParse.AssUtils;
 using ZLogger;
 
@@ -23,7 +24,7 @@ public sealed class AssData(ILogger? logger = null, AssParseTarget target = AssP
     public AssMetaData ProjectGarbage { get; set; } = new();
     public AssAegisubExtradata Extradata { get; set; } = new();
 
-    public IAssTagProcessor? Processor { get; private set; }
+    public IAssEventTextProcessor? Processor { get; private set; }
     internal Action<AssEvent>? EventViewAction { get; private set; }
     private bool eventInit = false;
     private void InitEvents()
@@ -267,8 +268,8 @@ public sealed class AssData(ILogger? logger = null, AssParseTarget target = AssP
 
     private AssData ParseBuffer(byte[] buffer, Encoding? forcedEncoding, Func<ReadOnlySpan<byte>, Encoding?>? detector, Encoding? fallbackEncoding)
     {
-        var previousLogger = AssEventParser.Logger;
-        AssEventParser.Logger = logger;
+        var previousLogger = AssEventTextParser.Logger;
+        AssEventTextParser.Logger = logger;
         try
         {
             _sourceBuffer = buffer;
@@ -368,7 +369,7 @@ public sealed class AssData(ILogger? logger = null, AssParseTarget target = AssP
         }
         finally
         {
-            AssEventParser.Logger = previousLogger;
+            AssEventTextParser.Logger = previousLogger;
         }
     }
 

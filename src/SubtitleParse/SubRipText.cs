@@ -1,6 +1,6 @@
 using System.Text;
 using Mobsub.SubtitleParse.AssTypes;
-using Mobsub.SubtitleParse.AssUtils;
+using Mobsub.SubtitleParse.AssText;
 
 namespace Mobsub.SubtitleParse;
 
@@ -139,7 +139,7 @@ public class SubRipText
             text.Clear();
             var builder = new StringBuilder();
 
-            AssEventParser.WithParsedSegments(textMemory, (segments, lineSpan) =>
+            AssEventTextParser.WithParsedSegments(textMemory, (segments, lineSpan) =>
             {
                 foreach (var seg in segments)
                 {

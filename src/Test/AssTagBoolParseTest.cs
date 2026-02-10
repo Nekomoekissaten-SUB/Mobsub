@@ -1,6 +1,6 @@
 using FluentAssertions;
+using Mobsub.SubtitleParse.AssText;
 using Mobsub.SubtitleParse.AssTypes;
-using Mobsub.SubtitleParse.AssUtils;
 
 namespace Mobsub.Test;
 
@@ -14,7 +14,7 @@ public class AssTagBoolParseTest
     public void ParseLine_BoolTagsWithMinusOne_AreIgnored(string lineText, AssTag expectedTag)
     {
         ReadOnlyMemory<byte> line = System.Text.Encoding.UTF8.GetBytes(lineText);
-        var segments = AssEventParser.ParseLine(line).Span;
+        var segments = AssEventTextParser.ParseLine(line).Span;
 
         segments.Length.Should().Be(2);
         segments[0].SegmentKind.Should().Be(AssEventSegmentKind.TagBlock);
@@ -36,7 +36,7 @@ public class AssTagBoolParseTest
     public void ParseLine_BoolTagsWithZeroOrOne_ParseCorrectly(string lineText, AssTag expectedTag, bool expectedValue)
     {
         ReadOnlyMemory<byte> line = System.Text.Encoding.UTF8.GetBytes(lineText);
-        var segments = AssEventParser.ParseLine(line).Span;
+        var segments = AssEventTextParser.ParseLine(line).Span;
 
         segments.Length.Should().Be(2);
         segments[0].SegmentKind.Should().Be(AssEventSegmentKind.TagBlock);
@@ -55,7 +55,7 @@ public class AssTagBoolParseTest
     public void ParseLine_BoolTagsWithInvalidValue_TreatedAsZero(string lineText, AssTag expectedTag)
     {
         ReadOnlyMemory<byte> line = System.Text.Encoding.UTF8.GetBytes(lineText);
-        var segments = AssEventParser.ParseLine(line).Span;
+        var segments = AssEventTextParser.ParseLine(line).Span;
 
         segments.Length.Should().Be(2);
         segments[0].SegmentKind.Should().Be(AssEventSegmentKind.TagBlock);

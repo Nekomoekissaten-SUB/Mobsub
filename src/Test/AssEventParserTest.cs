@@ -1,6 +1,7 @@
 using FluentAssertions;
+using Mobsub.SubtitleParse.AssText;
 using Mobsub.SubtitleParse.AssTypes;
-using Mobsub.SubtitleParse.AssUtils;
+
 
 namespace Mobsub.Test;
 
@@ -12,7 +13,7 @@ public class AssEventParserTest
     {
         ReadOnlyMemory<byte> line = "Hello{\\b1}World"u8.ToArray();
 
-        var segments = AssEventParser.ParseLine(line).Span;
+        var segments = AssEventTextParser.ParseLine(line).Span;
 
         segments.Length.Should().Be(3);
         segments[0].SegmentKind.Should().Be(AssEventSegmentKind.Text);
@@ -36,7 +37,7 @@ public class AssEventParserTest
     {
         ReadOnlyMemory<byte> line = "{\\t (0.5,100,\\pos(1,2))}x"u8.ToArray();
 
-        var segments = AssEventParser.ParseLine(line).Span;
+        var segments = AssEventTextParser.ParseLine(line).Span;
 
         segments.Length.Should().Be(2);
         segments[0].SegmentKind.Should().Be(AssEventSegmentKind.TagBlock);
@@ -58,7 +59,7 @@ public class AssEventParserTest
     {
         ReadOnlyMemory<byte> line = "{\\c0000FF\\alpha7F}x"u8.ToArray();
 
-        var segments = AssEventParser.ParseLine(line).Span;
+        var segments = AssEventTextParser.ParseLine(line).Span;
 
         segments.Length.Should().Be(2);
         segments[0].SegmentKind.Should().Be(AssEventSegmentKind.TagBlock);
@@ -81,7 +82,7 @@ public class AssEventParserTest
     {
         ReadOnlyMemory<byte> line = "{\\c11223344}x"u8.ToArray();
 
-        var segments = AssEventParser.ParseLine(line).Span;
+        var segments = AssEventTextParser.ParseLine(line).Span;
 
         segments.Length.Should().Be(2);
         segments[0].SegmentKind.Should().Be(AssEventSegmentKind.TagBlock);
@@ -100,7 +101,7 @@ public class AssEventParserTest
     {
         ReadOnlyMemory<byte> line = "{\\kt10\\fsc50}x"u8.ToArray();
 
-        var segments = AssEventParser.ParseLine(line).Span;
+        var segments = AssEventTextParser.ParseLine(line).Span;
 
         segments.Length.Should().Be(2);
         segments[0].SegmentKind.Should().Be(AssEventSegmentKind.TagBlock);
@@ -112,6 +113,7 @@ public class AssEventParserTest
         kt.Should().Be(10);
 
         tags[1].Tag.Should().Be(AssTag.FontScale);
-        tags[1].Value.Kind.Should().Be(AssTagValueKind.None);
+        tags[1].TryGet<double>(out var fsc).Should().BeTrue();
+        fsc.Should().Be(50);
     }
 }

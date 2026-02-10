@@ -1,6 +1,6 @@
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Mobsub.SubtitleParse.AssUtils;
+using Mobsub.SubtitleParse.AssText;
 
 namespace Mobsub.Test;
 

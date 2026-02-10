@@ -1,10 +1,11 @@
 ﻿﻿using System.Buffers;
 using System.Text;
+using Mobsub.SubtitleParse.AssText;
 using Mobsub.SubtitleParse.AssTypes;
 
 namespace Mobsub.SubtitleParse.AssUtils;
 
-public sealed class AssFontProcessor(byte wrapStyle, AssStyles styles) : IAssTagProcessor
+public sealed class AssFontProcessor(byte wrapStyle, AssStyles styles) : IAssEventTextProcessor
 {
     private readonly byte wrapStyle = wrapStyle;
     private readonly AssStyles styles = styles;
@@ -181,15 +182,15 @@ public sealed class AssFontProcessor(byte wrapStyle, AssStyles styles) : IAssTag
         // Prefer the ReadOnlyMemory overload when we have backing memory so byte/function tag payloads
         // can be kept as slices (avoids per-tag param allocations).
         if (lineMemory.IsEmpty)
-            AssEventParser.WithParsedSegments(lineSpan, ProcessSegments);
+            AssEventTextParser.WithParsedSegments(lineSpan, ProcessSegments);
         else
-            AssEventParser.WithParsedSegments(lineMemory, ProcessSegments);
+            AssEventTextParser.WithParsedSegments(lineMemory, ProcessSegments);
     }
 
     private void ProcessSegments(ReadOnlySpan<AssEventSegment> segs, ReadOnlySpan<byte> lineSpan)
     {
-        var wrapStyleCurrent = AssEventParser.GetWrapStyle(segs, wrapStyle);
-        if (AssEventParser.HasPolygon(segs)) return;
+        var wrapStyleCurrent = AssEventTextQuery.GetWrapStyle(segs, wrapStyle);
+        if (AssEventTextQuery.HasPolygon(segs)) return;
 
         foreach (var seg in segs)
         {

@@ -1,6 +1,6 @@
 ﻿﻿using Mobsub.SubtitleParse.AssTypes;
 
-namespace Mobsub.SubtitleParse.AssUtils;
+namespace Mobsub.SubtitleParse.AssText;
 
 public readonly struct AssEventSegment(Range range, AssEventSegmentKind kind, ReadOnlyMemory<AssTagSpan>? tags = null)
 {

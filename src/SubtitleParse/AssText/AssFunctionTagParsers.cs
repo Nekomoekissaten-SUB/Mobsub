@@ -1,6 +1,6 @@
 using Mobsub.SubtitleParse;
 
-namespace Mobsub.SubtitleParse.AssUtils;
+namespace Mobsub.SubtitleParse.AssText;
 
 public static class AssFunctionTagParsers
 {
@@ -316,7 +316,7 @@ public static class AssFunctionTagParsers
         if (!Utils.TryParseDoubleLoose(token, out value, out var invalid))
             return false;
 
-        if (invalid && AssEventParser.Logger != null)
+        if (invalid && AssEventTextParser.Logger != null)
             LogInvalidNumber(tag, token);
 
         return true;
@@ -324,9 +324,9 @@ public static class AssFunctionTagParsers
 
     private static void LogInvalidNumber(string tag, ReadOnlySpan<byte> token)
     {
-        if (AssEventParser.Logger == null)
+        if (AssEventTextParser.Logger == null)
             return;
 
-        AssEventParser.LogWarning($"Invalid numeric value in \\{tag}: '{Utils.GetString(token)}', treated as 0.");
+        AssEventTextParser.LogWarning($"Invalid numeric value in \\{tag}: '{Utils.GetString(token)}', treated as 0.");
     }
 }

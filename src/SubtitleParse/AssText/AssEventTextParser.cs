@@ -6,9 +6,9 @@ using System.Runtime.InteropServices;
 using System.Text;
 using Microsoft.Extensions.Logging;
 
-namespace Mobsub.SubtitleParse.AssUtils;
+namespace Mobsub.SubtitleParse.AssText;
 
-public static class AssEventParser
+public static class AssEventTextParser
 {
     public delegate void AssEventSegmentSpanAction(ReadOnlySpan<AssEventSegment> segments, ReadOnlySpan<byte> line);
     public static ILogger? Logger { get; set; }
@@ -397,9 +397,6 @@ public static class AssEventParser
         var trimmedSpan = param.Slice(start, length);
         var trimmedMemory = paramMemory.IsEmpty ? default : paramMemory.Slice(start, length);
 
-        if (tag == AssTag.FontScale)
-            return AssTagValue.Empty;
-
         if (IsAlphaTag(tag) && AssColor32.TryParseAlphaByte(trimmedSpan, out var alpha, out var invalidAlpha))
         {
             if (invalidAlpha && Logger != null)
@@ -448,6 +445,11 @@ public static class AssEventParser
         }
         if (desc.ValueType == typeof(byte) && Utils.TryParseIntLoose(trimmedSpan, out int byv, out var invalidByte))
         {
+            if (byv < 0 || byv > 255)
+            {
+                byv = 0;
+                invalidByte = true;
+            }
             if (invalidByte && Logger != null)
             {
                 LogWarning($"Invalid byte value for \\{Utils.GetString(desc.Name)}: '{Utils.GetString(trimmedSpan)}', treated as 0.");
@@ -609,41 +611,6 @@ public static class AssEventParser
             return sliceSpan.ToArray();
 
         return fullMemory.Slice(offset, sliceSpan.Length);
-    }
-
-    internal static T FindLastTag<T>(ReadOnlySpan<AssEventSegment> segments, AssTag target, T defaultValue, out bool found)
-    {
-        for (int i = segments.Length - 1; i >= 0; i--)
-        {
-            ref readonly var seg = ref segments[i];
-            if (seg.SegmentKind != AssEventSegmentKind.TagBlock || seg.Tags == null)
-                continue;
-
-            var tagsSpan = seg.Tags.Value.Span;
-            for (int j = tagsSpan.Length - 1; j >= 0; j--)
-            {
-                ref readonly var tagSpan = ref tagsSpan[j];
-                if (tagSpan.Tag == target)
-                {
-                    found = true;
-                    if (tagSpan.TryGet<T>(out var v))
-                        return v!;
-                    return defaultValue;
-                }
-            }
-        }
-        found = false;
-        return defaultValue;
-    }
-
-    public static short GetWrapStyle(ReadOnlySpan<AssEventSegment> segments, short infoValue)
-    {
-        return FindLastTag(segments, AssTag.WrapStyle, infoValue, out _);
-    }
-    public static bool HasPolygon(ReadOnlySpan<AssEventSegment> segments)
-    {
-        FindLastTag<int>(segments, AssTag.Polygon, default, out bool found);
-        return found;
     }
 }
 

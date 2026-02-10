@@ -99,8 +99,8 @@ public enum AssTag
     FontScaleX,
     [AssTagSpec("fscy", typeof(double), AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
     FontScaleY,
-    [AssTagSpec("fsc", typeof(ReadOnlyMemory<byte>), AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
-    FontScale, // FontSizeScale
+    [AssTagSpec("fsc", typeof(double), AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+    FontScale, // scale x/y together
 
     [AssTagSpec("fsp", typeof(double), AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
     FontSpacing,
