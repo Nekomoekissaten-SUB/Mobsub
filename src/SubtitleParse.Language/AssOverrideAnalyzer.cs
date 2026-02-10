@@ -1,6 +1,6 @@
 using System.Text;
 using Mobsub.SubtitleParse;
-using Mobsub.SubtitleParse.AssUtils;
+using Mobsub.SubtitleParse.AssText;
 using Mobsub.SubtitleParse.AssTypes;
 
 namespace Mobsub.SubtitleParse.Language;
