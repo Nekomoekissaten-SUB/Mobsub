@@ -16,6 +16,51 @@ internal static class AssOverrideAnalyzer
         List<AssDiagnostic> diagnostics,
         AssOverrideTextAnalyzerContext? context = null)
     {
+        // Fast path: no override blocks.
+        if (textField.IndexOf('{') < 0)
+            return;
+
+        using var map = Utf8IndexMap.Create(textField);
+        using var read = AssEventTextRead.Parse(textField);
+
+        ScanForUnclosedOverrideBlock(line, baseCharInLine, textField, diagnostics);
+
+        var utf8 = read.Utf8;
+        var segments = read.Segments;
+        for (int i = 0; i < segments.Length; i++)
+        {
+            ref readonly var seg = ref segments[i];
+            if (seg.SegmentKind != AssEventSegmentKind.TagBlock)
+                continue;
+
+            var (start, end) = GetRangeOffsets(seg.LineRange, utf8.Length);
+            if (end - start < 2)
+                continue;
+
+            int innerStart = start + 1;
+            int innerEnd = end - 1;
+            if (innerEnd <= innerStart)
+                continue;
+
+            AnalyzeTagPayloadBytes(
+                line,
+                baseCharInLine,
+                map,
+                utf8,
+                utf8.Span.Slice(innerStart, innerEnd - innerStart),
+                payloadAbsoluteStartByte: innerStart,
+                diagnostics,
+                context,
+                depth: 0);
+        }
+    }
+
+    private static void ScanForUnclosedOverrideBlock(
+        int line,
+        int baseCharInLine,
+        ReadOnlySpan<char> textField,
+        List<AssDiagnostic> diagnostics)
+    {
         int i = 0;
         while (i < textField.Length)
         {
@@ -34,210 +79,190 @@ internal static class AssOverrideAnalyzer
                     Code: "ass.override.unclosed"));
                 break;
             }
-            close = open + 1 + close;
 
-            var inner = textField.Slice(open + 1, close - open - 1);
-            AnalyzeTagBlock(line, baseCharInLine + open + 1, inner, diagnostics, context);
-
-            i = close + 1;
+            i = open + 1 + close + 1;
         }
     }
 
-
-    private static void AnalyzeTagBlock(int line, int blockBaseChar, ReadOnlySpan<char> block, List<AssDiagnostic> diagnostics, AssOverrideTextAnalyzerContext? context)
+    private static void AnalyzeTagPayloadBytes(
+        int line,
+        int baseCharInLine,
+        Utf8IndexMap map,
+        ReadOnlyMemory<byte> lineBytes,
+        ReadOnlySpan<byte> payload,
+        int payloadAbsoluteStartByte,
+        List<AssDiagnostic> diagnostics,
+        AssOverrideTextAnalyzerContext? context,
+        int depth)
     {
-        AnalyzeTagBlock(line, blockBaseChar, block, diagnostics, context, depth: 0);
-    }
-
-    private static void AnalyzeTagBlock(int line, int blockBaseChar, ReadOnlySpan<char> block, List<AssDiagnostic> diagnostics, AssOverrideTextAnalyzerContext? context, int depth)
-    {
-        int i = 0;
-        while (i < block.Length)
+        var scanner = new AssTagBlockScanner(payload, payloadAbsoluteStartByte, lineBytes);
+        while (scanner.MoveNext(out var token))
         {
-            int slash = block.Slice(i).IndexOf('\\');
-            if (slash < 0)
-                break;
-            slash += i;
-            int nameStart = slash + 1;
-            if (nameStart >= block.Length)
-                break;
+            int slashChar = baseCharInLine + map.ByteToCharIndex(token.TagStart);
+            int nameEndChar = baseCharInLine + map.ByteToCharIndex(token.NameEnd);
 
-            int nameEnd = nameStart;
-            while (nameEnd < block.Length && IsAsciiLetterOrDigit(block[nameEnd]))
-                nameEnd++;
-
-            if (nameEnd == nameStart)
-            {
-                i = nameStart;
-                continue;
-            }
-
-            var nameAndMaybePayload = block.Slice(nameStart, nameEnd - nameStart);
-            if (!TryMatchTag(nameAndMaybePayload, out var tag, out var desc, out int matchedLength))
+            if (!token.IsKnown)
             {
                 diagnostics.Add(new AssDiagnostic(
-                    new AssRange(new AssPosition(line, blockBaseChar + slash), new AssPosition(line, blockBaseChar + nameEnd)),
+                    new AssRange(new AssPosition(line, slashChar), new AssPosition(line, nameEndChar)),
                     AssSeverity.Error,
-                    $"Unknown override tag: \\{nameAndMaybePayload.ToString()}",
+                    $"Unknown override tag: \\{Encoding.ASCII.GetString(token.NameAndMaybePayload)}",
                     Code: "ass.override.unknownTag"));
-                i = nameEnd;
                 continue;
             }
 
-            int paramStart = nameStart + matchedLength;
-            int paramEnd;
-
-            int parenStart = paramStart;
-            bool isFunction = AssTagRegistry.TryGetFunctionKind(tag, out var functionKind);
-            if (isFunction)
-            {
-                while (parenStart < block.Length && block[parenStart] == ' ')
-                    parenStart++;
-            }
-
-            if (isFunction && parenStart < block.Length && block[parenStart] == '(')
-            {
-                int j = parenStart + 1;
-                int parenDepth = 1;
-                while (j < block.Length && parenDepth > 0)
-                {
-                    char c = block[j];
-                    if (c == '(') parenDepth++;
-                    else if (c == ')') parenDepth--;
-                    j++;
-                }
-                paramEnd = j;
-            }
-            else
-            {
-                int nextSlash = block.Slice(paramStart).IndexOf('\\');
-                paramEnd = nextSlash < 0 ? block.Length : paramStart + nextSlash;
-            }
-
-            var param = block.Slice(paramStart, Math.Max(0, paramEnd - paramStart));
-
-            if (AssTagRegistry.TryGetObsoleteReplacement(tag, out var obsoleteReplacement))
+            if (AssTagRegistry.TryGetObsoleteReplacement(token.Tag, out var obsoleteReplacement))
             {
                 string? mapping = null;
-                if (tag == AssTag.AlignmentLegacy)
+                if (token.Tag == AssTag.AlignmentLegacy)
                 {
-                    var p = param.Trim();
-                    if (int.TryParse(p, out int legacy) && AssTagRegistry.TryMapLegacyAlignmentToAn(legacy, out int an))
+                    var p = Utils.TrimSpaces(token.Param);
+                    if (Utils.TryParseIntLoose(p, out int legacy, out var invalid) && !invalid &&
+                        AssTagRegistry.TryMapLegacyAlignmentToAn(legacy, out int an))
+                    {
                         mapping = $" (\\\\a{legacy} -> \\\\an{an})";
+                    }
                 }
 
                 diagnostics.Add(new AssDiagnostic(
-                    new AssRange(new AssPosition(line, blockBaseChar + slash), new AssPosition(line, blockBaseChar + nameEnd)),
+                    new AssRange(new AssPosition(line, slashChar), new AssPosition(line, nameEndChar)),
                     AssSeverity.Warning,
-                    $"Override tag \\\\{nameAndMaybePayload.ToString()} is obsolete; use \\\\{Encoding.ASCII.GetString(obsoleteReplacement)} instead.{mapping}",
+                    $"Override tag \\\\{Encoding.ASCII.GetString(token.NameAndMaybePayload)} is obsolete; use \\\\{Encoding.ASCII.GetString(obsoleteReplacement)} instead.{mapping}",
                     Code: "ass.override.obsoleteTag"));
             }
 
-            ValidateTagValue(line, blockBaseChar + paramStart, param, tag, desc, isFunction ? functionKind : AssTagFunctionKind.None, diagnostics, context, depth);
-
-            i = paramEnd;
+            ValidateTagValueBytes(
+                line,
+                baseCharInLine,
+                map,
+                lineBytes,
+                token,
+                diagnostics,
+                context,
+                depth);
         }
     }
 
-    private static void ValidateTagValue(int line, int paramBaseChar, ReadOnlySpan<char> param, AssTag tag, AssTagDescriptor desc, AssTagFunctionKind functionKind, List<AssDiagnostic> diagnostics, AssOverrideTextAnalyzerContext? context, int depth)
+    private static void ValidateTagValueBytes(
+        int line,
+        int baseCharInLine,
+        Utf8IndexMap map,
+        ReadOnlyMemory<byte> lineBytes,
+        in AssTagBlockToken token,
+        List<AssDiagnostic> diagnostics,
+        AssOverrideTextAnalyzerContext? context,
+        int depth)
     {
-        var trimmed = param.Trim();
-        if (trimmed.IsEmpty)
+        var param = token.Param;
+        Utils.TrimSpaces(param, out int trimStart, out int trimLength);
+        if (trimLength == 0)
             return;
 
-        int leadingSpaces = 0;
-        while (leadingSpaces < param.Length && char.IsWhiteSpace(param[leadingSpaces]))
-            leadingSpaces++;
+        var trimmed = param.Slice(trimStart, trimLength);
 
-        Span<byte> bytes = trimmed.Length <= 256 ? stackalloc byte[trimmed.Length] : new byte[trimmed.Length];
-        for (int i = 0; i < trimmed.Length; i++)
-        {
-            char c = trimmed[i];
-            bytes[i] = c <= 0x7F ? (byte)c : (byte)'?';
-        }
+        int paramStartChar = baseCharInLine + map.ByteToCharIndex(token.ParamStart);
+        int paramEndChar = baseCharInLine + map.ByteToCharIndex(token.ParamEnd);
 
-        if (functionKind != AssTagFunctionKind.None)
+        int trimmedStartByte = token.ParamStart + trimStart;
+        int trimmedEndByte = trimmedStartByte + trimLength;
+        int trimmedParamBaseChar = baseCharInLine + map.ByteToCharIndex(trimmedStartByte);
+        int trimmedParamEndChar = baseCharInLine + map.ByteToCharIndex(trimmedEndByte);
+        int trimmedParamLength = Math.Max(0, trimmedParamEndChar - trimmedParamBaseChar);
+
+        if (AssTagRegistry.TryGetFunctionKind(token.Tag, out var functionKind))
         {
-            if (!ValidateFunctionTagValueBytes(line, paramBaseChar + leadingSpaces, bytes, functionKind, tag, desc, diagnostics, context, depth))
+            if (!ValidateFunctionTagValueBytes(
+                line,
+                baseCharInLine,
+                map,
+                lineBytes,
+                trimmedStartByte,
+                trimmedParamBaseChar,
+                trimmedParamLength,
+                trimmed,
+                functionKind,
+                diagnostics,
+                context,
+                depth))
             {
                 var sig = AssTagRegistry.GetFunctionSignature(functionKind);
                 diagnostics.Add(new AssDiagnostic(
-                    new AssRange(new AssPosition(line, paramBaseChar), new AssPosition(line, paramBaseChar + param.Length)),
+                    new AssRange(new AssPosition(line, paramStartChar), new AssPosition(line, paramEndChar)),
                     AssSeverity.Warning,
                     sig == null
-                        ? $"Invalid function payload for \\{Encoding.ASCII.GetString(desc.Name.Span)}"
-                        : $"Invalid function payload for \\{Encoding.ASCII.GetString(desc.Name.Span)} (expected {sig})",
+                        ? $"Invalid function payload for \\{Encoding.ASCII.GetString(token.Desc.Name.Span)}"
+                        : $"Invalid function payload for \\{Encoding.ASCII.GetString(token.Desc.Name.Span)} (expected {sig})",
                     Code: "ass.override.functionInvalid"));
             }
             return;
         }
 
-        if (IsAlphaTag(tag))
+        if (IsAlphaTag(token.Tag))
         {
-            if (!AssColor32.TryParseAlphaByte(bytes, out _, out var invalidAlpha) || invalidAlpha)
+            if (!AssColor32.TryParseAlphaByte(trimmed, out _, out var invalidAlpha) || invalidAlpha)
             {
                 diagnostics.Add(new AssDiagnostic(
-                    new AssRange(new AssPosition(line, paramBaseChar), new AssPosition(line, paramBaseChar + param.Length)),
+                    new AssRange(new AssPosition(line, paramStartChar), new AssPosition(line, paramEndChar)),
                     AssSeverity.Warning,
-                    $"Invalid alpha value for \\{Encoding.ASCII.GetString(desc.Name.Span)}",
+                    $"Invalid alpha value for \\{Encoding.ASCII.GetString(token.Desc.Name.Span)}",
                     Code: "ass.override.alphaInvalid"));
             }
             return;
         }
 
-        if (desc.ValueType == typeof(AssColor32))
+        if (token.Desc.ValueType == typeof(AssColor32))
         {
-            if (!AssColor32.TryParseTagColor(bytes, out var color, out var ignoredHighByte, out var invalidColor) || invalidColor)
+            if (!AssColor32.TryParseTagColor(trimmed, out var color, out var ignoredHighByte, out var invalidColor) || invalidColor)
             {
                 diagnostics.Add(new AssDiagnostic(
-                    new AssRange(new AssPosition(line, paramBaseChar), new AssPosition(line, paramBaseChar + param.Length)),
+                    new AssRange(new AssPosition(line, paramStartChar), new AssPosition(line, paramEndChar)),
                     AssSeverity.Warning,
-                    $"Invalid color value for \\{Encoding.ASCII.GetString(desc.Name.Span)}",
+                    $"Invalid color value for \\{Encoding.ASCII.GetString(token.Desc.Name.Span)}",
                     Code: "ass.override.colorInvalid"));
             }
-            else if (TryGetColorNormalizationSuggestion(bytes, color, ignoredHighByte, out var normalized))
+            else if (TryGetColorNormalizationSuggestion(trimmed, color, ignoredHighByte, out var normalized))
             {
                 diagnostics.Add(new AssDiagnostic(
-                    new AssRange(new AssPosition(line, paramBaseChar), new AssPosition(line, paramBaseChar + param.Length)),
+                    new AssRange(new AssPosition(line, paramStartChar), new AssPosition(line, paramEndChar)),
                     AssSeverity.Info,
-                    $"Normalize to \\{Encoding.ASCII.GetString(desc.Name.Span)}{normalized}",
+                    $"Normalize to \\{Encoding.ASCII.GetString(token.Desc.Name.Span)}{normalized}",
                     Code: "ass.override.colorNormalize"));
             }
             return;
         }
 
-        if (desc.ValueType == typeof(int))
+        if (token.Desc.ValueType == typeof(int) || token.Tag is AssTag.Alignment or AssTag.AlignmentLegacy or AssTag.WrapStyle)
         {
-            if (!Utils.TryParseIntLoose(bytes, out var v, out var invalid))
+            if (!Utils.TryParseIntLoose(trimmed, out var v, out var invalid))
             {
                 diagnostics.Add(new AssDiagnostic(
-                    new AssRange(new AssPosition(line, paramBaseChar), new AssPosition(line, paramBaseChar + param.Length)),
+                    new AssRange(new AssPosition(line, paramStartChar), new AssPosition(line, paramEndChar)),
                     AssSeverity.Warning,
-                    $"Invalid integer value for \\{Encoding.ASCII.GetString(desc.Name.Span)}",
+                    $"Invalid integer value for \\{Encoding.ASCII.GetString(token.Desc.Name.Span)}",
                     Code: "ass.override.intInvalid"));
                 return;
             }
             if (invalid)
             {
                 diagnostics.Add(new AssDiagnostic(
-                    new AssRange(new AssPosition(line, paramBaseChar), new AssPosition(line, paramBaseChar + param.Length)),
+                    new AssRange(new AssPosition(line, paramStartChar), new AssPosition(line, paramEndChar)),
                     AssSeverity.Info,
-                    $"Non-standard integer value for \\{Encoding.ASCII.GetString(desc.Name.Span)} (treated as 0).",
+                    $"Non-standard integer value for \\{Encoding.ASCII.GetString(token.Desc.Name.Span)} (treated as 0).",
                     Code: "ass.override.intLoose"));
             }
 
-            if (tag is AssTag.Alignment or AssTag.AlignmentLegacy && v is < 1 or > 9)
+            if (token.Tag is AssTag.Alignment or AssTag.AlignmentLegacy && v is < 1 or > 9)
             {
                 diagnostics.Add(new AssDiagnostic(
-                    new AssRange(new AssPosition(line, paramBaseChar), new AssPosition(line, paramBaseChar + param.Length)),
+                    new AssRange(new AssPosition(line, paramStartChar), new AssPosition(line, paramEndChar)),
                     AssSeverity.Warning,
                     "Alignment should be in [1..9].",
                     Code: "ass.override.alignRange"));
             }
-            if (tag is AssTag.WrapStyle && v is < 0 or > 3)
+            if (token.Tag is AssTag.WrapStyle && v is < 0 or > 3)
             {
                 diagnostics.Add(new AssDiagnostic(
-                    new AssRange(new AssPosition(line, paramBaseChar), new AssPosition(line, paramBaseChar + param.Length)),
+                    new AssRange(new AssPosition(line, paramStartChar), new AssPosition(line, paramEndChar)),
                     AssSeverity.Warning,
                     "WrapStyle (\\q) should be in [0..3].",
                     Code: "ass.override.wrapStyleRange"));
@@ -245,23 +270,23 @@ internal static class AssOverrideAnalyzer
             return;
         }
 
-        if (desc.ValueType == typeof(double))
+        if (token.Desc.ValueType == typeof(double))
         {
-            if (!Utils.TryParseDoubleLoose(bytes, out _, out var invalid))
+            if (!Utils.TryParseDoubleLoose(trimmed, out _, out var invalid))
             {
                 diagnostics.Add(new AssDiagnostic(
-                    new AssRange(new AssPosition(line, paramBaseChar), new AssPosition(line, paramBaseChar + param.Length)),
+                    new AssRange(new AssPosition(line, paramStartChar), new AssPosition(line, paramEndChar)),
                     AssSeverity.Warning,
-                    $"Invalid number value for \\{Encoding.ASCII.GetString(desc.Name.Span)}",
+                    $"Invalid number value for \\{Encoding.ASCII.GetString(token.Desc.Name.Span)}",
                     Code: "ass.override.doubleInvalid"));
                 return;
             }
             if (invalid)
             {
                 diagnostics.Add(new AssDiagnostic(
-                    new AssRange(new AssPosition(line, paramBaseChar), new AssPosition(line, paramBaseChar + param.Length)),
+                    new AssRange(new AssPosition(line, paramStartChar), new AssPosition(line, paramEndChar)),
                     AssSeverity.Info,
-                    $"Non-standard numeric value for \\{Encoding.ASCII.GetString(desc.Name.Span)} (treated as 0).",
+                    $"Non-standard numeric value for \\{Encoding.ASCII.GetString(token.Desc.Name.Span)} (treated as 0).",
                     Code: "ass.override.doubleLoose"));
             }
             return;
@@ -270,11 +295,14 @@ internal static class AssOverrideAnalyzer
 
     private static bool ValidateFunctionTagValueBytes(
         int line,
+        int baseCharInLine,
+        Utf8IndexMap map,
+        ReadOnlyMemory<byte> lineBytes,
+        int trimmedParamStartByte,
         int trimmedParamBaseChar,
+        int trimmedParamLength,
         ReadOnlySpan<byte> bytes,
         AssTagFunctionKind functionKind,
-        AssTag tag,
-        AssTagDescriptor desc,
         List<AssDiagnostic> diagnostics,
         AssOverrideTextAnalyzerContext? context,
         int depth)
@@ -284,34 +312,34 @@ internal static class AssOverrideAnalyzer
             case AssTagFunctionKind.Pos:
                 if (!AssFunctionTagParsers.TryParsePos(bytes, out var x, out var y))
                     return false;
-                WarnCoordinateOutOfRange(line, trimmedParamBaseChar, bytes.Length, context, x, y, diagnostics);
+                WarnCoordinateOutOfRange(line, trimmedParamBaseChar, trimmedParamLength, context, x, y, diagnostics);
                 return true;
             case AssTagFunctionKind.Org:
                 if (!AssFunctionTagParsers.TryParseOrg(bytes, out var ox, out var oy))
                     return false;
-                WarnCoordinateOutOfRange(line, trimmedParamBaseChar, bytes.Length, context, ox, oy, diagnostics);
+                WarnCoordinateOutOfRange(line, trimmedParamBaseChar, trimmedParamLength, context, ox, oy, diagnostics);
                 return true;
             case AssTagFunctionKind.Move:
                 if (!AssFunctionTagParsers.TryParseMove(bytes, out var x1, out var y1, out var x2, out var y2, out var t1, out var t2, out var hasTimes))
                     return false;
-                WarnCoordinateOutOfRange(line, trimmedParamBaseChar, bytes.Length, context, x1, y1, diagnostics);
-                WarnCoordinateOutOfRange(line, trimmedParamBaseChar, bytes.Length, context, x2, y2, diagnostics);
+                WarnCoordinateOutOfRange(line, trimmedParamBaseChar, trimmedParamLength, context, x1, y1, diagnostics);
+                WarnCoordinateOutOfRange(line, trimmedParamBaseChar, trimmedParamLength, context, x2, y2, diagnostics);
                 if (hasTimes)
-                    WarnRelativeTimeRange(line, trimmedParamBaseChar, bytes.Length, context, t1, t2, diagnostics);
+                    WarnRelativeTimeRange(line, trimmedParamBaseChar, trimmedParamLength, context, t1, t2, diagnostics);
                 return true;
             case AssTagFunctionKind.Fad:
                 if (!AssFunctionTagParsers.TryParseFad(bytes, out var fi, out var fo))
                     return false;
-                WarnRelativeTimeScalar(line, trimmedParamBaseChar, bytes.Length, context, fi, "fad.t1", diagnostics);
-                WarnRelativeTimeScalar(line, trimmedParamBaseChar, bytes.Length, context, fo, "fad.t2", diagnostics);
+                WarnRelativeTimeScalar(line, trimmedParamBaseChar, trimmedParamLength, context, fi, "fad.t1", diagnostics);
+                WarnRelativeTimeScalar(line, trimmedParamBaseChar, trimmedParamLength, context, fo, "fad.t2", diagnostics);
                 return true;
             case AssTagFunctionKind.Fade:
                 if (!AssFunctionTagParsers.TryParseFade(bytes, out _, out _, out _, out var ft1, out var ft2, out var ft3, out var ft4))
                     return false;
-                WarnRelativeTimeScalar(line, trimmedParamBaseChar, bytes.Length, context, ft1, "fade.t1", diagnostics);
-                WarnRelativeTimeScalar(line, trimmedParamBaseChar, bytes.Length, context, ft2, "fade.t2", diagnostics);
-                WarnRelativeTimeScalar(line, trimmedParamBaseChar, bytes.Length, context, ft3, "fade.t3", diagnostics);
-                WarnRelativeTimeScalar(line, trimmedParamBaseChar, bytes.Length, context, ft4, "fade.t4", diagnostics);
+                WarnRelativeTimeScalar(line, trimmedParamBaseChar, trimmedParamLength, context, ft1, "fade.t1", diagnostics);
+                WarnRelativeTimeScalar(line, trimmedParamBaseChar, trimmedParamLength, context, ft2, "fade.t2", diagnostics);
+                WarnRelativeTimeScalar(line, trimmedParamBaseChar, trimmedParamLength, context, ft3, "fade.t3", diagnostics);
+                WarnRelativeTimeScalar(line, trimmedParamBaseChar, trimmedParamLength, context, ft4, "fade.t4", diagnostics);
                 return true;
             case AssTagFunctionKind.ClipRect:
             case AssTagFunctionKind.ClipDrawing:
@@ -319,13 +347,13 @@ internal static class AssOverrideAnalyzer
                     return false;
                 if (clipKind == AssFunctionTagParsers.AssClipKind.Rect && context != null && context.TryGetCoordinateBounds(out _, out _))
                 {
-                    WarnRectOutOfRange(line, trimmedParamBaseChar, bytes.Length, context, cx1, cy1, cx2, cy2, diagnostics);
+                    WarnRectOutOfRange(line, trimmedParamBaseChar, trimmedParamLength, context, cx1, cy1, cx2, cy2, diagnostics);
                 }
                 return true;
             case AssTagFunctionKind.Transform:
-                return ValidateTransform(bytes, line, trimmedParamBaseChar, diagnostics, context, depth);
+                return ValidateTransform(bytes, line, baseCharInLine, map, lineBytes, trimmedParamStartByte, trimmedParamBaseChar, trimmedParamLength, diagnostics, context, depth);
             default:
-                // Unknown function signature: accept if it at least looks like "(...)".
+                // Unknown function signature: accept if it at least looks like "(...)". (Might still be user-defined / future extension.)
                 return Utils.TryGetParenContent(bytes, out _);
         }
     }
@@ -333,7 +361,12 @@ internal static class AssOverrideAnalyzer
     private static bool ValidateTransform(
         ReadOnlySpan<byte> bytes,
         int line,
+        int baseCharInLine,
+        Utf8IndexMap map,
+        ReadOnlyMemory<byte> lineBytes,
+        int trimmedParamStartByte,
         int trimmedParamBaseChar,
+        int trimmedParamLength,
         List<AssDiagnostic> diagnostics,
         AssOverrideTextAnalyzerContext? context,
         int depth)
@@ -345,242 +378,26 @@ internal static class AssOverrideAnalyzer
             return false;
 
         if (hasTimes)
-            WarnRelativeTimeRange(line, trimmedParamBaseChar, bytes.Length, context, t1, t2, diagnostics);
+            WarnRelativeTimeRange(line, trimmedParamBaseChar, trimmedParamLength, context, t1, t2, diagnostics);
 
         if (depth >= MaxNestedTransformDepth)
             return true;
 
-        int payloadOffsetInTrimmed = bytes.Length - tagPayload.Length;
-        AnalyzeTagPayloadBytes(line, trimmedParamBaseChar + payloadOffsetInTrimmed, tagPayload, diagnostics, context, depth + 1);
+        int slashIndex = bytes.IndexOf((byte)'\\');
+        if (slashIndex < 0)
+            return false;
+
+        AnalyzeTagPayloadBytes(
+            line,
+            baseCharInLine,
+            map,
+            lineBytes,
+            tagPayload,
+            payloadAbsoluteStartByte: trimmedParamStartByte + slashIndex,
+            diagnostics,
+            context,
+            depth: depth + 1);
         return true;
-    }
-
-    private static void AnalyzeTagPayloadBytes(
-        int line,
-        int baseChar,
-        ReadOnlySpan<byte> payload,
-        List<AssDiagnostic> diagnostics,
-        AssOverrideTextAnalyzerContext? context,
-        int depth)
-    {
-        int i = 0;
-        while (i < payload.Length)
-        {
-            int slash = payload.Slice(i).IndexOf((byte)'\\');
-            if (slash < 0)
-                break;
-            slash += i;
-
-            int nameStart = slash + 1;
-            if (nameStart >= payload.Length)
-                break;
-
-            int nameEnd = nameStart;
-            while (nameEnd < payload.Length && IsAsciiLetterOrDigit((char)payload[nameEnd]))
-                nameEnd++;
-
-            if (nameEnd == nameStart)
-            {
-                i = nameStart;
-                continue;
-            }
-
-            var nameAndMaybePayload = payload.Slice(nameStart, nameEnd - nameStart);
-            if (!AssTagRegistry.TryMatch(nameAndMaybePayload, out var tag, out var desc, out int matchedLength))
-            {
-                diagnostics.Add(new AssDiagnostic(
-                    new AssRange(new AssPosition(line, baseChar + slash), new AssPosition(line, baseChar + nameEnd)),
-                    AssSeverity.Error,
-                    $"Unknown override tag: \\{Encoding.ASCII.GetString(nameAndMaybePayload)}",
-                    Code: "ass.override.unknownTag"));
-                i = nameEnd;
-                continue;
-            }
-
-            int paramStart = nameStart + matchedLength;
-            int paramEnd;
-
-            int parenStart = paramStart;
-            bool isFunction = AssTagRegistry.TryGetFunctionKind(tag, out var functionKind);
-            if (isFunction)
-            {
-                while (parenStart < payload.Length && payload[parenStart] == (byte)' ')
-                    parenStart++;
-            }
-
-            if (isFunction && parenStart < payload.Length && payload[parenStart] == (byte)'(')
-            {
-                int j = parenStart + 1;
-                int depthParens = 1;
-                while (j < payload.Length && depthParens > 0)
-                {
-                    byte c = payload[j];
-                    if (c == (byte)'(') depthParens++;
-                    else if (c == (byte)')') depthParens--;
-                    j++;
-                }
-                paramEnd = j;
-            }
-            else
-            {
-                int nextSlash = payload.Slice(paramStart).IndexOf((byte)'\\');
-                paramEnd = nextSlash < 0 ? payload.Length : paramStart + nextSlash;
-            }
-
-            var param = payload.Slice(paramStart, Math.Max(0, paramEnd - paramStart));
-
-            if (AssTagRegistry.TryGetObsoleteReplacement(tag, out var obsoleteReplacement))
-            {
-                string? mapping = null;
-                if (tag == AssTag.AlignmentLegacy)
-                {
-                    Utils.TrimSpaces(param, out int s, out int len);
-                    var p = param.Slice(s, len);
-                    if (Utils.TryParseIntLoose(p, out int legacy, out _) && AssTagRegistry.TryMapLegacyAlignmentToAn(legacy, out int an))
-                        mapping = $" (\\\\a{legacy} -> \\\\an{an})";
-                }
-
-                diagnostics.Add(new AssDiagnostic(
-                    new AssRange(new AssPosition(line, baseChar + slash), new AssPosition(line, baseChar + nameEnd)),
-                    AssSeverity.Warning,
-                    $"Override tag \\\\{Encoding.ASCII.GetString(nameAndMaybePayload)} is obsolete; use \\\\{Encoding.ASCII.GetString(obsoleteReplacement)} instead.{mapping}",
-                    Code: "ass.override.obsoleteTag"));
-            }
-
-            ValidateTagValueBytes(line, baseChar + paramStart, param, tag, desc, isFunction ? functionKind : AssTagFunctionKind.None, diagnostics, context, depth);
-
-            i = paramEnd;
-        }
-    }
-
-    private static void ValidateTagValueBytes(
-        int line,
-        int paramBaseChar,
-        ReadOnlySpan<byte> param,
-        AssTag tag,
-        AssTagDescriptor desc,
-        AssTagFunctionKind functionKind,
-        List<AssDiagnostic> diagnostics,
-        AssOverrideTextAnalyzerContext? context,
-        int depth)
-    {
-        Utils.TrimSpaces(param, out int trimStart, out int trimLen);
-        var trimmed = param.Slice(trimStart, trimLen);
-        if (trimmed.IsEmpty)
-            return;
-
-        int trimmedBase = paramBaseChar + trimStart;
-
-        if (functionKind != AssTagFunctionKind.None)
-        {
-            if (!ValidateFunctionTagValueBytes(line, trimmedBase, trimmed, functionKind, tag, desc, diagnostics, context, depth))
-            {
-                var sig = AssTagRegistry.GetFunctionSignature(functionKind);
-                diagnostics.Add(new AssDiagnostic(
-                    new AssRange(new AssPosition(line, paramBaseChar), new AssPosition(line, paramBaseChar + param.Length)),
-                    AssSeverity.Warning,
-                    sig == null
-                        ? $"Invalid function payload for \\{Encoding.ASCII.GetString(desc.Name.Span)}"
-                        : $"Invalid function payload for \\{Encoding.ASCII.GetString(desc.Name.Span)} (expected {sig})",
-                    Code: "ass.override.functionInvalid"));
-            }
-            return;
-        }
-
-        if (IsAlphaTag(tag))
-        {
-            if (!AssColor32.TryParseAlphaByte(trimmed, out _, out var invalidAlpha) || invalidAlpha)
-            {
-                diagnostics.Add(new AssDiagnostic(
-                    new AssRange(new AssPosition(line, paramBaseChar), new AssPosition(line, paramBaseChar + param.Length)),
-                    AssSeverity.Warning,
-                    $"Invalid alpha value for \\{Encoding.ASCII.GetString(desc.Name.Span)}",
-                    Code: "ass.override.alphaInvalid"));
-            }
-            return;
-        }
-
-        if (desc.ValueType == typeof(AssColor32))
-        {
-            if (!AssColor32.TryParseTagColor(trimmed, out var color, out var ignoredHighByte, out var invalidColor) || invalidColor)
-            {
-                diagnostics.Add(new AssDiagnostic(
-                    new AssRange(new AssPosition(line, paramBaseChar), new AssPosition(line, paramBaseChar + param.Length)),
-                    AssSeverity.Warning,
-                    $"Invalid color value for \\{Encoding.ASCII.GetString(desc.Name.Span)}",
-                    Code: "ass.override.colorInvalid"));
-            }
-            else if (TryGetColorNormalizationSuggestion(trimmed, color, ignoredHighByte, out var normalized))
-            {
-                diagnostics.Add(new AssDiagnostic(
-                    new AssRange(new AssPosition(line, paramBaseChar), new AssPosition(line, paramBaseChar + param.Length)),
-                    AssSeverity.Info,
-                    $"Normalize to \\{Encoding.ASCII.GetString(desc.Name.Span)}{normalized}",
-                    Code: "ass.override.colorNormalize"));
-            }
-            return;
-        }
-
-        if (desc.ValueType == typeof(int))
-        {
-            if (!Utils.TryParseIntLoose(trimmed, out var v, out var invalid))
-            {
-                diagnostics.Add(new AssDiagnostic(
-                    new AssRange(new AssPosition(line, paramBaseChar), new AssPosition(line, paramBaseChar + param.Length)),
-                    AssSeverity.Warning,
-                    $"Invalid integer value for \\{Encoding.ASCII.GetString(desc.Name.Span)}",
-                    Code: "ass.override.intInvalid"));
-                return;
-            }
-            if (invalid)
-            {
-                diagnostics.Add(new AssDiagnostic(
-                    new AssRange(new AssPosition(line, paramBaseChar), new AssPosition(line, paramBaseChar + param.Length)),
-                    AssSeverity.Info,
-                    $"Non-standard integer value for \\{Encoding.ASCII.GetString(desc.Name.Span)} (treated as 0).",
-                    Code: "ass.override.intLoose"));
-            }
-
-            if (tag is AssTag.Alignment or AssTag.AlignmentLegacy && v is < 1 or > 9)
-            {
-                diagnostics.Add(new AssDiagnostic(
-                    new AssRange(new AssPosition(line, paramBaseChar), new AssPosition(line, paramBaseChar + param.Length)),
-                    AssSeverity.Warning,
-                    "Alignment should be in [1..9].",
-                    Code: "ass.override.alignRange"));
-            }
-            if (tag is AssTag.WrapStyle && v is < 0 or > 3)
-            {
-                diagnostics.Add(new AssDiagnostic(
-                    new AssRange(new AssPosition(line, paramBaseChar), new AssPosition(line, paramBaseChar + param.Length)),
-                    AssSeverity.Warning,
-                    "WrapStyle (\\q) should be in [0..3].",
-                    Code: "ass.override.wrapStyleRange"));
-            }
-            return;
-        }
-
-        if (desc.ValueType == typeof(double))
-        {
-            if (!Utils.TryParseDoubleLoose(trimmed, out _, out var invalid))
-            {
-                diagnostics.Add(new AssDiagnostic(
-                    new AssRange(new AssPosition(line, paramBaseChar), new AssPosition(line, paramBaseChar + param.Length)),
-                    AssSeverity.Warning,
-                    $"Invalid number value for \\{Encoding.ASCII.GetString(desc.Name.Span)}",
-                    Code: "ass.override.doubleInvalid"));
-                return;
-            }
-            if (invalid)
-            {
-                diagnostics.Add(new AssDiagnostic(
-                    new AssRange(new AssPosition(line, paramBaseChar), new AssPosition(line, paramBaseChar + param.Length)),
-                    AssSeverity.Info,
-                    $"Non-standard numeric value for \\{Encoding.ASCII.GetString(desc.Name.Span)} (treated as 0).",
-                    Code: "ass.override.doubleLoose"));
-            }
-            return;
-        }
     }
 
     private static void WarnCoordinateOutOfRange(
@@ -733,20 +550,9 @@ internal static class AssOverrideAnalyzer
         return true;
     }
 
-    private static bool TryMatchTag(ReadOnlySpan<char> ascii, out AssTag tag, out AssTagDescriptor desc, out int matchedLength)
-    {
-        Span<byte> bytes = ascii.Length <= 64 ? stackalloc byte[ascii.Length] : new byte[ascii.Length];
-        for (int i = 0; i < ascii.Length; i++)
-        {
-            char c = ascii[i];
-            bytes[i] = c <= 0x7F ? (byte)c : (byte)'?';
-        }
-        return AssTagRegistry.TryMatch(bytes, out tag, out desc, out matchedLength);
-    }
-
-    private static bool IsAsciiLetterOrDigit(char c)
-        => c is >= 'a' and <= 'z' or >= 'A' and <= 'Z' or >= '0' and <= '9';
-
     private static bool IsAlphaTag(AssTag tag)
         => tag is AssTag.Alpha or AssTag.AlphaPrimary or AssTag.AlphaSecondary or AssTag.AlphaBorder or AssTag.AlphaShadow;
+
+    private static (int Start, int End) GetRangeOffsets(Range range, int length)
+        => (range.Start.GetOffset(length), range.End.GetOffset(length));
 }

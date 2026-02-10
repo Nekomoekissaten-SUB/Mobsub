@@ -56,7 +56,8 @@ Whole-document analysis can be reintroduced later if needed.
 ## Code structure (for maintenance)
 
 - `src/SubtitleParse.Language/AssOverrideTextAnalyzer.cs`: public analysis entry, per-line scan using `TextLineMap`.
-- `src/SubtitleParse.Language/AssOverrideAnalyzer.cs`: core parser/validator for `{...}` blocks and tag payloads (Span-based, no reflection).
+- `src/SubtitleParse.Language/AssOverrideAnalyzer.cs`: core validator for `{...}` blocks and tag payloads; reuses `Mobsub.SubtitleParse.AssText` parsing/scanning to avoid maintaining a second override-tag parser.
+- `src/SubtitleParse.Language/Utf8IndexMap.cs`: pooled UTF-8 byte-index ↔ UTF-16 char-index mapping for accurate editor ranges.
 - `src/SubtitleParse.Language/AssOverrideTextCompletionProvider.cs`: tag-name completion (filters `AssTagRegistry`).
 - `src/SubtitleParse.Language/AssOverrideTextAnalyzerContext.cs`: optional context for time/coordinate warnings (LayoutRes preferred).
 - `src/SubtitleParse.Language/TextLineMap.cs`: offset ↔ (line, column) mapping.
