@@ -10,7 +10,7 @@ using System.Runtime.Versioning;
 using System.Text;
 using Windows.Win32;
 using Windows.Win32.Graphics.Gdi;
-using Mobsub.SubtitleParse.AssUtils;
+using Mobsub.SubtitleParse.AssText;
 using Mobsub.SubtitleParse.AssTypes;
 
 if (!OperatingSystem.IsWindowsVersionAtLeast(5, 0)){ throw new PlatformNotSupportedException("This tool only runs on Windows."); }
