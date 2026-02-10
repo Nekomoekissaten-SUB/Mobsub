@@ -22,24 +22,29 @@ public static class AssClipQuadExtractor
             return false;
         }
 
-        byte[] lineUtf8 = Utf8.GetBytes(lineText);
+        using var read = AssEventTextRead.Parse(lineText, Utf8);
+        return TryGetQuadFromFirstOverrideBlock(read, quad, out error);
+    }
+
+    public static bool TryGetQuadFromFirstOverrideBlock(AssEventTextRead read, Span<Vector2> quad, out string error)
+    {
+        error = string.Empty;
+
+        if (quad.Length < 4)
+            throw new ArgumentException("quad span must have length >= 4.", nameof(quad));
+
+        ReadOnlySpan<byte> lineUtf8 = read.Utf8.Span;
         if (lineUtf8.Length == 0 || lineUtf8[0] != (byte)'{')
         {
             error = "no_first_override_block";
             return false;
         }
 
-        using var buffer = AssEventTextParser.ParseLinePooled(lineUtf8);
-        var segments = buffer.Span;
-
-        if (segments.Length == 0 || segments[0].SegmentKind != AssEventSegmentKind.TagBlock)
+        if (!read.TryGetFirstOverrideBlock(out _, out var tags))
         {
             error = "no_first_tag_block";
             return false;
         }
-
-        var seg = segments[0];
-        ReadOnlySpan<AssTagSpan> tags = seg.Tags.HasValue ? seg.Tags.Value.Span : default;
 
         for (int i = 0; i < tags.Length; i++)
         {

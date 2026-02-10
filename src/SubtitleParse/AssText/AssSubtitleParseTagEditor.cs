@@ -15,6 +15,12 @@ public static class AssSubtitleParseTagEditor
             insertTagsUtf8: moveTagUtf8,
             shouldRemove: static t => t is AssTag.Movement or AssTag.Position);
 
+    public static string InsertOrReplaceMoveInFirstOverrideBlock(AssEventTextRead read, ReadOnlySpan<byte> moveTagUtf8)
+        => InsertOrReplaceTagsInFirstOverrideBlock(
+            read,
+            insertTagsUtf8: moveTagUtf8,
+            shouldRemove: static t => t is AssTag.Movement or AssTag.Position);
+
     public static string InsertOrReplaceClipInFirstOverrideBlock(string lineText, string clipTag, ReadOnlySpan<byte> clipTagUtf8)
         => InsertOrReplaceTagsInFirstOverrideBlock(
             lineText,
@@ -22,10 +28,26 @@ public static class AssSubtitleParseTagEditor
             insertTagsUtf8: clipTagUtf8,
             shouldRemove: static t => t is AssTag.Clip or AssTag.InverseClip);
 
+    public static string InsertOrReplaceClipInFirstOverrideBlock(AssEventTextRead read, ReadOnlySpan<byte> clipTagUtf8)
+        => InsertOrReplaceTagsInFirstOverrideBlock(
+            read,
+            insertTagsUtf8: clipTagUtf8,
+            shouldRemove: static t => t is AssTag.Clip or AssTag.InverseClip);
+
     public static string InsertOrReplacePerspectiveTagsInFirstOverrideBlock(string lineText, string tagBlock, ReadOnlySpan<byte> tagBlockUtf8)
         => InsertOrReplaceTagsInFirstOverrideBlock(
             lineText,
             insertTags: tagBlock,
+            insertTagsUtf8: tagBlockUtf8,
+            shouldRemove: static t => t is AssTag.Alignment or AssTag.AlignmentLegacy
+                or AssTag.OriginRotation or AssTag.Position or AssTag.Movement
+                or AssTag.FontRotationX or AssTag.FontRotationY or AssTag.FontRotationZ or AssTag.FontRotationZSimple
+                or AssTag.FontScaleX or AssTag.FontScaleY or AssTag.FontScale
+                or AssTag.FontShiftX or AssTag.FontShiftY);
+
+    public static string InsertOrReplacePerspectiveTagsInFirstOverrideBlock(AssEventTextRead read, ReadOnlySpan<byte> tagBlockUtf8)
+        => InsertOrReplaceTagsInFirstOverrideBlock(
+            read,
             insertTagsUtf8: tagBlockUtf8,
             shouldRemove: static t => t is AssTag.Alignment or AssTag.AlignmentLegacy
                 or AssTag.OriginRotation or AssTag.Position or AssTag.Movement
@@ -41,10 +63,27 @@ public static class AssSubtitleParseTagEditor
             shouldRemove: static t => t is AssTag.FontScaleX or AssTag.FontScaleY or AssTag.FontScale
                 or AssTag.FontRotationX or AssTag.FontRotationY or AssTag.FontRotationZ or AssTag.FontRotationZSimple);
 
+    public static string InsertOrReplaceTsrLinearTagsInFirstOverrideBlock(AssEventTextRead read, ReadOnlySpan<byte> tagBlockUtf8)
+        => InsertOrReplaceTagsInFirstOverrideBlock(
+            read,
+            insertTagsUtf8: tagBlockUtf8,
+            shouldRemove: static t => t is AssTag.FontScaleX or AssTag.FontScaleY or AssTag.FontScale
+                or AssTag.FontRotationX or AssTag.FontRotationY or AssTag.FontRotationZ or AssTag.FontRotationZSimple);
+
     public static string InsertOrReplaceTsrLinearExtendedTagsInFirstOverrideBlock(string lineText, string tagBlock, ReadOnlySpan<byte> tagBlockUtf8)
         => InsertOrReplaceTagsInFirstOverrideBlock(
             lineText,
             insertTags: tagBlock,
+            insertTagsUtf8: tagBlockUtf8,
+            shouldRemove: static t => t is AssTag.FontScaleX or AssTag.FontScaleY or AssTag.FontScale
+                or AssTag.FontRotationX or AssTag.FontRotationY or AssTag.FontRotationZ or AssTag.FontRotationZSimple
+                or AssTag.Border or AssTag.BorderX or AssTag.BorderY
+                or AssTag.Shadow or AssTag.ShadowX or AssTag.ShadowY
+                or AssTag.BlurEdgesGaussian);
+
+    public static string InsertOrReplaceTsrLinearExtendedTagsInFirstOverrideBlock(AssEventTextRead read, ReadOnlySpan<byte> tagBlockUtf8)
+        => InsertOrReplaceTagsInFirstOverrideBlock(
+            read,
             insertTagsUtf8: tagBlockUtf8,
             shouldRemove: static t => t is AssTag.FontScaleX or AssTag.FontScaleY or AssTag.FontScale
                 or AssTag.FontRotationX or AssTag.FontRotationY or AssTag.FontRotationZ or AssTag.FontRotationZSimple
@@ -59,10 +98,25 @@ public static class AssSubtitleParseTagEditor
             insertTagsUtf8: tagBlockUtf8,
             shouldRemove: static t => t is AssTag.FontScaleX or AssTag.FontScaleY or AssTag.FontScale);
 
+    public static string InsertOrReplaceScaleTagsInFirstOverrideBlock(AssEventTextRead read, ReadOnlySpan<byte> tagBlockUtf8)
+        => InsertOrReplaceTagsInFirstOverrideBlock(
+            read,
+            insertTagsUtf8: tagBlockUtf8,
+            shouldRemove: static t => t is AssTag.FontScaleX or AssTag.FontScaleY or AssTag.FontScale);
+
     public static string InsertOrReplaceScaleExtendedTagsInFirstOverrideBlock(string lineText, string tagBlock, ReadOnlySpan<byte> tagBlockUtf8)
         => InsertOrReplaceTagsInFirstOverrideBlock(
             lineText,
             insertTags: tagBlock,
+            insertTagsUtf8: tagBlockUtf8,
+            shouldRemove: static t => t is AssTag.FontScaleX or AssTag.FontScaleY or AssTag.FontScale
+                or AssTag.Border or AssTag.BorderX or AssTag.BorderY
+                or AssTag.Shadow or AssTag.ShadowX or AssTag.ShadowY
+                or AssTag.BlurEdgesGaussian);
+
+    public static string InsertOrReplaceScaleExtendedTagsInFirstOverrideBlock(AssEventTextRead read, ReadOnlySpan<byte> tagBlockUtf8)
+        => InsertOrReplaceTagsInFirstOverrideBlock(
+            read,
             insertTagsUtf8: tagBlockUtf8,
             shouldRemove: static t => t is AssTag.FontScaleX or AssTag.FontScaleY or AssTag.FontScale
                 or AssTag.Border or AssTag.BorderX or AssTag.BorderY
@@ -76,6 +130,12 @@ public static class AssSubtitleParseTagEditor
             insertTagsUtf8: tagBlockUtf8,
             shouldRemove: static t => t is AssTag.FontRotationX or AssTag.FontRotationY or AssTag.FontRotationZ or AssTag.FontRotationZSimple);
 
+    public static string InsertOrReplaceRotationTagsInFirstOverrideBlock(AssEventTextRead read, ReadOnlySpan<byte> tagBlockUtf8)
+        => InsertOrReplaceTagsInFirstOverrideBlock(
+            read,
+            insertTagsUtf8: tagBlockUtf8,
+            shouldRemove: static t => t is AssTag.FontRotationX or AssTag.FontRotationY or AssTag.FontRotationZ or AssTag.FontRotationZSimple);
+
     public static string InsertOrReplaceOriginTagsInFirstOverrideBlock(string lineText, string tagBlock, ReadOnlySpan<byte> tagBlockUtf8)
         => InsertOrReplaceTagsInFirstOverrideBlock(
             lineText,
@@ -83,7 +143,13 @@ public static class AssSubtitleParseTagEditor
             insertTagsUtf8: tagBlockUtf8,
             shouldRemove: static t => t is AssTag.OriginRotation);
 
-    private static string InsertOrReplaceTagsInFirstOverrideBlock(
+    public static string InsertOrReplaceOriginTagsInFirstOverrideBlock(AssEventTextRead read, ReadOnlySpan<byte> tagBlockUtf8)
+        => InsertOrReplaceTagsInFirstOverrideBlock(
+            read,
+            insertTagsUtf8: tagBlockUtf8,
+            shouldRemove: static t => t is AssTag.OriginRotation);
+
+    public static string InsertOrReplaceTagsInFirstOverrideBlock(
         string lineText,
         string insertTags,
         ReadOnlySpan<byte> insertTagsUtf8,
@@ -92,46 +158,38 @@ public static class AssSubtitleParseTagEditor
         if (string.IsNullOrEmpty(lineText))
             return lineText;
 
-        byte[] lineUtf8 = Utf8.GetBytes(lineText);
-
-        // Match the legacy behavior: only treat it as a "first override block"
-        // if the line starts with '{'.
-        if (lineUtf8.Length == 0 || lineUtf8[0] != (byte)'{')
+        // Fast path: the legacy behavior prefixes a new first override block
+        // only when the line does not start with '{'.
+        if (lineText[0] != '{')
             return "{" + insertTags + "}" + lineText;
 
-        using var buffer = AssEventTextParser.ParseLinePooled(lineUtf8);
-        var segments = buffer.Span;
+        using var read = AssEventTextRead.Parse(lineText, Utf8);
+        return InsertOrReplaceTagsInFirstOverrideBlock(read, insertTagsUtf8, shouldRemove);
+    }
 
-        if (segments.Length == 0 || segments[0].SegmentKind != AssEventSegmentKind.TagBlock)
-            return "{" + insertTags + "}" + lineText;
+    public static string InsertOrReplaceTagsInFirstOverrideBlock(
+        AssEventTextRead read,
+        ReadOnlySpan<byte> insertTagsUtf8,
+        Func<AssTag, bool> shouldRemove)
+    {
+        if (insertTagsUtf8.IsEmpty)
+            return Utf8.GetString(read.Utf8.Span);
 
-        var seg = segments[0];
-        var (segStart, segEnd) = GetRangeOffsets(seg.LineRange, lineUtf8.Length);
+        ReadOnlySpan<byte> lineUtf8 = read.Utf8.Span;
+
+        if (!read.TryGetFirstOverrideBlock(out var firstBlockRange, out var tags))
+            return PrefixNewOverrideBlock(lineUtf8, insertTagsUtf8);
+
+        var (segStart, segEnd) = GetRangeOffsets(firstBlockRange, lineUtf8.Length);
 
         if (segStart != 0 || segEnd <= 1 || segEnd > lineUtf8.Length)
-            return "{" + insertTags + "}" + lineText;
+            return PrefixNewOverrideBlock(lineUtf8, insertTagsUtf8);
 
         int contentStart = segStart + 1;
         int contentEnd = segEnd - 1; // before '}'
 
         if (contentEnd < contentStart)
-            return "{" + insertTags + "}" + lineText;
-
-        ReadOnlySpan<AssTagSpan> tags = seg.Tags.HasValue ? seg.Tags.Value.Span : default;
-        var intervals = new List<(int Start, int End)>(capacity: 8);
-
-        for (int i = 0; i < tags.Length; i++)
-        {
-            if (!shouldRemove(tags[i].Tag))
-                continue;
-
-            var (ts, te) = GetRangeOffsets(tags[i].LineRange, lineUtf8.Length);
-            if (ts >= contentStart && te <= contentEnd && te > ts)
-                intervals.Add((ts, te));
-        }
-
-        intervals.Sort((a, b) => a.Start.CompareTo(b.Start));
-        MergeIntervalsInPlace(intervals);
+            return PrefixNewOverrideBlock(lineUtf8, insertTagsUtf8);
 
         var writer = new ArrayBufferWriter<byte>(lineUtf8.Length + insertTagsUtf8.Length + 16);
 
@@ -140,22 +198,29 @@ public static class AssSubtitleParseTagEditor
         writer.Write(insertTagsUtf8);
 
         int pos = contentStart;
-        for (int i = 0; i < intervals.Count; i++)
+        for (int i = 0; i < tags.Length; i++)
         {
-            var it = intervals[i];
-            if (it.Start > pos)
-                writer.Write(lineUtf8.AsSpan(pos, it.Start - pos));
-            pos = Math.Max(pos, it.End);
+            ref readonly var t = ref tags[i];
+            if (!shouldRemove(t.Tag))
+                continue;
+
+            var (ts, te) = GetRangeOffsets(t.LineRange, lineUtf8.Length);
+            if (ts < contentStart || te > contentEnd || te <= ts)
+                continue;
+
+            if (ts > pos)
+                writer.Write(lineUtf8.Slice(pos, ts - pos));
+            pos = Math.Max(pos, te);
         }
 
         if (contentEnd > pos)
-            writer.Write(lineUtf8.AsSpan(pos, contentEnd - pos));
+            writer.Write(lineUtf8.Slice(pos, contentEnd - pos));
 
         writer.Write(stackalloc byte[1] { (byte)'}' });
 
         // Suffix after original block
         if (segEnd < lineUtf8.Length)
-            writer.Write(lineUtf8.AsSpan(segEnd));
+            writer.Write(lineUtf8.Slice(segEnd));
 
         return Utf8.GetString(writer.WrittenSpan);
     }
@@ -169,22 +234,27 @@ public static class AssSubtitleParseTagEditor
         if (string.IsNullOrEmpty(lineText))
             return false;
 
-        lineUtf8 = Utf8.GetBytes(lineText);
-        if (lineUtf8.Length == 0 || lineUtf8[0] != (byte)'{')
+        using var read = AssEventTextRead.Parse(lineText, Utf8);
+        if (!TryGetPolygonMode(read, out p, out firstTagBlockEndByteIndex))
             return false;
 
-        using var buffer = AssEventTextParser.ParseLinePooled(lineUtf8);
-        var segments = buffer.Span;
+        lineUtf8 = read.Utf8.ToArray();
+        return true;
+    }
 
-        if (segments.Length == 0 || segments[0].SegmentKind != AssEventSegmentKind.TagBlock)
+    public static bool TryGetPolygonMode(AssEventTextRead read, out int p, out int firstTagBlockEndByteIndex)
+    {
+        p = 0;
+        firstTagBlockEndByteIndex = 0;
+
+        ReadOnlySpan<byte> lineUtf8 = read.Utf8.Span;
+        if (!read.TryGetFirstOverrideBlock(out var firstBlockRange, out var tags))
             return false;
 
-        var seg = segments[0];
-        var (start, end) = GetRangeOffsets(seg.LineRange, lineUtf8.Length);
+        var (start, end) = GetRangeOffsets(firstBlockRange, lineUtf8.Length);
         if (start != 0 || end <= 1 || end > lineUtf8.Length)
             return false;
 
-        ReadOnlySpan<AssTagSpan> tags = seg.Tags.HasValue ? seg.Tags.Value.Span : default;
         for (int i = 0; i < tags.Length; i++)
         {
             if (tags[i].Tag != AssTag.Polygon)
@@ -200,33 +270,17 @@ public static class AssSubtitleParseTagEditor
         return false;
     }
 
+    private static string PrefixNewOverrideBlock(ReadOnlySpan<byte> lineUtf8, ReadOnlySpan<byte> insertTagsUtf8)
+    {
+        var writer = new ArrayBufferWriter<byte>(lineUtf8.Length + insertTagsUtf8.Length + 2);
+        writer.Write(stackalloc byte[1] { (byte)'{' });
+        writer.Write(insertTagsUtf8);
+        writer.Write(stackalloc byte[1] { (byte)'}' });
+        writer.Write(lineUtf8);
+        return Utf8.GetString(writer.WrittenSpan);
+    }
+
     private static (int Start, int End) GetRangeOffsets(Range range, int length)
         => (range.Start.GetOffset(length), range.End.GetOffset(length));
 
-    private static void MergeIntervalsInPlace(List<(int Start, int End)> intervals)
-    {
-        if (intervals.Count <= 1)
-            return;
-
-        int write = 0;
-        for (int read = 1; read < intervals.Count; read++)
-        {
-            var current = intervals[write];
-            var next = intervals[read];
-
-            if (next.Start <= current.End)
-            {
-                intervals[write] = (current.Start, Math.Max(current.End, next.End));
-                continue;
-            }
-
-            write++;
-            if (write != read)
-                intervals[write] = next;
-        }
-
-        int newCount = write + 1;
-        if (newCount < intervals.Count)
-            intervals.RemoveRange(newCount, intervals.Count - newCount);
-    }
 }

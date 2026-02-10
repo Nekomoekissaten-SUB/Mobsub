@@ -90,7 +90,7 @@ public sealed class AssEventTextRead : IDisposable
             return false;
 
         ref readonly var seg = ref segs[0];
-        if (seg.SegmentKind != AssEventSegmentKind.TagBlock || seg.Tags == null)
+        if (seg.SegmentKind != AssEventSegmentKind.TagBlock)
             return false;
 
         var (start, _) = GetRangeOffsets(seg.LineRange, Utf8.Length);
@@ -98,7 +98,7 @@ public sealed class AssEventTextRead : IDisposable
             return false;
 
         lineRange = seg.LineRange;
-        tags = seg.Tags.Value.Span;
+        tags = seg.Tags.HasValue ? seg.Tags.Value.Span : default;
         return true;
     }
 

@@ -1,9 +1,7 @@
 ﻿﻿using Mobsub.SubtitleParse.AssTypes;
 using System.Buffers;
-using System.Buffers.Text;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Text;
 using Microsoft.Extensions.Logging;
 
 namespace Mobsub.SubtitleParse.AssText;
@@ -210,110 +208,14 @@ public static class AssEventTextParser
         AssTagSpan[] buffer = pool.Rent(8);
         int count = 0;
 
-        int i = 0;
-        while (i < block.Length)
+        var scanner = new AssTagBlockScanner(block, absoluteStart, lineMemory);
+        while (scanner.MoveNext(out var token))
         {
-            int tagStartOffset = block[i..].IndexOf((byte)'\\');
-            if (tagStartOffset == -1)
-            {
-                break;
-            }
-
-            i += tagStartOffset;
-            int tagStart = i;
-
-            i++; // skip '\\'
-            if (i >= block.Length)
-            {
-                break;
-            }
-
-            int nameStart = i;
-            if (!IsAsciiLetterOrDigit(block[nameStart]))
-            {
-                i = nameStart + 1;
+            if (!token.IsKnown)
                 continue;
-            }
-            while (i < block.Length && IsAsciiLetterOrDigit(block[i])) i++;
-            int nameLen = i - nameStart;
-            if (nameLen == 0)
-            {
-                continue;
-            }
 
-            var paramSearchSpan = block[i..];
-            int nextBackslash = paramSearchSpan.IndexOf((byte)'\\');
-
-            int paramEnd;
-            if (nextBackslash == -1)
-            {
-                paramEnd = block.Length;
-            }
-            else
-            {
-                paramEnd = i + nextBackslash;
-            }
-
-            if (AssTagRegistry.TryMatch(block.Slice(nameStart, nameLen), out var tagEnum, out var desc, out var matchedLength))
-            {
-                ReadOnlySpan<byte> paramBytes;
-                int actualParamStart = nameStart + matchedLength;
-                int paramStart = actualParamStart;
-                int paramLength;
-                ReadOnlyMemory<byte> paramMemory = default;
-
-                int parenStart = actualParamStart;
-                if ((desc.TagType & AssTagKind.ShouldBeFunction) != 0)
-                {
-                    while (parenStart < block.Length && block[parenStart] == (byte)' ') parenStart++;
-                }
-
-                if (((desc.TagType & AssTagKind.ShouldBeFunction) != 0) && parenStart < block.Length && block[parenStart] == (byte)'(')
-                {
-                    int j = parenStart + 1;
-                    int depth = 1;
-                    var funcSearchSpan = block[j..];
-
-                    while (!funcSearchSpan.IsEmpty && depth > 0)
-                    {
-                        int braceIndex = funcSearchSpan.IndexOfAny((byte)'(', (byte)')');
-                        if (braceIndex == -1)
-                        {
-                            j = block.Length;
-                            break;
-                        }
-
-                        j = (int)(block.Length - funcSearchSpan.Length) + braceIndex;
-
-                        if (block[j] == (byte)'(') depth++;
-                        else if (block[j] == (byte)')') depth--;
-
-                        j++;
-                        funcSearchSpan = block[j..];
-                    }
-                    paramLength = j - actualParamStart;
-                    paramBytes = block.Slice(paramStart, paramLength);
-                    i = j;
-                }
-                else
-                {
-                    paramLength = paramEnd - actualParamStart;
-                    paramBytes = block.Slice(paramStart, paramLength);
-                    i = paramEnd;
-                }
-
-                if (!lineMemory.IsEmpty)
-                {
-                    paramMemory = lineMemory.Slice(absoluteStart + paramStart, paramLength);
-                }
-
-                var value = ParseValue(tagEnum, desc, paramBytes, paramMemory);
-                AddTag(ref buffer, ref count, new AssTagSpan(tagEnum, new Range(absoluteStart + tagStart, absoluteStart + i), value));
-            }
-            else
-            {
-                i = paramEnd;
-            }
+            var value = ParseValue(token.Tag, token.Desc, token.Param, token.ParamMemory);
+            AddTag(ref buffer, ref count, new AssTagSpan(token.Tag, new Range(token.TagStart, token.TagEnd), value));
         }
 
         if (count == 0)
@@ -357,10 +259,6 @@ public static class AssEventTextParser
     {
         Logger?.LogWarning(message);
     }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static bool IsAsciiLetterOrDigit(byte b) => _asciiLetterOrDigit.Contains(b);
-    private static readonly SearchValues<byte> _asciiLetterOrDigit =  SearchValues.Create(Encoding.ASCII.GetBytes("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"));
 
     private static void AddTag(ref AssTagSpan[] buffer, ref int count, AssTagSpan tag)
     {

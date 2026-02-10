@@ -9,6 +9,8 @@ namespace Mobsub.SubtitleParse.AssText;
 
 public sealed class AssTokenizedText
 {
+    private const char TokenDelimiter = '\u0003';
+
     public string Text { get; }
     public IReadOnlyList<AssTransform> Transforms { get; }
     public int LineDurationMs { get; }
@@ -25,10 +27,7 @@ public sealed class AssTokenizedText
         if (Transforms.Count == 0)
             return Text;
 
-        string s = Text;
-        for (int i = 0; i < Transforms.Count; i++)
-            s = s.Replace(Transforms[i].Token, "\\t" + Transforms[i].RawParenString, StringComparison.Ordinal);
-        return s;
+        return ReplaceTokens(static tr => "\\t" + tr.RawParenString);
     }
 
     public string DetokenizeShifted(int shiftMs)
@@ -36,14 +35,7 @@ public sealed class AssTokenizedText
         if (Transforms.Count == 0)
             return Text;
 
-        string s = Text;
-        for (int i = 0; i < Transforms.Count; i++)
-        {
-            var tr = Transforms[i];
-            string rep = tr.ToShiftedString(shiftMs, LineDurationMs);
-            s = s.Replace(tr.Token, rep, StringComparison.Ordinal);
-        }
-        return s;
+        return ReplaceTokens(tr => tr.ToShiftedString(shiftMs, LineDurationMs));
     }
 
     public string InterpolateAt(int shiftMs, int timeMs)
@@ -51,16 +43,110 @@ public sealed class AssTokenizedText
         if (Transforms.Count == 0)
             return Text;
 
-        string s = Text;
-        for (int i = 0; i < Transforms.Count; i++)
+        string text = Text;
+        var sb = new StringBuilder(text.Length + Transforms.Count * 8);
+
+        int pos = 0;
+        while (pos < text.Length)
         {
-            var tr = Transforms[i];
-            int idx = s.IndexOf(tr.Token, StringComparison.Ordinal);
-            string before = idx > 0 ? s.Substring(0, idx) : string.Empty;
-            string rep = tr.InterpolateToTags(before, shiftMs, LineDurationMs, timeMs);
-            s = s.Replace(tr.Token, rep, StringComparison.Ordinal);
+            int d = text.IndexOf(TokenDelimiter, pos);
+            if (d < 0)
+            {
+                sb.Append(text.AsSpan(pos));
+                break;
+            }
+
+            if (d > pos)
+                sb.Append(text.AsSpan(pos, d - pos));
+
+            if (TryParseTokenIndex(text, d, out int tokenIndex, out int next) && (uint)(tokenIndex - 1) < (uint)Transforms.Count)
+            {
+                var tr = Transforms[tokenIndex - 1];
+                string before = sb.Length == 0 ? string.Empty : sb.ToString();
+                string rep = tr.InterpolateToTags(before, shiftMs, LineDurationMs, timeMs);
+                sb.Append(rep);
+                pos = next;
+                continue;
+            }
+
+            sb.Append(TokenDelimiter);
+            pos = d + 1;
         }
-        return s;
+
+        return sb.ToString();
+    }
+
+    private string ReplaceTokens(Func<AssTransform, string> replacement)
+    {
+        string text = Text;
+        var sb = new StringBuilder(text.Length + Transforms.Count * 8);
+
+        int pos = 0;
+        while (pos < text.Length)
+        {
+            int d = text.IndexOf(TokenDelimiter, pos);
+            if (d < 0)
+            {
+                sb.Append(text.AsSpan(pos));
+                break;
+            }
+
+            if (d > pos)
+                sb.Append(text.AsSpan(pos, d - pos));
+
+            if (TryParseTokenIndex(text, d, out int tokenIndex, out int next) && (uint)(tokenIndex - 1) < (uint)Transforms.Count)
+            {
+                sb.Append(replacement(Transforms[tokenIndex - 1]));
+                pos = next;
+                continue;
+            }
+
+            sb.Append(TokenDelimiter);
+            pos = d + 1;
+        }
+
+        return sb.ToString();
+    }
+
+    private static bool TryParseTokenIndex(string text, int start, out int tokenIndex, out int nextIndex)
+    {
+        tokenIndex = 0;
+        nextIndex = start;
+
+        if ((uint)start >= (uint)text.Length || text[start] != TokenDelimiter)
+            return false;
+
+        int i = start + 1;
+        if ((uint)i >= (uint)text.Length)
+            return false;
+
+        int v = 0;
+        int digits = 0;
+        while ((uint)i < (uint)text.Length)
+        {
+            char c = text[i];
+            int digit = c - '0';
+            if ((uint)digit > 9)
+                break;
+
+            // Prevent overflow on pathological inputs; treat as non-token.
+            if (v > (int.MaxValue - digit) / 10)
+                return false;
+
+            v = (v * 10) + digit;
+            digits++;
+            i++;
+        }
+
+        if (digits == 0)
+            return false;
+
+        if ((uint)i >= (uint)text.Length || text[i] != TokenDelimiter)
+            return false;
+
+        tokenIndex = v;
+        nextIndex = i + 1;
+        return true;
     }
 }
 
