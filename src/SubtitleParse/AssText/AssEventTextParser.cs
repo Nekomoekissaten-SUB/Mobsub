@@ -295,7 +295,7 @@ public static class AssEventTextParser
         var trimmedSpan = param.Slice(start, length);
         var trimmedMemory = paramMemory.IsEmpty ? default : paramMemory.Slice(start, length);
 
-        if (IsAlphaTag(tag) && AssColor32.TryParseAlphaByte(trimmedSpan, out var alpha, out var invalidAlpha))
+        if (AssTagRegistry.IsAlphaTag(tag) && AssColor32.TryParseAlphaByte(trimmedSpan, out var alpha, out var invalidAlpha))
         {
             if (invalidAlpha && Logger != null)
             {
@@ -304,7 +304,7 @@ public static class AssEventTextParser
             return AssTagValue.FromByte(alpha);
         }
 
-        if (IsFunctionTag(tag) && TryParseFunctionTag(tag, trimmedSpan, trimmedMemory, out var funcValue))
+        if (AssTagRegistry.TryGetFunctionKind(tag, out var functionKind) && TryParseFunctionTag(functionKind, trimmedSpan, trimmedMemory, out var funcValue))
             return AssTagValue.FromFunction(funcValue);
 
         if (desc.ValueType == typeof(int) && Utils.TryParseIntLoose(trimmedSpan, out int iv, out var invalidInt))
@@ -377,26 +377,26 @@ public static class AssEventTextParser
         return AssTagValue.Empty;
     }
 
-    private static bool TryParseFunctionTag(AssTag tag, ReadOnlySpan<byte> param, ReadOnlyMemory<byte> paramMemory, out AssTagFunctionValue value)
+    private static bool TryParseFunctionTag(AssTagFunctionKind functionKind, ReadOnlySpan<byte> param, ReadOnlyMemory<byte> paramMemory, out AssTagFunctionValue value)
     {
         value = default;
-        switch (tag)
+        switch (functionKind)
         {
-            case AssTag.Position:
+            case AssTagFunctionKind.Pos:
                 if (AssFunctionTagParsers.TryParsePos(param, out var x, out var y))
                 {
                     value = new AssTagFunctionValue { Kind = AssTagFunctionKind.Pos, X1 = x, Y1 = y };
                     return true;
                 }
                 return false;
-            case AssTag.OriginRotation:
+            case AssTagFunctionKind.Org:
                 if (AssFunctionTagParsers.TryParseOrg(param, out var ox, out var oy))
                 {
                     value = new AssTagFunctionValue { Kind = AssTagFunctionKind.Org, X1 = ox, Y1 = oy };
                     return true;
                 }
                 return false;
-            case AssTag.Movement:
+            case AssTagFunctionKind.Move:
                 if (AssFunctionTagParsers.TryParseMove(param, out var x1, out var y1, out var x2, out var y2, out var t1, out var t2, out var hasTimes))
                 {
                     value = new AssTagFunctionValue
@@ -413,7 +413,7 @@ public static class AssEventTextParser
                     return true;
                 }
                 return false;
-            case AssTag.Fade:
+            case AssTagFunctionKind.Fade:
                 if (AssFunctionTagParsers.TryParseFade(param, out var a1, out var a2, out var a3, out var ft1, out var ft2, out var ft3, out var ft4))
                 {
                     value = new AssTagFunctionValue
@@ -430,15 +430,15 @@ public static class AssEventTextParser
                     return true;
                 }
                 return false;
-            case AssTag.Fad:
+            case AssTagFunctionKind.Fad:
                 if (AssFunctionTagParsers.TryParseFad(param, out var fadT1, out var fadT2))
                 {
                     value = new AssTagFunctionValue { Kind = AssTagFunctionKind.Fad, T1 = fadT1, T2 = fadT2 };
                     return true;
                 }
                 return false;
-            case AssTag.Clip:
-            case AssTag.InverseClip:
+            case AssTagFunctionKind.ClipRect:
+            case AssTagFunctionKind.ClipDrawing:
                 if (AssFunctionTagParsers.TryParseClip(param, out var clipKind, out var cx1, out var cy1, out var cx2, out var cy2, out var scale, out var drawing))
                 {
                     if (clipKind == AssFunctionTagParsers.AssClipKind.Rect)
@@ -464,7 +464,7 @@ public static class AssEventTextParser
                     return true;
                 }
                 return false;
-            case AssTag.Transform:
+            case AssTagFunctionKind.Transform:
                 if (AssFunctionTagParsers.TryParseTransform(param, out var tt1, out var tt2, out var hasTimesT, out var accel, out var hasAccel, out var tagPayload))
                 {
                     value = new AssTagFunctionValue
@@ -484,15 +484,6 @@ public static class AssEventTextParser
 
         return false;
     }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static bool IsFunctionTag(AssTag tag)
-        => tag is AssTag.Position or AssTag.OriginRotation or AssTag.Movement or AssTag.Fade or AssTag.Fad
-            or AssTag.Clip or AssTag.InverseClip or AssTag.Transform;
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static bool IsAlphaTag(AssTag tag)
-        => tag is AssTag.Alpha or AssTag.AlphaPrimary or AssTag.AlphaSecondary or AssTag.AlphaBorder or AssTag.AlphaShadow;
 
     private static ReadOnlyMemory<byte> GetSliceMemory(ReadOnlySpan<byte> fullSpan, ReadOnlyMemory<byte> fullMemory, ReadOnlySpan<byte> sliceSpan)
     {

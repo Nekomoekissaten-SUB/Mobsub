@@ -72,11 +72,9 @@ internal static class AssOverrideAnalyzer
             int close = textField.Slice(open + 1).IndexOf('}');
             if (close < 0)
             {
-                diagnostics.Add(new AssDiagnostic(
-                    new AssRange(new AssPosition(line, baseCharInLine + open), new AssPosition(line, baseCharInLine + textField.Length)),
-                    AssSeverity.Warning,
+                AddDiagnostic(diagnostics, line, baseCharInLine + open, baseCharInLine + textField.Length, AssSeverity.Warning,
                     "Unclosed override block ('{...}').",
-                    Code: "ass.override.unclosed"));
+                    "ass.override.unclosed");
                 break;
             }
 
@@ -103,11 +101,9 @@ internal static class AssOverrideAnalyzer
 
             if (!token.IsKnown)
             {
-                diagnostics.Add(new AssDiagnostic(
-                    new AssRange(new AssPosition(line, slashChar), new AssPosition(line, nameEndChar)),
-                    AssSeverity.Error,
+                AddDiagnostic(diagnostics, line, slashChar, nameEndChar, AssSeverity.Error,
                     $"Unknown override tag: \\{Encoding.ASCII.GetString(token.NameAndMaybePayload)}",
-                    Code: "ass.override.unknownTag"));
+                    "ass.override.unknownTag");
                 continue;
             }
 
@@ -124,11 +120,9 @@ internal static class AssOverrideAnalyzer
                     }
                 }
 
-                diagnostics.Add(new AssDiagnostic(
-                    new AssRange(new AssPosition(line, slashChar), new AssPosition(line, nameEndChar)),
-                    AssSeverity.Warning,
+                AddDiagnostic(diagnostics, line, slashChar, nameEndChar, AssSeverity.Warning,
                     $"Override tag \\\\{Encoding.ASCII.GetString(token.NameAndMaybePayload)} is obsolete; use \\\\{Encoding.ASCII.GetString(obsoleteReplacement)} instead.{mapping}",
-                    Code: "ass.override.obsoleteTag"));
+                    "ass.override.obsoleteTag");
             }
 
             ValidateTagValueBytes(
@@ -186,26 +180,22 @@ internal static class AssOverrideAnalyzer
                 depth))
             {
                 var sig = AssTagRegistry.GetFunctionSignature(functionKind);
-                diagnostics.Add(new AssDiagnostic(
-                    new AssRange(new AssPosition(line, paramStartChar), new AssPosition(line, paramEndChar)),
-                    AssSeverity.Warning,
+                AddDiagnostic(diagnostics, line, paramStartChar, paramEndChar, AssSeverity.Warning,
                     sig == null
                         ? $"Invalid function payload for \\{Encoding.ASCII.GetString(token.Desc.Name.Span)}"
                         : $"Invalid function payload for \\{Encoding.ASCII.GetString(token.Desc.Name.Span)} (expected {sig})",
-                    Code: "ass.override.functionInvalid"));
+                    "ass.override.functionInvalid");
             }
             return;
         }
 
-        if (IsAlphaTag(token.Tag))
+        if (AssTagRegistry.IsAlphaTag(token.Tag))
         {
             if (!AssColor32.TryParseAlphaByte(trimmed, out _, out var invalidAlpha) || invalidAlpha)
             {
-                diagnostics.Add(new AssDiagnostic(
-                    new AssRange(new AssPosition(line, paramStartChar), new AssPosition(line, paramEndChar)),
-                    AssSeverity.Warning,
+                AddDiagnostic(diagnostics, line, paramStartChar, paramEndChar, AssSeverity.Warning,
                     $"Invalid alpha value for \\{Encoding.ASCII.GetString(token.Desc.Name.Span)}",
-                    Code: "ass.override.alphaInvalid"));
+                    "ass.override.alphaInvalid");
             }
             return;
         }
@@ -214,19 +204,15 @@ internal static class AssOverrideAnalyzer
         {
             if (!AssColor32.TryParseTagColor(trimmed, out var color, out var ignoredHighByte, out var invalidColor) || invalidColor)
             {
-                diagnostics.Add(new AssDiagnostic(
-                    new AssRange(new AssPosition(line, paramStartChar), new AssPosition(line, paramEndChar)),
-                    AssSeverity.Warning,
+                AddDiagnostic(diagnostics, line, paramStartChar, paramEndChar, AssSeverity.Warning,
                     $"Invalid color value for \\{Encoding.ASCII.GetString(token.Desc.Name.Span)}",
-                    Code: "ass.override.colorInvalid"));
+                    "ass.override.colorInvalid");
             }
             else if (TryGetColorNormalizationSuggestion(trimmed, color, ignoredHighByte, out var normalized))
             {
-                diagnostics.Add(new AssDiagnostic(
-                    new AssRange(new AssPosition(line, paramStartChar), new AssPosition(line, paramEndChar)),
-                    AssSeverity.Info,
+                AddDiagnostic(diagnostics, line, paramStartChar, paramEndChar, AssSeverity.Info,
                     $"Normalize to \\{Encoding.ASCII.GetString(token.Desc.Name.Span)}{normalized}",
-                    Code: "ass.override.colorNormalize"));
+                    "ass.override.colorNormalize");
             }
             return;
         }
@@ -235,37 +221,29 @@ internal static class AssOverrideAnalyzer
         {
             if (!Utils.TryParseIntLoose(trimmed, out var v, out var invalid))
             {
-                diagnostics.Add(new AssDiagnostic(
-                    new AssRange(new AssPosition(line, paramStartChar), new AssPosition(line, paramEndChar)),
-                    AssSeverity.Warning,
+                AddDiagnostic(diagnostics, line, paramStartChar, paramEndChar, AssSeverity.Warning,
                     $"Invalid integer value for \\{Encoding.ASCII.GetString(token.Desc.Name.Span)}",
-                    Code: "ass.override.intInvalid"));
+                    "ass.override.intInvalid");
                 return;
             }
             if (invalid)
             {
-                diagnostics.Add(new AssDiagnostic(
-                    new AssRange(new AssPosition(line, paramStartChar), new AssPosition(line, paramEndChar)),
-                    AssSeverity.Info,
+                AddDiagnostic(diagnostics, line, paramStartChar, paramEndChar, AssSeverity.Info,
                     $"Non-standard integer value for \\{Encoding.ASCII.GetString(token.Desc.Name.Span)} (treated as 0).",
-                    Code: "ass.override.intLoose"));
+                    "ass.override.intLoose");
             }
 
             if (token.Tag is AssTag.Alignment or AssTag.AlignmentLegacy && v is < 1 or > 9)
             {
-                diagnostics.Add(new AssDiagnostic(
-                    new AssRange(new AssPosition(line, paramStartChar), new AssPosition(line, paramEndChar)),
-                    AssSeverity.Warning,
+                AddDiagnostic(diagnostics, line, paramStartChar, paramEndChar, AssSeverity.Warning,
                     "Alignment should be in [1..9].",
-                    Code: "ass.override.alignRange"));
+                    "ass.override.alignRange");
             }
             if (token.Tag is AssTag.WrapStyle && v is < 0 or > 3)
             {
-                diagnostics.Add(new AssDiagnostic(
-                    new AssRange(new AssPosition(line, paramStartChar), new AssPosition(line, paramEndChar)),
-                    AssSeverity.Warning,
+                AddDiagnostic(diagnostics, line, paramStartChar, paramEndChar, AssSeverity.Warning,
                     "WrapStyle (\\q) should be in [0..3].",
-                    Code: "ass.override.wrapStyleRange"));
+                    "ass.override.wrapStyleRange");
             }
             return;
         }
@@ -274,20 +252,16 @@ internal static class AssOverrideAnalyzer
         {
             if (!Utils.TryParseDoubleLoose(trimmed, out _, out var invalid))
             {
-                diagnostics.Add(new AssDiagnostic(
-                    new AssRange(new AssPosition(line, paramStartChar), new AssPosition(line, paramEndChar)),
-                    AssSeverity.Warning,
+                AddDiagnostic(diagnostics, line, paramStartChar, paramEndChar, AssSeverity.Warning,
                     $"Invalid number value for \\{Encoding.ASCII.GetString(token.Desc.Name.Span)}",
-                    Code: "ass.override.doubleInvalid"));
+                    "ass.override.doubleInvalid");
                 return;
             }
             if (invalid)
             {
-                diagnostics.Add(new AssDiagnostic(
-                    new AssRange(new AssPosition(line, paramStartChar), new AssPosition(line, paramEndChar)),
-                    AssSeverity.Info,
+                AddDiagnostic(diagnostics, line, paramStartChar, paramEndChar, AssSeverity.Info,
                     $"Non-standard numeric value for \\{Encoding.ASCII.GetString(token.Desc.Name.Span)} (treated as 0).",
-                    Code: "ass.override.doubleLoose"));
+                    "ass.override.doubleLoose");
             }
             return;
         }
@@ -400,6 +374,22 @@ internal static class AssOverrideAnalyzer
         return true;
     }
 
+    private static void AddDiagnostic(
+        List<AssDiagnostic> diagnostics,
+        int line,
+        int startChar,
+        int endChar,
+        AssSeverity severity,
+        string message,
+        string code)
+    {
+        diagnostics.Add(new AssDiagnostic(
+            new AssRange(new AssPosition(line, startChar), new AssPosition(line, endChar)),
+            severity,
+            message,
+            Code: code));
+    }
+
     private static void WarnCoordinateOutOfRange(
         int line,
         int paramBaseChar,
@@ -417,11 +407,9 @@ internal static class AssOverrideAnalyzer
         if (!outOfRange)
             return;
 
-        diagnostics.Add(new AssDiagnostic(
-            new AssRange(new AssPosition(line, paramBaseChar), new AssPosition(line, paramBaseChar + paramLength)),
-            AssSeverity.Warning,
+        AddDiagnostic(diagnostics, line, paramBaseChar, paramBaseChar + paramLength, AssSeverity.Warning,
             $"Coordinate is outside LayoutRes/PlayRes bounds: ({x:0.###}, {y:0.###}) vs [{rx}x{ry}]",
-            Code: "ass.override.coordOutOfRange"));
+            "ass.override.coordOutOfRange");
     }
 
     private static void WarnRectOutOfRange(
@@ -447,11 +435,9 @@ internal static class AssOverrideAnalyzer
         if (!outOfRange)
             return;
 
-        diagnostics.Add(new AssDiagnostic(
-            new AssRange(new AssPosition(line, paramBaseChar), new AssPosition(line, paramBaseChar + paramLength)),
-            AssSeverity.Warning,
+        AddDiagnostic(diagnostics, line, paramBaseChar, paramBaseChar + paramLength, AssSeverity.Warning,
             $"Clip rect is outside LayoutRes/PlayRes bounds: ({x1},{y1},{x2},{y2}) vs [{rx}x{ry}]",
-            Code: "ass.override.coordOutOfRange"));
+            "ass.override.coordOutOfRange");
     }
 
     private static void WarnRelativeTimeRange(
@@ -465,11 +451,9 @@ internal static class AssOverrideAnalyzer
     {
         if (t1 < 0 || t2 < 0 || t2 < t1)
         {
-            diagnostics.Add(new AssDiagnostic(
-                new AssRange(new AssPosition(line, paramBaseChar), new AssPosition(line, paramBaseChar + paramLength)),
-                AssSeverity.Warning,
+            AddDiagnostic(diagnostics, line, paramBaseChar, paramBaseChar + paramLength, AssSeverity.Warning,
                 $"Relative time range is invalid: [{t1}, {t2}] ms",
-                Code: "ass.override.timeOutOfRange"));
+                "ass.override.timeOutOfRange");
             return;
         }
 
@@ -478,11 +462,9 @@ internal static class AssOverrideAnalyzer
 
         if (t1 > duration || t2 > duration)
         {
-            diagnostics.Add(new AssDiagnostic(
-                new AssRange(new AssPosition(line, paramBaseChar), new AssPosition(line, paramBaseChar + paramLength)),
-                AssSeverity.Warning,
+            AddDiagnostic(diagnostics, line, paramBaseChar, paramBaseChar + paramLength, AssSeverity.Warning,
                 $"Relative time range exceeds event duration: [{t1}, {t2}] ms vs {duration} ms",
-                Code: "ass.override.timeOutOfRange"));
+                "ass.override.timeOutOfRange");
         }
     }
 
@@ -497,11 +479,9 @@ internal static class AssOverrideAnalyzer
     {
         if (t < 0)
         {
-            diagnostics.Add(new AssDiagnostic(
-                new AssRange(new AssPosition(line, paramBaseChar), new AssPosition(line, paramBaseChar + paramLength)),
-                AssSeverity.Warning,
+            AddDiagnostic(diagnostics, line, paramBaseChar, paramBaseChar + paramLength, AssSeverity.Warning,
                 $"Relative time {name} is negative: {t} ms",
-                Code: "ass.override.timeOutOfRange"));
+                "ass.override.timeOutOfRange");
             return;
         }
 
@@ -510,11 +490,9 @@ internal static class AssOverrideAnalyzer
 
         if (t > duration)
         {
-            diagnostics.Add(new AssDiagnostic(
-                new AssRange(new AssPosition(line, paramBaseChar), new AssPosition(line, paramBaseChar + paramLength)),
-                AssSeverity.Warning,
+            AddDiagnostic(diagnostics, line, paramBaseChar, paramBaseChar + paramLength, AssSeverity.Warning,
                 $"Relative time {name} exceeds event duration: {t} ms vs {duration} ms",
-                Code: "ass.override.timeOutOfRange"));
+                "ass.override.timeOutOfRange");
         }
     }
 
@@ -549,9 +527,6 @@ internal static class AssOverrideAnalyzer
         normalized = "&H" + color.ConvertToString(withAlpha: false) + "&";
         return true;
     }
-
-    private static bool IsAlphaTag(AssTag tag)
-        => tag is AssTag.Alpha or AssTag.AlphaPrimary or AssTag.AlphaSecondary or AssTag.AlphaBorder or AssTag.AlphaShadow;
 
     private static (int Start, int End) GetRangeOffsets(Range range, int length)
         => (range.Start.GetOffset(length), range.End.GetOffset(length));

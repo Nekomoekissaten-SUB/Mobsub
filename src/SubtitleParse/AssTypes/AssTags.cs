@@ -239,6 +239,9 @@ public static partial class AssTagRegistry
         return false;
     }
 
+    internal static bool IsAlphaTag(AssTag tag)
+        => tag is AssTag.Alpha or AssTag.AlphaPrimary or AssTag.AlphaSecondary or AssTag.AlphaBorder or AssTag.AlphaShadow;
+
     internal static bool TryMapLegacyAlignmentToAn(int legacyAlignment, out int anAlignment)
     {
         // Legacy \a uses a different numbering scheme than \an (numpad).
