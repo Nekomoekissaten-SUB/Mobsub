@@ -1,4 +1,6 @@
 using System.CommandLine;
+using Mobsub.SubtitleParse.AssText;
+using Mobsub.SubtitleParse.AssTypes;
 using Mobsub.SubtitleProcess;
 
 namespace Mobsub.Ikkoku.CommandLine;
@@ -7,19 +9,15 @@ internal class CheckCmd
 {
     internal static Command Build(Argument<FileSystemInfo> path, Option<bool> verbose)
     {
-        var tagMode = new Option<string>("--tag")
-        {
-            Description = "Check tags mode: mod, weird, both."
-        }.AcceptOnlyFromAmong("mod", "weird", "both");
         var styleCheck = new Option<bool>("--style") { Description = "Check undefined styles." };
 
         var checkCommand = new Command("check", "Check Your ASS!")
         {
-            path, tagMode, styleCheck, verbose
+            path, styleCheck, verbose
         };
         checkCommand.SetAction(result =>
         {
-            Execute(result.GetValue(path)!, result.GetValue(tagMode), result.GetValue(styleCheck), result.GetValue(verbose));
+            Execute(result.GetValue(path)!, result.GetValue(styleCheck), result.GetValue(verbose));
         });
 
         // fonts glyphs subcommand
@@ -27,17 +25,17 @@ internal class CheckCmd
         return checkCommand;
     }
 
-    internal static void Execute(FileSystemInfo path, string? tagMode, bool styleCheck, bool verbose)
+    internal static void Execute(FileSystemInfo path, bool styleCheck, bool verbose)
     {
         switch (path)
         {
             case FileInfo file:
-                CheckOneAss(file, tagMode, styleCheck, verbose);
+                CheckOneAss(file, styleCheck, verbose);
                 break;
             case DirectoryInfo dir:
                 foreach (var file in Utils.Traversal(dir, ".ass"))
                 {
-                    CheckOneAss(file, tagMode, styleCheck, verbose);
+                    CheckOneAss(file, styleCheck, verbose);
                 }
                 break;
             default:
@@ -45,66 +43,167 @@ internal class CheckCmd
         }
     }
 
-    private static void CheckOneAss(FileInfo f, string? tagMode, bool styleCheck, bool verbose)
+    private static void CheckOneAss(FileInfo f, bool styleCheck, bool verbose)
     {
-        // Console.WriteLine(f);
-        // var data = new AssData();
-        // data.ReadAssFile(f.FullName);
-        //
-        // if (tagMode is not null)
-        // {
-        //     Check.PrintUnnormalAssTags(data.Events.Collection, verbose, tagMode);
-        // }
-        //
-        // if (styleCheck)
-        // {
-        //     var usedStyles = AssCheck.GetUsedStyles(data.Events.Collection);
-        //     var undefinedStyles = new HashSet<string>(usedStyles);
-        //     undefinedStyles.ExceptWith(data.Styles.Names);
-        //
-        //     if (undefinedStyles.Count > 0)
-        //     {
-        //         Console.WriteLine($"Undefined styles: {string.Join(", ", undefinedStyles)}");
-        //     }
-        // }
-        //
-        // // var evtStartLine = data.Events.Collection.First().lineNumber;
-        // List<int> weirdTimeLines = [];
-        // List<int> unusedCharLines = [];
-        // List<int> weirdSpaceLines = [];
-        // foreach (var evt in data.Events.Collection)
-        // {
-        //     if (Check.WeirdTimeOneLine(evt))
-        //     {
-        //         weirdTimeLines.Add(evt.lineNumber);
-        //     }
-        //
-        //     Check.CheckWeirdChars(evt.Text, out bool hadUnusedChar, out bool hadWeirdSpace);
-        //     if (hadUnusedChar)
-        //     {
-        //         unusedCharLines.Add(evt.lineNumber);
-        //     }
-        //     if (hadWeirdSpace)
-        //     {
-        //         weirdSpaceLines.Add(evt.lineNumber);
-        //     }
-        // }
-        //
-        // if (weirdTimeLines.Count > 0)
-        // {
-        //     Console.WriteLine($"Dialogue end time less than start time: {string.Join(", ", weirdTimeLines)}");
-        // }
-        //
-        // if (unusedCharLines.Count > 0)
-        // {
-        //     Console.WriteLine($"Maybe use unused chars: {string.Join(", ", unusedCharLines)}");
-        // }
-        //
-        // if (weirdSpaceLines.Count > 0)
-        // {
-        //     Console.WriteLine($"Maybe use wrong space char: {string.Join(", ", weirdSpaceLines)}");
-        // }
-        //
-        // Console.WriteLine("Check completed.");
+        if (!f.Name.EndsWith(".ass", StringComparison.OrdinalIgnoreCase))
+        {
+            Console.WriteLine($"Skip non-.ass file: {f.FullName}");
+            return;
+        }
+
+        if (verbose)
+            Console.WriteLine(f.FullName);
+
+        var data = new AssData();
+        data.ReadAssFile(f.FullName);
+
+        var events = data.Events?.Collection;
+        if (events == null || events.Count == 0)
+        {
+            if (verbose)
+                Console.WriteLine("No events.");
+            return;
+        }
+
+        int totalErrors = 0;
+        int totalWarnings = 0;
+        int totalInfos = 0;
+
+        int boundX = data.ScriptInfo.LayoutResX;
+        int boundY = data.ScriptInfo.LayoutResY;
+
+        foreach (var evt in events)
+        {
+            if (evt.StartSemicolon)
+                continue;
+
+            using var read = AssEventTextRead.ParseTextSpan(in evt);
+
+            var ctx = new AssOverrideValidationContext(
+                eventDurationMs: TryGetDurationMs(evt.Start, evt.End),
+                coordinateBoundX: boundX,
+                coordinateBoundY: boundY);
+
+            var sink = new ConsoleSink(f.FullName, evt.LineNumber, verbose);
+            AssOverrideTagValidator.ValidateOverrideBlocks(read.Utf8, read.Segments, ref sink, ctx);
+
+            totalErrors += sink.ErrorCount;
+            totalWarnings += sink.WarningCount;
+            totalInfos += sink.InfoCount;
+        }
+
+        if (styleCheck)
+        {
+            var undefined = GetUndefinedStyles(data, events);
+            if (undefined.Count > 0)
+                Console.WriteLine($"Undefined styles: {string.Join(", ", undefined)}");
+        }
+
+        if (totalErrors + totalWarnings + totalInfos > 0)
+        {
+            Console.WriteLine($"Override tag issues: {totalErrors} error(s), {totalWarnings} warning(s), {totalInfos} info(s).");
+        }
+        else if (verbose)
+        {
+            Console.WriteLine("No override tag issues.");
+        }
+    }
+
+    private static int? TryGetDurationMs(AssTime start, AssTime end)
+    {
+        long deltaTicks = end.Ticks - start.Ticks;
+        if (deltaTicks <= 0)
+            return null;
+
+        long ms = deltaTicks / 10_000;
+        if (ms > int.MaxValue)
+            return int.MaxValue;
+        return (int)ms;
+    }
+
+    private static HashSet<string> GetUndefinedStyles(AssData data, List<AssEvent> events)
+    {
+        var defined = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var style in data.Styles.Collection)
+        {
+            if (style.IsCommentLine)
+                continue;
+
+            var name = NormalizeStyleName(style.Name);
+            if (name.Length > 0)
+                defined.Add(name);
+        }
+
+        var used = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var evt in events)
+        {
+            if (evt.StartSemicolon)
+                continue;
+
+            var name = NormalizeStyleName(evt.Style);
+            if (name.Length > 0)
+                used.Add(name);
+        }
+
+        used.ExceptWith(defined);
+        return used;
+    }
+
+    private static string NormalizeStyleName(string name)
+    {
+        if (name.Length == 0)
+            return string.Empty;
+
+        name = name.TrimStart('*').Trim();
+        if (name.Length == 0)
+            return string.Empty;
+
+        if (string.Equals(name, "default", StringComparison.OrdinalIgnoreCase))
+            return "Default";
+
+        return name;
+    }
+
+    private struct ConsoleSink : IAssOverrideValidationSink
+    {
+        private readonly string _filePath;
+        private readonly int _eventLineNumber;
+        private readonly bool _verbose;
+
+        public int ErrorCount { get; private set; }
+        public int WarningCount { get; private set; }
+        public int InfoCount { get; private set; }
+
+        public ConsoleSink(string filePath, int eventLineNumber, bool verbose)
+        {
+            _filePath = filePath;
+            _eventLineNumber = eventLineNumber;
+            _verbose = verbose;
+
+            ErrorCount = 0;
+            WarningCount = 0;
+            InfoCount = 0;
+        }
+
+        public void Report(in AssOverrideValidationIssue issue)
+        {
+            switch (issue.Severity)
+            {
+                case AssOverrideValidationSeverity.Error:
+                    ErrorCount++;
+                    break;
+                case AssOverrideValidationSeverity.Warning:
+                    WarningCount++;
+                    break;
+                case AssOverrideValidationSeverity.Info:
+                    InfoCount++;
+                    break;
+            }
+
+            if (!_verbose && issue.Severity == AssOverrideValidationSeverity.Info)
+                return;
+
+            Console.WriteLine($"{_filePath}:{_eventLineNumber}: {issue.Severity} {issue.Code}: {issue.Message}");
+        }
     }
 }
