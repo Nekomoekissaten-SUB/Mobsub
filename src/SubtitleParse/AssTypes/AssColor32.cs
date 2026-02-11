@@ -74,9 +74,16 @@ public readonly struct AssColor32 : IEquatable<AssColor32>
     public static bool TryParseAlphaByte(ReadOnlySpan<byte> sp, out byte value, out bool invalid)
     {
         value = 0;
-        if (!AssColorParser.TryParseAssHex(sp, out uint raw, out _, out invalid))
+        if (!AssColorParser.TryParseAssHex(sp, out uint raw, out int digits, out invalid))
             return false;
+
         value = (byte)raw;
+
+        // Alpha tags are expected to be 1-2 hex digits (00..FF) after normalization.
+        // Anything longer is non-canonical; VSFilter-style parsers effectively use the low byte.
+        if (digits is < 1 or > 2)
+            invalid = true;
+
         return true;
     }
 

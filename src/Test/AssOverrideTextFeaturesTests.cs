@@ -75,6 +75,20 @@ public class AssOverrideTextFeaturesTests
     }
 
     [TestMethod]
+    public void OverrideText_Analyze_WarnsOnInvalidAlpha()
+    {
+        var analysis = AssOverrideTextAnalyzer.Analyze("{\\alpha255}Hi");
+        analysis.Diagnostics.Should().Contain(d => d.Code == "ass.override.alphaInvalid");
+    }
+
+    [TestMethod]
+    public void OverrideText_Analyze_WarnsOnRotationOutOfRange()
+    {
+        var analysis = AssOverrideTextAnalyzer.Analyze("{\\frz361}Hi");
+        analysis.Diagnostics.Should().Contain(d => d.Code == "ass.override.rotationRange");
+    }
+
+    [TestMethod]
     public void OverrideText_Analyze_ValidatesNestedTransformPayload()
     {
         var analysis = AssOverrideTextAnalyzer.Analyze("{\\t(0,100,\\zz1)}Hi");

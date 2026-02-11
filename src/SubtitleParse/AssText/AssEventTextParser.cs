@@ -299,7 +299,7 @@ public static class AssEventTextParser
         {
             if (invalidAlpha && Logger != null)
             {
-                LogWarning($"Invalid alpha value for \\{Utils.GetString(AssTagRegistry.GetNameBytes(tag))}: '{Utils.GetString(trimmedSpan)}', treated as 0.");
+                LogWarning($"Non-canonical alpha value for \\{Utils.GetString(AssTagRegistry.GetNameBytes(tag))}: '{Utils.GetString(trimmedSpan)}', parsed as 0x{alpha:X2}.");
             }
             return AssTagValue.FromByte(alpha);
         }

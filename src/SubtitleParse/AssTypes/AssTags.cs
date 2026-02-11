@@ -101,13 +101,25 @@ public enum AssTag
     [AssTagSpec("fn", AssTagValueKind.Bytes, AssTagKind.BlockOnlyRenderLatest)]
     FontName,
 
-    [AssTagSpec("frx", AssTagValueKind.Double, AssTagKind.Ignored)]
+    [AssTagSpec("frx", AssTagValueKind.Double, AssTagKind.Ignored,
+        DoubleMin = -360, DoubleMax = 360,
+        DoubleRangeDiagnosticCode = "ass.override.rotationRange",
+        DoubleRangeMessage = "Rotation should be in [-360..360].")]
     FontRotationX,
-    [AssTagSpec("fry", AssTagValueKind.Double, AssTagKind.Ignored)]
+    [AssTagSpec("fry", AssTagValueKind.Double, AssTagKind.Ignored,
+        DoubleMin = -360, DoubleMax = 360,
+        DoubleRangeDiagnosticCode = "ass.override.rotationRange",
+        DoubleRangeMessage = "Rotation should be in [-360..360].")]
     FontRotationY,
-    [AssTagSpec("frz", AssTagValueKind.Double, AssTagKind.Ignored)]
+    [AssTagSpec("frz", AssTagValueKind.Double, AssTagKind.Ignored,
+        DoubleMin = -360, DoubleMax = 360,
+        DoubleRangeDiagnosticCode = "ass.override.rotationRange",
+        DoubleRangeMessage = "Rotation should be in [-360..360].")]
     FontRotationZ,
-    [AssTagSpec("fr", AssTagValueKind.Double, AssTagKind.Ignored)]
+    [AssTagSpec("fr", AssTagValueKind.Double, AssTagKind.Ignored,
+        DoubleMin = -360, DoubleMax = 360,
+        DoubleRangeDiagnosticCode = "ass.override.rotationRange",
+        DoubleRangeMessage = "Rotation should be in [-360..360].")]
     FontRotationZSimple,
 
     [AssTagSpec("fscx", AssTagValueKind.Double, AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
