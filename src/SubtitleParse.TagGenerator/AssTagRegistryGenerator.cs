@@ -15,6 +15,15 @@ public sealed class AssTagRegistryGenerator : IIncrementalGenerator
     private const string TagEnumFullName = "Mobsub.SubtitleParse.AssTypes.AssTag";
     private const string TagSpecAttributeFullName = "Mobsub.SubtitleParse.AssTypes.AssTagSpecAttribute";
 
+    private const byte AssTagValueKind_None = 0;
+    private const byte AssTagValueKind_Int = 1;
+    private const byte AssTagValueKind_Double = 2;
+    private const byte AssTagValueKind_Bool = 3;
+    private const byte AssTagValueKind_Byte = 4;
+    private const byte AssTagValueKind_Color = 5;
+    private const byte AssTagValueKind_Bytes = 6;
+    private const byte AssTagValueKind_Function = 7;
+
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
         var tagEnumProvider = context.SyntaxProvider
@@ -58,20 +67,72 @@ public sealed class AssTagRegistryGenerator : IIncrementalGenerator
 
     private readonly struct TagSpec
     {
-        public TagSpec(int tagValue, string name, ITypeSymbol valueType, int tagKindValue, int functionKindValue)
+        public TagSpec(
+            int tagValue,
+            string name,
+            byte valueKind,
+            int tagKindValue,
+            int functionKindValue,
+            byte isAlphaTag,
+            string? obsoleteReplacementName,
+            ulong intAllowedMask,
+            string? intAllowedMaskDiagnosticCode,
+            string? intAllowedMaskMessage,
+            int intMin,
+            int intMax,
+            string? intRangeDiagnosticCode,
+            string? intRangeMessage,
+            double doubleMin,
+            double doubleMax,
+            string? doubleRangeDiagnosticCode,
+            string? doubleRangeMessage)
         {
             TagValue = tagValue;
             Name = name;
-            ValueType = valueType;
+            ValueKind = valueKind;
             TagKindValue = tagKindValue;
             FunctionKindValue = functionKindValue;
+            IsAlphaTag = isAlphaTag;
+
+            ObsoleteReplacementName = obsoleteReplacementName;
+
+            IntAllowedMask = intAllowedMask;
+            IntAllowedMaskDiagnosticCode = intAllowedMaskDiagnosticCode;
+            IntAllowedMaskMessage = intAllowedMaskMessage;
+
+            IntMin = intMin;
+            IntMax = intMax;
+            IntRangeDiagnosticCode = intRangeDiagnosticCode;
+            IntRangeMessage = intRangeMessage;
+
+            DoubleMin = doubleMin;
+            DoubleMax = doubleMax;
+            DoubleRangeDiagnosticCode = doubleRangeDiagnosticCode;
+            DoubleRangeMessage = doubleRangeMessage;
         }
 
         public int TagValue { get; }
         public string Name { get; }
-        public ITypeSymbol ValueType { get; }
+        public byte ValueKind { get; }
         public int TagKindValue { get; }
         public int FunctionKindValue { get; }
+        public byte IsAlphaTag { get; }
+
+        public string? ObsoleteReplacementName { get; }
+
+        public ulong IntAllowedMask { get; }
+        public string? IntAllowedMaskDiagnosticCode { get; }
+        public string? IntAllowedMaskMessage { get; }
+
+        public int IntMin { get; }
+        public int IntMax { get; }
+        public string? IntRangeDiagnosticCode { get; }
+        public string? IntRangeMessage { get; }
+
+        public double DoubleMin { get; }
+        public double DoubleMax { get; }
+        public string? DoubleRangeDiagnosticCode { get; }
+        public string? DoubleRangeMessage { get; }
     }
 
     private static ImmutableArray<TagSpec>? ReadSpecs(INamedTypeSymbol tagEnum, INamedTypeSymbol attrSymbol, SourceProductionContext spc)
@@ -104,8 +165,10 @@ public sealed class AssTagRegistryGenerator : IIncrementalGenerator
                 return null;
 
             string? name = specAttr.ConstructorArguments[0].Value as string;
-            var valueType = specAttr.ConstructorArguments[1].Value as ITypeSymbol;
-            if (name is null || valueType is null)
+            if (name is null)
+                return null;
+
+            if (specAttr.ConstructorArguments[1].Value is null)
                 return null;
 
             if (!IsAscii(name))
@@ -140,12 +203,158 @@ public sealed class AssTagRegistryGenerator : IIncrementalGenerator
             }
 
             int tagValue = Convert.ToInt32(member.ConstantValue);
+
+            byte valueKind = checked((byte)Convert.ToInt32(specAttr.ConstructorArguments[1].Value));
+            if (valueKind > AssTagValueKind_Function)
+            {
+                spc.ReportDiagnostic(Diagnostic.Create(
+                    new DiagnosticDescriptor(
+                        id: "MSP004",
+                        title: "Invalid AssTag value kind",
+                        messageFormat: $"AssTag member '{{0}}' has invalid value kind '{{1}}'",
+                        category: "Mobsub.SubtitleParse.TagGenerator",
+                        DiagnosticSeverity.Error,
+                        isEnabledByDefault: true),
+                    member.Locations.FirstOrDefault(),
+                    member.Name,
+                    valueKind));
+                return null;
+            }
+
             int tagKindValue = Convert.ToInt32(specAttr.ConstructorArguments[2].Value);
             int functionKindValue = 0;
             if (specAttr.ConstructorArguments.Length >= 4 && specAttr.ConstructorArguments[3].Value is not null)
                 functionKindValue = Convert.ToInt32(specAttr.ConstructorArguments[3].Value);
 
-            specs.Add(new TagSpec(tagValue, name, valueType, tagKindValue, functionKindValue));
+            int intMin = int.MinValue;
+            int intMax = int.MaxValue;
+            string? intRangeCode = null;
+            string? intRangeMessage = null;
+
+            string? obsoleteReplacementName = null;
+
+            ulong intAllowedMask = 0;
+            string? intAllowedMaskCode = null;
+            string? intAllowedMaskMessage = null;
+
+            double doubleMin = double.NaN;
+            double doubleMax = double.NaN;
+            string? doubleRangeCode = null;
+            string? doubleRangeMessage = null;
+
+            foreach (var kv in specAttr.NamedArguments)
+            {
+                switch (kv.Key)
+                {
+                    case "IntMin":
+                        if (kv.Value.Value is int iv) intMin = iv;
+                        break;
+                    case "IntMax":
+                        if (kv.Value.Value is int iax) intMax = iax;
+                        break;
+                    case "IntRangeDiagnosticCode":
+                        intRangeCode = kv.Value.Value as string;
+                        break;
+                    case "IntRangeMessage":
+                        intRangeMessage = kv.Value.Value as string;
+                        break;
+                    case "ObsoleteReplacementName":
+                        obsoleteReplacementName = kv.Value.Value as string;
+                        break;
+                    case "IntAllowedMask":
+                        if (kv.Value.Value is ulong ul)
+                            intAllowedMask = ul;
+                        else if (kv.Value.Value is long l)
+                            intAllowedMask = unchecked((ulong)l);
+                        break;
+                    case "IntAllowedMaskDiagnosticCode":
+                        intAllowedMaskCode = kv.Value.Value as string;
+                        break;
+                    case "IntAllowedMaskMessage":
+                        intAllowedMaskMessage = kv.Value.Value as string;
+                        break;
+                    case "DoubleMin":
+                        if (kv.Value.Value is double dv) doubleMin = dv;
+                        break;
+                    case "DoubleMax":
+                        if (kv.Value.Value is double dax) doubleMax = dax;
+                        break;
+                    case "DoubleRangeDiagnosticCode":
+                        doubleRangeCode = kv.Value.Value as string;
+                        break;
+                    case "DoubleRangeMessage":
+                        doubleRangeMessage = kv.Value.Value as string;
+                        break;
+                }
+            }
+
+            if (functionKindValue != 0 && valueKind != AssTagValueKind_Function)
+            {
+                spc.ReportDiagnostic(Diagnostic.Create(
+                    new DiagnosticDescriptor(
+                        id: "MSP005",
+                        title: "Function kind requires Function value kind",
+                        messageFormat: $"AssTag member '{{0}}' has FunctionKind but ValueKind is not Function",
+                        category: "Mobsub.SubtitleParse.TagGenerator",
+                        DiagnosticSeverity.Error,
+                        isEnabledByDefault: true),
+                    member.Locations.FirstOrDefault(),
+                    member.Name));
+                return null;
+            }
+
+            if (intAllowedMask != 0 && valueKind is not (AssTagValueKind_Int or AssTagValueKind_Byte))
+            {
+                spc.ReportDiagnostic(Diagnostic.Create(
+                    new DiagnosticDescriptor(
+                        id: "MSP006",
+                        title: "Allowed int mask requires Int or Byte value kind",
+                        messageFormat: $"AssTag member '{{0}}' has IntAllowedMask but ValueKind is not Int/Byte",
+                        category: "Mobsub.SubtitleParse.TagGenerator",
+                        DiagnosticSeverity.Error,
+                        isEnabledByDefault: true),
+                    member.Locations.FirstOrDefault(),
+                    member.Name));
+                return null;
+            }
+
+            if (obsoleteReplacementName != null && !IsAscii(obsoleteReplacementName))
+            {
+                spc.ReportDiagnostic(Diagnostic.Create(
+                    new DiagnosticDescriptor(
+                        id: "MSP007",
+                        title: "Non-ASCII obsolete replacement name",
+                        messageFormat: $"AssTag member '{{0}}' has non-ASCII obsolete replacement name '{{1}}'",
+                        category: "Mobsub.SubtitleParse.TagGenerator",
+                        DiagnosticSeverity.Error,
+                        isEnabledByDefault: true),
+                    member.Locations.FirstOrDefault(),
+                    member.Name,
+                    obsoleteReplacementName));
+                return null;
+            }
+
+            byte isAlphaTag = IsAlphaTagName(name) ? (byte)1 : (byte)0;
+
+            specs.Add(new TagSpec(
+                tagValue,
+                name,
+                valueKind,
+                tagKindValue,
+                functionKindValue,
+                isAlphaTag,
+                obsoleteReplacementName,
+                intAllowedMask,
+                intAllowedMaskCode,
+                intAllowedMaskMessage,
+                intMin,
+                intMax,
+                intRangeCode,
+                intRangeMessage,
+                doubleMin,
+                doubleMax,
+                doubleRangeCode,
+                doubleRangeMessage));
         }
 
         var arr = specs.ToArray();
@@ -162,6 +371,9 @@ public sealed class AssTagRegistryGenerator : IIncrementalGenerator
         }
         return true;
     }
+
+    private static bool IsAlphaTagName(string name)
+        => name is "alpha" or "1a" or "2a" or "3a" or "4a";
 
     private sealed class TrieNode
     {
@@ -239,7 +451,113 @@ public sealed class AssTagRegistryGenerator : IIncrementalGenerator
         sb.AppendLine("public static partial class AssTagRegistry");
         sb.AppendLine("{");
 
-        sb.AppendLine("    private static readonly AssTagDescriptor?[] s_descByTag = new AssTagDescriptor?[]");
+        var nameBytes = new List<byte>(capacity: specs.Length * 4);
+        var nameStartByTag = new int[maxTagValue + 1];
+        var nameLenByTag = new byte[maxTagValue + 1];
+        for (int i = 0; i <= maxTagValue; i++)
+        {
+            if (!specByValue.TryGetValue(i, out var spec))
+            {
+                nameStartByTag[i] = 0;
+                nameLenByTag[i] = 0;
+                continue;
+            }
+
+            var bytes = Encoding.ASCII.GetBytes(spec.Name);
+            nameStartByTag[i] = nameBytes.Count;
+            nameLenByTag[i] = checked((byte)bytes.Length);
+            nameBytes.AddRange(bytes);
+        }
+
+        sb.AppendLine("    private static readonly byte[] s_nameBytes = new byte[]");
+        sb.AppendLine("    {");
+        for (int i = 0; i < nameBytes.Count; i++)
+            sb.AppendLine($"        {nameBytes[i]},");
+        sb.AppendLine("    };");
+        sb.AppendLine();
+
+        var obsoleteBytes = new List<byte>(capacity: 32);
+        var obsoleteStartByTag = new int[maxTagValue + 1];
+        var obsoleteLenByTag = new byte[maxTagValue + 1];
+        for (int i = 0; i <= maxTagValue; i++)
+        {
+            if (!specByValue.TryGetValue(i, out var spec) || spec.ObsoleteReplacementName == null)
+            {
+                obsoleteStartByTag[i] = 0;
+                obsoleteLenByTag[i] = 0;
+                continue;
+            }
+
+            var bytes = Encoding.ASCII.GetBytes(spec.ObsoleteReplacementName);
+            obsoleteStartByTag[i] = obsoleteBytes.Count;
+            obsoleteLenByTag[i] = checked((byte)bytes.Length);
+            obsoleteBytes.AddRange(bytes);
+        }
+
+        sb.AppendLine("    private static readonly byte[] s_obsoleteReplacementNameBytes = new byte[]");
+        sb.AppendLine("    {");
+        for (int i = 0; i < obsoleteBytes.Count; i++)
+            sb.AppendLine($"        {obsoleteBytes[i]},");
+        sb.AppendLine("    };");
+        sb.AppendLine();
+
+        sb.AppendLine("    private static readonly int[] s_obsoleteReplacementNameStartByTag = new int[]");
+        sb.AppendLine("    {");
+        for (int i = 0; i <= maxTagValue; i++)
+            sb.AppendLine($"        {obsoleteStartByTag[i]},");
+        sb.AppendLine("    };");
+        sb.AppendLine();
+
+        sb.AppendLine("    private static readonly byte[] s_obsoleteReplacementNameLenByTag = new byte[]");
+        sb.AppendLine("    {");
+        for (int i = 0; i <= maxTagValue; i++)
+            sb.AppendLine($"        {obsoleteLenByTag[i]},");
+        sb.AppendLine("    };");
+        sb.AppendLine();
+
+        sb.AppendLine("    private static readonly int[] s_nameStartByTag = new int[]");
+        sb.AppendLine("    {");
+        for (int i = 0; i <= maxTagValue; i++)
+            sb.AppendLine($"        {nameStartByTag[i]},");
+        sb.AppendLine("    };");
+        sb.AppendLine();
+
+        sb.AppendLine("    private static readonly byte[] s_nameLenByTag = new byte[]");
+        sb.AppendLine("    {");
+        for (int i = 0; i <= maxTagValue; i++)
+            sb.AppendLine($"        {nameLenByTag[i]},");
+        sb.AppendLine("    };");
+        sb.AppendLine();
+
+        sb.AppendLine("    private static readonly byte[] s_tagKindByTag = new byte[]");
+        sb.AppendLine("    {");
+        for (int i = 0; i <= maxTagValue; i++)
+        {
+            if (!specByValue.TryGetValue(i, out var spec))
+            {
+                sb.AppendLine("        0,");
+                continue;
+            }
+            sb.AppendLine($"        {spec.TagKindValue},");
+        }
+        sb.AppendLine("    };");
+        sb.AppendLine();
+
+        sb.AppendLine("    private static readonly ulong[] s_intAllowedMaskByTag = new ulong[]");
+        sb.AppendLine("    {");
+        for (int i = 0; i <= maxTagValue; i++)
+        {
+            if (!specByValue.TryGetValue(i, out var spec))
+            {
+                sb.AppendLine("        0UL,");
+                continue;
+            }
+            sb.AppendLine($"        {spec.IntAllowedMask}UL,");
+        }
+        sb.AppendLine("    };");
+        sb.AppendLine();
+
+        sb.AppendLine("    private static readonly string?[] s_intAllowedMaskCodeByTag = new string?[]");
         sb.AppendLine("    {");
         for (int i = 0; i <= maxTagValue; i++)
         {
@@ -248,15 +566,21 @@ public sealed class AssTagRegistryGenerator : IIncrementalGenerator
                 sb.AppendLine("        null,");
                 continue;
             }
+            sb.AppendLine($"        {EmitNullableStringLiteral(spec.IntAllowedMaskDiagnosticCode)},");
+        }
+        sb.AppendLine("    };");
+        sb.AppendLine();
 
-            sb.Append("        new AssTagDescriptor(");
-            sb.Append(EmitAsciiByteArray(spec.Name));
-            sb.Append(", typeof(");
-            sb.Append(spec.ValueType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat));
-            sb.Append("), unchecked((AssTagKind)");
-            sb.Append(spec.TagKindValue);
-            sb.Append(")),");
-            sb.AppendLine();
+        sb.AppendLine("    private static readonly string?[] s_intAllowedMaskMessageByTag = new string?[]");
+        sb.AppendLine("    {");
+        for (int i = 0; i <= maxTagValue; i++)
+        {
+            if (!specByValue.TryGetValue(i, out var spec))
+            {
+                sb.AppendLine("        null,");
+                continue;
+            }
+            sb.AppendLine($"        {EmitNullableStringLiteral(spec.IntAllowedMaskMessage)},");
         }
         sb.AppendLine("    };");
         sb.AppendLine();
@@ -271,6 +595,146 @@ public sealed class AssTagRegistryGenerator : IIncrementalGenerator
                 continue;
             }
             sb.AppendLine($"        {spec.FunctionKindValue},");
+        }
+        sb.AppendLine("    };");
+        sb.AppendLine();
+
+        sb.AppendLine("    private static readonly byte[] s_valueKindByTag = new byte[]");
+        sb.AppendLine("    {");
+        for (int i = 0; i <= maxTagValue; i++)
+        {
+            if (!specByValue.TryGetValue(i, out var spec))
+            {
+                sb.AppendLine($"        {AssTagValueKind_None},");
+                continue;
+            }
+            sb.AppendLine($"        {spec.ValueKind},");
+        }
+        sb.AppendLine("    };");
+        sb.AppendLine();
+
+        sb.AppendLine("    private static readonly byte[] s_isAlphaTagByTag = new byte[]");
+        sb.AppendLine("    {");
+        for (int i = 0; i <= maxTagValue; i++)
+        {
+            if (!specByValue.TryGetValue(i, out var spec))
+            {
+                sb.AppendLine("        0,");
+                continue;
+            }
+            sb.AppendLine($"        {spec.IsAlphaTag},");
+        }
+        sb.AppendLine("    };");
+        sb.AppendLine();
+
+        sb.AppendLine("    private static readonly int[] s_intMinByTag = new int[]");
+        sb.AppendLine("    {");
+        for (int i = 0; i <= maxTagValue; i++)
+        {
+            if (!specByValue.TryGetValue(i, out var spec))
+            {
+                sb.AppendLine($"        {int.MinValue},");
+                continue;
+            }
+            sb.AppendLine($"        {spec.IntMin},");
+        }
+        sb.AppendLine("    };");
+        sb.AppendLine();
+
+        sb.AppendLine("    private static readonly int[] s_intMaxByTag = new int[]");
+        sb.AppendLine("    {");
+        for (int i = 0; i <= maxTagValue; i++)
+        {
+            if (!specByValue.TryGetValue(i, out var spec))
+            {
+                sb.AppendLine($"        {int.MaxValue},");
+                continue;
+            }
+            sb.AppendLine($"        {spec.IntMax},");
+        }
+        sb.AppendLine("    };");
+        sb.AppendLine();
+
+        sb.AppendLine("    private static readonly string?[] s_intRangeCodeByTag = new string?[]");
+        sb.AppendLine("    {");
+        for (int i = 0; i <= maxTagValue; i++)
+        {
+            if (!specByValue.TryGetValue(i, out var spec))
+            {
+                sb.AppendLine("        null,");
+                continue;
+            }
+            sb.AppendLine($"        {EmitNullableStringLiteral(spec.IntRangeDiagnosticCode)},");
+        }
+        sb.AppendLine("    };");
+        sb.AppendLine();
+
+        sb.AppendLine("    private static readonly string?[] s_intRangeMessageByTag = new string?[]");
+        sb.AppendLine("    {");
+        for (int i = 0; i <= maxTagValue; i++)
+        {
+            if (!specByValue.TryGetValue(i, out var spec))
+            {
+                sb.AppendLine("        null,");
+                continue;
+            }
+            sb.AppendLine($"        {EmitNullableStringLiteral(spec.IntRangeMessage)},");
+        }
+        sb.AppendLine("    };");
+        sb.AppendLine();
+
+        sb.AppendLine("    private static readonly double[] s_doubleMinByTag = new double[]");
+        sb.AppendLine("    {");
+        for (int i = 0; i <= maxTagValue; i++)
+        {
+            if (!specByValue.TryGetValue(i, out var spec) || double.IsNaN(spec.DoubleMin))
+            {
+                sb.AppendLine("        double.NaN,");
+                continue;
+            }
+            sb.AppendLine($"        {spec.DoubleMin.ToString("R", System.Globalization.CultureInfo.InvariantCulture)},");
+        }
+        sb.AppendLine("    };");
+        sb.AppendLine();
+
+        sb.AppendLine("    private static readonly double[] s_doubleMaxByTag = new double[]");
+        sb.AppendLine("    {");
+        for (int i = 0; i <= maxTagValue; i++)
+        {
+            if (!specByValue.TryGetValue(i, out var spec) || double.IsNaN(spec.DoubleMax))
+            {
+                sb.AppendLine("        double.NaN,");
+                continue;
+            }
+            sb.AppendLine($"        {spec.DoubleMax.ToString("R", System.Globalization.CultureInfo.InvariantCulture)},");
+        }
+        sb.AppendLine("    };");
+        sb.AppendLine();
+
+        sb.AppendLine("    private static readonly string?[] s_doubleRangeCodeByTag = new string?[]");
+        sb.AppendLine("    {");
+        for (int i = 0; i <= maxTagValue; i++)
+        {
+            if (!specByValue.TryGetValue(i, out var spec))
+            {
+                sb.AppendLine("        null,");
+                continue;
+            }
+            sb.AppendLine($"        {EmitNullableStringLiteral(spec.DoubleRangeDiagnosticCode)},");
+        }
+        sb.AppendLine("    };");
+        sb.AppendLine();
+
+        sb.AppendLine("    private static readonly string?[] s_doubleRangeMessageByTag = new string?[]");
+        sb.AppendLine("    {");
+        for (int i = 0; i <= maxTagValue; i++)
+        {
+            if (!specByValue.TryGetValue(i, out var spec))
+            {
+                sb.AppendLine("        null,");
+                continue;
+            }
+            sb.AppendLine($"        {EmitNullableStringLiteral(spec.DoubleRangeMessage)},");
         }
         sb.AppendLine("    };");
         sb.AppendLine();
@@ -326,17 +790,47 @@ public sealed class AssTagRegistryGenerator : IIncrementalGenerator
         return sb.ToString();
     }
 
-    private static string EmitAsciiByteArray(string s)
+    private static string EmitNullableStringLiteral(string? s)
+        => s == null ? "null" : EmitStringLiteral(s);
+
+    private static string EmitStringLiteral(string s)
     {
-        var bytes = Encoding.ASCII.GetBytes(s);
-        var sb = new StringBuilder();
-        sb.Append("new byte[] { ");
-        for (int i = 0; i < bytes.Length; i++)
+        var sb = new StringBuilder(capacity: s.Length + 16);
+        sb.Append('\"');
+        for (int i = 0; i < s.Length; i++)
         {
-            if (i != 0) sb.Append(", ");
-            sb.Append(bytes[i]);
+            char c = s[i];
+            switch (c)
+            {
+                case '\\':
+                    sb.Append("\\\\");
+                    break;
+                case '"':
+                    sb.Append("\\\"");
+                    break;
+                case '\r':
+                    sb.Append("\\r");
+                    break;
+                case '\n':
+                    sb.Append("\\n");
+                    break;
+                case '\t':
+                    sb.Append("\\t");
+                    break;
+                default:
+                    if (c < ' ')
+                    {
+                        sb.Append("\\u");
+                        sb.Append(((int)c).ToString("x4"));
+                    }
+                    else
+                    {
+                        sb.Append(c);
+                    }
+                    break;
+            }
         }
-        sb.Append(" }");
+        sb.Append('\"');
         return sb.ToString();
     }
 

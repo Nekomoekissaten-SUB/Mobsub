@@ -214,7 +214,7 @@ public static class AssEventTextParser
             if (!token.IsKnown)
                 continue;
 
-            var value = ParseValue(token.Tag, token.Desc, token.Param, token.ParamMemory);
+            var value = ParseValue(token.Tag, token.Param, token.ParamMemory);
             AddTag(ref buffer, ref count, new AssTagSpan(token.Tag, new Range(token.TagStart, token.TagEnd), value));
         }
 
@@ -287,7 +287,7 @@ public static class AssEventTextParser
         buffer[count++] = seg;
     }
 
-    private static AssTagValue ParseValue(AssTag tag, AssTagDescriptor desc, ReadOnlySpan<byte> param, ReadOnlyMemory<byte> paramMemory)
+    private static AssTagValue ParseValue(AssTag tag, ReadOnlySpan<byte> param, ReadOnlyMemory<byte> paramMemory)
     {
         Utils.TrimSpaces(param, out int start, out int length);
         if (length == 0) return AssTagValue.Empty;
@@ -299,7 +299,7 @@ public static class AssEventTextParser
         {
             if (invalidAlpha && Logger != null)
             {
-                LogWarning($"Invalid alpha value for \\{Utils.GetString(desc.Name)}: '{Utils.GetString(trimmedSpan)}', treated as 0.");
+                LogWarning($"Invalid alpha value for \\{Utils.GetString(AssTagRegistry.GetNameBytes(tag))}: '{Utils.GetString(trimmedSpan)}', treated as 0.");
             }
             return AssTagValue.FromByte(alpha);
         }
@@ -307,74 +307,83 @@ public static class AssEventTextParser
         if (AssTagRegistry.TryGetFunctionKind(tag, out var functionKind) && TryParseFunctionTag(functionKind, trimmedSpan, trimmedMemory, out var funcValue))
             return AssTagValue.FromFunction(funcValue);
 
-        if (desc.ValueType == typeof(int) && Utils.TryParseIntLoose(trimmedSpan, out int iv, out var invalidInt))
-        {
-            if (invalidInt && Logger != null)
-            {
-                LogWarning($"Invalid integer value for \\{Utils.GetString(desc.Name)}: '{Utils.GetString(trimmedSpan)}', treated as 0.");
-            }
-            return AssTagValue.FromInt(iv);
-        }
-        if (desc.ValueType == typeof(double) && Utils.TryParseDoubleLoose(trimmedSpan, out double dv, out var invalidDouble))
-        {
-            if (invalidDouble && Logger != null)
-            {
-                LogWarning($"Invalid number value for \\{Utils.GetString(desc.Name)}: '{Utils.GetString(trimmedSpan)}', treated as 0.");
-            }
-            return AssTagValue.FromDouble(dv);
-        }
-        if (desc.ValueType == typeof(bool))
-        {
-            // Semantics: only 0/1 are explicit; any other number (including -1) => reset.
-            if (Utils.TryParseIntLoose(trimmedSpan, out int bv, out var invalidBool))
-            {
-                if (invalidBool && Logger != null)
-                {
-                    LogWarning($"Invalid bool value for \\{Utils.GetString(desc.Name)}: '{Utils.GetString(trimmedSpan)}', treated as 0.");
-                }
-                return bv switch
-                {
-                    0 => AssTagValue.FromBool(false),
-                    1 => AssTagValue.FromBool(true),
-                    _ => AssTagValue.Empty,
-                };
-            }
+        if (!AssTagRegistry.TryGetValueKind(tag, out var valueKind))
             return AssTagValue.Empty;
-        }
-        if (desc.ValueType == typeof(byte) && Utils.TryParseIntLoose(trimmedSpan, out int byv, out var invalidByte))
+
+        switch (valueKind)
         {
-            if (byv < 0 || byv > 255)
-            {
-                byv = 0;
-                invalidByte = true;
-            }
-            if (invalidByte && Logger != null)
-            {
-                LogWarning($"Invalid byte value for \\{Utils.GetString(desc.Name)}: '{Utils.GetString(trimmedSpan)}', treated as 0.");
-            }
-            return AssTagValue.FromByte((byte)byv);
-        }
-        if (desc.ValueType == typeof(AssColor32))
-        {
-            if (AssColor32.TryParseTagColor(trimmedSpan, out var color, out var ignoredHighByte, out var invalidColor))
-            {
-                if (invalidColor && Logger != null)
+            case AssTagValueKind.Int:
+                if (Utils.TryParseIntLoose(trimmedSpan, out int iv, out var invalidInt))
                 {
-                    LogWarning($"Invalid color value for \\{Utils.GetString(desc.Name)}: '{Utils.GetString(trimmedSpan)}', treated as 0.");
+                    if (invalidInt && Logger != null)
+                    {
+                        LogWarning($"Invalid integer value for \\{Utils.GetString(AssTagRegistry.GetNameBytes(tag))}: '{Utils.GetString(trimmedSpan)}', treated as 0.");
+                    }
+                    return AssTagValue.FromInt(iv);
                 }
-                if (ignoredHighByte && Logger != null)
+                return AssTagValue.Empty;
+            case AssTagValueKind.Double:
+                if (Utils.TryParseDoubleLoose(trimmedSpan, out double dv, out var invalidDouble))
                 {
-                    LogWarning($"ASS color tag \\{Utils.GetString(desc.Name)} has more than 6 hex digits; high byte ignored.");
+                    if (invalidDouble && Logger != null)
+                    {
+                        LogWarning($"Invalid number value for \\{Utils.GetString(AssTagRegistry.GetNameBytes(tag))}: '{Utils.GetString(trimmedSpan)}', treated as 0.");
+                    }
+                    return AssTagValue.FromDouble(dv);
                 }
-                return AssTagValue.FromColor(color);
-            }
-            return AssTagValue.Empty;
+                return AssTagValue.Empty;
+            case AssTagValueKind.Bool:
+                // Semantics: only 0/1 are explicit; any other number (including -1) => reset.
+                if (Utils.TryParseIntLoose(trimmedSpan, out int bv, out var invalidBool))
+                {
+                    if (invalidBool && Logger != null)
+                    {
+                        LogWarning($"Invalid bool value for \\{Utils.GetString(AssTagRegistry.GetNameBytes(tag))}: '{Utils.GetString(trimmedSpan)}', treated as 0.");
+                    }
+                    return bv switch
+                    {
+                        0 => AssTagValue.FromBool(false),
+                        1 => AssTagValue.FromBool(true),
+                        _ => AssTagValue.Empty,
+                    };
+                }
+                return AssTagValue.Empty;
+            case AssTagValueKind.Byte:
+                if (Utils.TryParseIntLoose(trimmedSpan, out int byv, out var invalidByte))
+                {
+                    if (byv < 0 || byv > 255)
+                    {
+                        byv = 0;
+                        invalidByte = true;
+                    }
+                    if (invalidByte && Logger != null)
+                    {
+                        LogWarning($"Invalid byte value for \\{Utils.GetString(AssTagRegistry.GetNameBytes(tag))}: '{Utils.GetString(trimmedSpan)}', treated as 0.");
+                    }
+                    return AssTagValue.FromByte((byte)byv);
+                }
+                return AssTagValue.Empty;
+            case AssTagValueKind.Color:
+                if (AssColor32.TryParseTagColor(trimmedSpan, out var color, out var ignoredHighByte, out var invalidColor))
+                {
+                    if (invalidColor && Logger != null)
+                    {
+                        LogWarning($"Invalid color value for \\{Utils.GetString(AssTagRegistry.GetNameBytes(tag))}: '{Utils.GetString(trimmedSpan)}', treated as 0.");
+                    }
+                    if (ignoredHighByte && Logger != null)
+                    {
+                        LogWarning($"ASS color tag \\{Utils.GetString(AssTagRegistry.GetNameBytes(tag))} has more than 6 hex digits; high byte ignored.");
+                    }
+                    return AssTagValue.FromColor(color);
+                }
+                return AssTagValue.Empty;
+            case AssTagValueKind.Bytes:
+                return AssTagValue.FromBytes(trimmedMemory.IsEmpty ? trimmedSpan.ToArray() : trimmedMemory);
+            case AssTagValueKind.Function:
+            case AssTagValueKind.None:
+            default:
+                return AssTagValue.Empty;
         }
-        if (desc.ValueType == typeof(ReadOnlyMemory<byte>))
-        {
-            return AssTagValue.FromBytes(trimmedMemory.IsEmpty ? trimmedSpan.ToArray() : trimmedMemory);
-        }
-        return AssTagValue.Empty;
     }
 
     private static bool TryParseFunctionTag(AssTagFunctionKind functionKind, ReadOnlySpan<byte> param, ReadOnlyMemory<byte> paramMemory, out AssTagFunctionValue value)

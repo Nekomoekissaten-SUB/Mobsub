@@ -2,153 +2,198 @@
 
 namespace Mobsub.SubtitleParse.AssTypes;
 
-public sealed class AssTagDescriptor(ReadOnlyMemory<byte> name, Type valueType, AssTagKind tagType)
-{
-    public ReadOnlyMemory<byte> Name = name;
-    public Type ValueType  = valueType;
-    public AssTagKind TagType = tagType;
-}
-
 [Flags]
 public enum AssTagKind : byte
 {
     BlockOnlyRenderLatest = 0,
-    LineOnlyRenderFirst = 0b_1,
-    Animateable = 0b_10,
-    ShouldBeFunction = 0b_100,
-    LineOnlyRenderLatest = 0b_1000,
-    
-    IsVsFilterMod = 0b_10000000,
-    Ignored
+    LineOnlyRenderFirst = 0b_0000_0001,
+    Animateable = 0b_0000_0010,
+    ShouldBeFunction = 0b_0000_0100,
+    LineOnlyRenderLatest = 0b_0000_1000,
+    Ignored = 0b_0001_0000,
+
+    IsVsFilterMod = 0b_1000_0000
 }
 
 public enum AssTag
 {
-    [AssTagSpec("1c", typeof(AssColor32), AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+    [AssTagSpec("1c", AssTagValueKind.Color, AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
     ColorPrimary,
-    [AssTagSpec("2c", typeof(AssColor32), AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+    [AssTagSpec("2c", AssTagValueKind.Color, AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
     ColorSecondary,
-    [AssTagSpec("3c", typeof(AssColor32), AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+    [AssTagSpec("3c", AssTagValueKind.Color, AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
     ColorBorder,
-    [AssTagSpec("4c", typeof(AssColor32), AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+    [AssTagSpec("4c", AssTagValueKind.Color, AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
     ColorShadow,
-    [AssTagSpec("c", typeof(AssColor32), AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+    [AssTagSpec("c", AssTagValueKind.Color, AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
     ColorPrimaryAbbreviation,
 
-    [AssTagSpec("1a", typeof(byte), AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+    [AssTagSpec("1a", AssTagValueKind.Byte, AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
     AlphaPrimary,
-    [AssTagSpec("2a", typeof(byte), AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+    [AssTagSpec("2a", AssTagValueKind.Byte, AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
     AlphaSecondary,
-    [AssTagSpec("3a", typeof(byte), AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+    [AssTagSpec("3a", AssTagValueKind.Byte, AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
     AlphaBorder,
-    [AssTagSpec("4a", typeof(byte), AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+    [AssTagSpec("4a", AssTagValueKind.Byte, AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
     AlphaShadow,
-    [AssTagSpec("alpha", typeof(byte), AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+    [AssTagSpec("alpha", AssTagValueKind.Byte, AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
     Alpha,
 
-    [AssTagSpec("an", typeof(byte), AssTagKind.LineOnlyRenderFirst)]
+    [AssTagSpec("an", AssTagValueKind.Byte, AssTagKind.LineOnlyRenderFirst,
+        IntMin = 1, IntMax = 9,
+        IntRangeDiagnosticCode = "ass.override.alignRange",
+        IntRangeMessage = "Alignment should be in [1..9].")]
     Alignment,
-    [AssTagSpec("a", typeof(byte), AssTagKind.LineOnlyRenderFirst)]
+    [AssTagSpec("a", AssTagValueKind.Byte, AssTagKind.LineOnlyRenderFirst,
+        ObsoleteReplacementName = "an",
+        IntAllowedMask = 0xEEE,
+        IntAllowedMaskDiagnosticCode = "ass.override.alignLegacyAllowed",
+        IntAllowedMaskMessage = "Legacy alignment (\\\\a) valid values are 1..3, 5..7, 9..11.",
+        IntMin = 1, IntMax = 11,
+        IntRangeDiagnosticCode = "ass.override.alignRange",
+        IntRangeMessage = "Legacy alignment (\\\\a) should be in [1..11] (excluding 4,8).")]
     AlignmentLegacy,
 
-    [AssTagSpec("be", typeof(double), AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+    [AssTagSpec("be", AssTagValueKind.Double, AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable,
+        DoubleMin = 0,
+        DoubleRangeDiagnosticCode = "ass.override.blurRange",
+        DoubleRangeMessage = "Blur value should be >= 0.")]
     BlueEdges,
-    [AssTagSpec("blur", typeof(double), AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+    [AssTagSpec("blur", AssTagValueKind.Double, AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable,
+        DoubleMin = 0,
+        DoubleRangeDiagnosticCode = "ass.override.blurRange",
+        DoubleRangeMessage = "Blur value should be >= 0.")]
     BlurEdgesGaussian,
 
-    [AssTagSpec("bord", typeof(double), AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+    [AssTagSpec("bord", AssTagValueKind.Double, AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
     Border,
-    [AssTagSpec("xbord", typeof(double), AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+    [AssTagSpec("xbord", AssTagValueKind.Double, AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
     BorderX,
-    [AssTagSpec("ybord", typeof(double), AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+    [AssTagSpec("ybord", AssTagValueKind.Double, AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
     BorderY,
 
-    [AssTagSpec("b", typeof(int), AssTagKind.BlockOnlyRenderLatest)]
+    [AssTagSpec("b", AssTagValueKind.Int, AssTagKind.BlockOnlyRenderLatest,
+        IntMin = -1, IntMax = 1000,
+        IntRangeDiagnosticCode = "ass.override.boldWeightRange",
+        IntRangeMessage = "Bold weight (\\\\b) should be in [-1..1000] (0=off, 1/-1=on, >1=weight).")]
     Bold,
 
-    [AssTagSpec("clip", typeof(ReadOnlyMemory<byte>), AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable | AssTagKind.ShouldBeFunction, AssTagFunctionKind.ClipRect)]
+    [AssTagSpec("clip", AssTagValueKind.Function, AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable | AssTagKind.ShouldBeFunction, AssTagFunctionKind.ClipRect)]
     Clip,
-    [AssTagSpec("iclip", typeof(ReadOnlyMemory<byte>), AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable | AssTagKind.ShouldBeFunction, AssTagFunctionKind.ClipRect)]
+    [AssTagSpec("iclip", AssTagValueKind.Function, AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable | AssTagKind.ShouldBeFunction, AssTagFunctionKind.ClipRect)]
     InverseClip,
 
-    [AssTagSpec("fade", typeof(ReadOnlyMemory<byte>), AssTagKind.Ignored, AssTagFunctionKind.Fade)]
+    [AssTagSpec("fade", AssTagValueKind.Function, AssTagKind.Ignored, AssTagFunctionKind.Fade)]
     Fade,
-    [AssTagSpec("fad", typeof(ReadOnlyMemory<byte>), AssTagKind.Ignored, AssTagFunctionKind.Fad)]
+    [AssTagSpec("fad", AssTagValueKind.Function, AssTagKind.Ignored, AssTagFunctionKind.Fad)]
     Fad,
 
-    [AssTagSpec("fax", typeof(double), AssTagKind.Ignored)]
+    [AssTagSpec("fax", AssTagValueKind.Double, AssTagKind.Ignored)]
     FontShiftX,
-    [AssTagSpec("fay", typeof(double), AssTagKind.Ignored)]
+    [AssTagSpec("fay", AssTagValueKind.Double, AssTagKind.Ignored)]
     FontShiftY,
 
-    [AssTagSpec("fe", typeof(int), AssTagKind.BlockOnlyRenderLatest)]
+    [AssTagSpec("fe", AssTagValueKind.Int, AssTagKind.BlockOnlyRenderLatest,
+        IntMin = 0, IntMax = 255,
+        IntRangeDiagnosticCode = "ass.override.fontEncodingRange",
+        IntRangeMessage = "Font encoding (\\\\fe) should be in [0..255].")]
     FontEncoding,
-    [AssTagSpec("fn", typeof(ReadOnlyMemory<byte>), AssTagKind.BlockOnlyRenderLatest)]
+    [AssTagSpec("fn", AssTagValueKind.Bytes, AssTagKind.BlockOnlyRenderLatest)]
     FontName,
 
-    [AssTagSpec("frx", typeof(double), AssTagKind.Ignored)]
+    [AssTagSpec("frx", AssTagValueKind.Double, AssTagKind.Ignored)]
     FontRotationX,
-    [AssTagSpec("fry", typeof(double), AssTagKind.Ignored)]
+    [AssTagSpec("fry", AssTagValueKind.Double, AssTagKind.Ignored)]
     FontRotationY,
-    [AssTagSpec("frz", typeof(double), AssTagKind.Ignored)]
+    [AssTagSpec("frz", AssTagValueKind.Double, AssTagKind.Ignored)]
     FontRotationZ,
-    [AssTagSpec("fr", typeof(double), AssTagKind.Ignored)]
+    [AssTagSpec("fr", AssTagValueKind.Double, AssTagKind.Ignored)]
     FontRotationZSimple,
 
-    [AssTagSpec("fscx", typeof(double), AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+    [AssTagSpec("fscx", AssTagValueKind.Double, AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
     FontScaleX,
-    [AssTagSpec("fscy", typeof(double), AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+    [AssTagSpec("fscy", AssTagValueKind.Double, AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
     FontScaleY,
-    [AssTagSpec("fsc", typeof(double), AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+    [AssTagSpec("fsc", AssTagValueKind.Double, AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
     FontScale, // scale x/y together
 
-    [AssTagSpec("fsp", typeof(double), AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+    [AssTagSpec("fsp", AssTagValueKind.Double, AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
     FontSpacing,
-    [AssTagSpec("fs", typeof(double), AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+    [AssTagSpec("fs", AssTagValueKind.Double, AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
     FontSize,
-    [AssTagSpec("i", typeof(bool), AssTagKind.BlockOnlyRenderLatest)]
+    [AssTagSpec("i", AssTagValueKind.Bool, AssTagKind.BlockOnlyRenderLatest,
+        IntMin = -1, IntMax = 1,
+        IntRangeDiagnosticCode = "ass.override.boolRange",
+        IntRangeMessage = "Bool tag value should be -1, 0 or 1.")]
     Italic,
 
-    [AssTagSpec("ko", typeof(int), AssTagKind.Ignored)]
+    [AssTagSpec("ko", AssTagValueKind.Int, AssTagKind.Ignored,
+        IntMin = 0,
+        IntRangeDiagnosticCode = "ass.override.karaokeRange",
+        IntRangeMessage = "Karaoke duration must be >= 0.")]
     KaraokeO,
-    [AssTagSpec("kf", typeof(int), AssTagKind.Ignored)]
+    [AssTagSpec("kf", AssTagValueKind.Int, AssTagKind.Ignored,
+        IntMin = 0,
+        IntRangeDiagnosticCode = "ass.override.karaokeRange",
+        IntRangeMessage = "Karaoke duration must be >= 0.")]
     KaraokeF,
-    [AssTagSpec("K", typeof(int), AssTagKind.Ignored)]
+    [AssTagSpec("K", AssTagValueKind.Int, AssTagKind.Ignored,
+        IntMin = 0,
+        IntRangeDiagnosticCode = "ass.override.karaokeRange",
+        IntRangeMessage = "Karaoke duration must be >= 0.")]
     KaraokeFSimple,
-    [AssTagSpec("k", typeof(int), AssTagKind.Ignored)]
+    [AssTagSpec("k", AssTagValueKind.Int, AssTagKind.Ignored,
+        IntMin = 0,
+        IntRangeDiagnosticCode = "ass.override.karaokeRange",
+        IntRangeMessage = "Karaoke duration must be >= 0.")]
     Karaoke,
-    [AssTagSpec("kt", typeof(int), AssTagKind.Ignored)]
+    [AssTagSpec("kt", AssTagValueKind.Int, AssTagKind.Ignored,
+        IntMin = 0,
+        IntRangeDiagnosticCode = "ass.override.karaokeRange",
+        IntRangeMessage = "Karaoke duration must be >= 0.")]
     KaraokeT,
 
-    [AssTagSpec("move", typeof(ReadOnlyMemory<byte>), AssTagKind.Ignored, AssTagFunctionKind.Move)]
+    [AssTagSpec("move", AssTagValueKind.Function, AssTagKind.Ignored, AssTagFunctionKind.Move)]
     Movement,
-    [AssTagSpec("org", typeof(ReadOnlyMemory<byte>), AssTagKind.Ignored, AssTagFunctionKind.Org)]
+    [AssTagSpec("org", AssTagValueKind.Function, AssTagKind.Ignored, AssTagFunctionKind.Org)]
     OriginRotation,
-    [AssTagSpec("pos", typeof(ReadOnlyMemory<byte>), AssTagKind.LineOnlyRenderFirst | AssTagKind.ShouldBeFunction, AssTagFunctionKind.Pos)]
+    [AssTagSpec("pos", AssTagValueKind.Function, AssTagKind.LineOnlyRenderFirst | AssTagKind.ShouldBeFunction, AssTagFunctionKind.Pos)]
     Position,
 
-    [AssTagSpec("pbo", typeof(int), AssTagKind.BlockOnlyRenderLatest)]
+    [AssTagSpec("pbo", AssTagValueKind.Int, AssTagKind.BlockOnlyRenderLatest)]
     PolygonBaselineOffset,
-    [AssTagSpec("p", typeof(int), AssTagKind.BlockOnlyRenderLatest)]
+    [AssTagSpec("p", AssTagValueKind.Int, AssTagKind.BlockOnlyRenderLatest,
+        IntMin = 0,
+        IntRangeDiagnosticCode = "ass.override.polygonModeRange",
+        IntRangeMessage = "Polygon mode (\\\\p) should be >= 0.")]
     Polygon,
-    [AssTagSpec("q", typeof(byte), AssTagKind.LineOnlyRenderLatest)]
+    [AssTagSpec("q", AssTagValueKind.Byte, AssTagKind.LineOnlyRenderLatest,
+        IntMin = 0, IntMax = 3,
+        IntRangeDiagnosticCode = "ass.override.wrapStyleRange",
+        IntRangeMessage = "WrapStyle (\\\\q) should be in [0..3].")]
     WrapStyle,
 
-    [AssTagSpec("r", typeof(ReadOnlyMemory<byte>), AssTagKind.BlockOnlyRenderLatest)]
+    [AssTagSpec("r", AssTagValueKind.Bytes, AssTagKind.BlockOnlyRenderLatest)]
     Reset, // rnd
 
-    [AssTagSpec("shad", typeof(double), AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+    [AssTagSpec("shad", AssTagValueKind.Double, AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
     Shadow,
-    [AssTagSpec("xshad", typeof(double), AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+    [AssTagSpec("xshad", AssTagValueKind.Double, AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
     ShadowX,
-    [AssTagSpec("yshad", typeof(double), AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
+    [AssTagSpec("yshad", AssTagValueKind.Double, AssTagKind.BlockOnlyRenderLatest | AssTagKind.Animateable)]
     ShadowY,
 
-    [AssTagSpec("s", typeof(bool), AssTagKind.BlockOnlyRenderLatest)]
+    [AssTagSpec("s", AssTagValueKind.Bool, AssTagKind.BlockOnlyRenderLatest,
+        IntMin = -1, IntMax = 1,
+        IntRangeDiagnosticCode = "ass.override.boolRange",
+        IntRangeMessage = "Bool tag value should be -1, 0 or 1.")]
     Strikeout,
-    [AssTagSpec("t", typeof(ReadOnlyMemory<byte>), AssTagKind.ShouldBeFunction, AssTagFunctionKind.Transform)]
+    [AssTagSpec("t", AssTagValueKind.Function, AssTagKind.ShouldBeFunction, AssTagFunctionKind.Transform)]
     Transform,
-    [AssTagSpec("u", typeof(bool), AssTagKind.BlockOnlyRenderLatest)]
+    [AssTagSpec("u", AssTagValueKind.Bool, AssTagKind.BlockOnlyRenderLatest,
+        IntMin = -1, IntMax = 1,
+        IntRangeDiagnosticCode = "ass.override.boolRange",
+        IntRangeMessage = "Bool tag value should be -1, 0 or 1.")]
     Underline
 
     // https://sourceforge.net/p/guliverkli2/code/HEAD/tree/src/subtitles/RTS.cpp#l1383
@@ -226,43 +271,169 @@ public readonly struct AssTagValue
 
 public static partial class AssTagRegistry
 {
-    internal static bool TryGetObsoleteReplacement(AssTag tag, out ReadOnlySpan<byte> replacementName)
+    public static ReadOnlySpan<byte> GetNameBytes(AssTag tag)
     {
-        // \a is legacy alignment tag, replaced by \an.
-        if (tag == AssTag.AlignmentLegacy)
+        int i = (int)tag;
+        if ((uint)i >= (uint)s_nameLenByTag.Length)
+            return default;
+
+        int len = s_nameLenByTag[i];
+        if (len == 0)
+            return default;
+
+        int start = s_nameStartByTag[i];
+        return s_nameBytes.AsSpan(start, len);
+    }
+
+    internal static bool TryGetTagKind(AssTag tag, out AssTagKind kind)
+    {
+        int i = (int)tag;
+        if ((uint)i >= (uint)s_tagKindByTag.Length)
         {
-            replacementName = "an"u8;
-            return true;
+            kind = default;
+            return false;
         }
 
-        replacementName = default;
-        return false;
+        kind = (AssTagKind)s_tagKindByTag[i];
+        return true;
+    }
+
+    internal static bool TryGetObsoleteReplacement(AssTag tag, out ReadOnlySpan<byte> replacementName)
+    {
+        int i = (int)tag;
+        if ((uint)i >= (uint)s_obsoleteReplacementNameLenByTag.Length)
+        {
+            replacementName = default;
+            return false;
+        }
+
+        int len = s_obsoleteReplacementNameLenByTag[i];
+        if (len == 0)
+        {
+            replacementName = default;
+            return false;
+        }
+
+        int start = s_obsoleteReplacementNameStartByTag[i];
+        replacementName = s_obsoleteReplacementNameBytes.AsSpan(start, len);
+        return true;
+    }
+
+    internal static bool TryGetIntAllowedMask(AssTag tag, out ulong mask, out string? code, out string? message)
+    {
+        int i = (int)tag;
+        if ((uint)i >= (uint)s_intAllowedMaskByTag.Length)
+        {
+            mask = 0;
+            code = null;
+            message = null;
+            return false;
+        }
+
+        mask = s_intAllowedMaskByTag[i];
+        if (mask == 0)
+        {
+            code = null;
+            message = null;
+            return false;
+        }
+
+        code = s_intAllowedMaskCodeByTag[i];
+        message = s_intAllowedMaskMessageByTag[i];
+        return true;
+    }
+
+    internal static bool TryGetValueKind(AssTag tag, out AssTagValueKind kind)
+    {
+        int i = (int)tag;
+        if ((uint)i >= (uint)s_valueKindByTag.Length)
+        {
+            kind = default;
+            return false;
+        }
+
+        kind = (AssTagValueKind)s_valueKindByTag[i];
+        return kind != AssTagValueKind.None;
     }
 
     internal static bool IsAlphaTag(AssTag tag)
-        => tag is AssTag.Alpha or AssTag.AlphaPrimary or AssTag.AlphaSecondary or AssTag.AlphaBorder or AssTag.AlphaShadow;
+    {
+        int i = (int)tag;
+        return (uint)i < (uint)s_isAlphaTagByTag.Length && s_isAlphaTagByTag[i] != 0;
+    }
+
+    internal static bool TryGetIntRange(AssTag tag, out int min, out int max, out string? code, out string? message)
+    {
+        int i = (int)tag;
+        if ((uint)i >= (uint)s_intMinByTag.Length)
+        {
+            min = max = 0;
+            code = null;
+            message = null;
+            return false;
+        }
+
+        code = s_intRangeCodeByTag[i];
+        message = s_intRangeMessageByTag[i];
+        if (code == null)
+        {
+            min = max = 0;
+            return false;
+        }
+
+        min = s_intMinByTag[i];
+        max = s_intMaxByTag[i];
+        return true;
+    }
+
+    internal static bool TryGetDoubleRange(AssTag tag, out double min, out double max, out string? code, out string? message)
+    {
+        int i = (int)tag;
+        if ((uint)i >= (uint)s_doubleMinByTag.Length)
+        {
+            min = max = 0;
+            code = null;
+            message = null;
+            return false;
+        }
+
+        code = s_doubleRangeCodeByTag[i];
+        message = s_doubleRangeMessageByTag[i];
+        if (code == null)
+        {
+            min = max = 0;
+            return false;
+        }
+
+        min = s_doubleMinByTag[i];
+        max = s_doubleMaxByTag[i];
+        return true;
+    }
 
     internal static bool TryMapLegacyAlignmentToAn(int legacyAlignment, out int anAlignment)
     {
-        // Legacy \a uses a different numbering scheme than \an (numpad).
-        // Mapping (SSA legacy) -> (\an numpad):
-        // 1..3 = bottom row (same), 4..6 = top row, 7..9 = middle row.
-        // => 4..6 => 7..9 (add 3), 7..9 => 4..6 (sub 3).
+        // SSA legacy \a numbering (used by old VSFilter/SSA):
+        // - 1..3: bottom left/center/right
+        // - 5..7: top left/center/right (add 4 from bottom row)
+        // - 9..11: middle left/center/right (add 8 from bottom row)
+        // Note: 4 and 8 are unused/invalid.
         if (legacyAlignment is >= 1 and <= 3)
         {
             anAlignment = legacyAlignment;
             return true;
         }
 
-        if (legacyAlignment is >= 4 and <= 6)
+        if (legacyAlignment is >= 5 and <= 7)
         {
-            anAlignment = legacyAlignment + 3;
+            // 5..7 => 7..9
+            anAlignment = legacyAlignment + 2;
             return true;
         }
 
-        if (legacyAlignment is >= 7 and <= 9)
+        if (legacyAlignment is >= 9 and <= 11)
         {
-            anAlignment = legacyAlignment - 3;
+            // 9..11 => 4..6
+            anAlignment = legacyAlignment - 5;
             return true;
         }
 
@@ -297,23 +468,9 @@ public static partial class AssTagRegistry
         return kind != AssTagFunctionKind.None;
     }
 
-    public static bool TryGet(AssTag tag, out AssTagDescriptor? desc)
-    {
-        int i = (int)tag;
-        if ((uint)i >= (uint)s_descByTag.Length)
-        {
-            desc = null;
-            return false;
-        }
-
-        desc = s_descByTag[i];
-        return desc != null;
-    }
-
-    public static bool TryMatch(ReadOnlySpan<byte> span, out AssTag tag, out AssTagDescriptor desc, out int matchedLength)
+    public static bool TryMatch(ReadOnlySpan<byte> span, out AssTag tag, out int matchedLength)
     {
         tag = default;
-        desc = default!;
         matchedLength = 0;
 
         int node = 0;
@@ -328,7 +485,6 @@ public static partial class AssTagRegistry
             if (terminal >= 0)
             {
                 tag = (AssTag)terminal;
-                desc = s_descByTag[terminal]!;
                 matchedLength = i + 1;
             }
         }

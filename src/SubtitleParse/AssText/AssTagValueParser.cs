@@ -222,7 +222,7 @@ public static class AssTagValueParser
             bytes[i] = (byte)c;
         }
 
-        if (!AssTagRegistry.TryMatch(bytes, out var t, out _, out int matched) || matched != bytes.Length)
+        if (!AssTagRegistry.TryMatch(bytes, out var t, out int matched) || matched != bytes.Length)
             return false;
 
         tag = t;

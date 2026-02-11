@@ -72,10 +72,12 @@ public static class AssOverrideTextCompletionProvider
         {
             if (AssTagRegistry.TryGetObsoleteReplacement(tag, out _))
                 continue;
-            if (!AssTagRegistry.TryGet(tag, out var desc) || desc == null)
+
+            var nameBytes = AssTagRegistry.GetNameBytes(tag);
+            if (nameBytes.IsEmpty)
                 continue;
 
-            var name = Encoding.ASCII.GetString(desc.Name.Span);
+            var name = Encoding.ASCII.GetString(nameBytes);
             string? detail = tag.ToString();
             if (AssTagRegistry.TryGetFunctionKind(tag, out var fk))
             {

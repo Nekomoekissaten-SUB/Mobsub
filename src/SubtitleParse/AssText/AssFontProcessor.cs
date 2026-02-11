@@ -43,7 +43,7 @@ public sealed class AssFontProcessor(byte wrapStyle, AssStyles styles) : IAssEve
         current = info;
     }
 
-    public void OnTag(AssTagSpan tag, AssTagDescriptor desc)
+    public void OnTag(AssTagSpan tag)
     {
         switch (tag.Tag)
         {
@@ -198,8 +198,7 @@ public sealed class AssFontProcessor(byte wrapStyle, AssStyles styles) : IAssEve
                 case AssEventSegmentKind.TagBlock:
                     if (seg.Tags == null) break;
                     foreach (var tag in seg.Tags.Value.Span)
-                        if (AssTagRegistry.TryGet(tag.Tag, out var desc))
-                            OnTag(tag, desc!);
+                        OnTag(tag);
                     break;
                 case AssEventSegmentKind.Text:
                     OnText(lineSpan[seg.LineRange]);

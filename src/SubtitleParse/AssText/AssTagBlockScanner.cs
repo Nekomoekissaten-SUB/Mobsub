@@ -16,7 +16,6 @@ internal readonly ref struct AssTagBlockToken
 
     public bool IsKnown { get; }
     public AssTag Tag { get; }
-    public AssTagDescriptor Desc { get; }
     public int MatchedLength { get; }
 
     public ReadOnlySpan<byte> NameAndMaybePayload { get; }
@@ -32,7 +31,6 @@ internal readonly ref struct AssTagBlockToken
         int paramEnd,
         bool isKnown,
         AssTag tag,
-        AssTagDescriptor desc,
         int matchedLength,
         ReadOnlySpan<byte> nameAndMaybePayload,
         ReadOnlySpan<byte> param,
@@ -46,7 +44,6 @@ internal readonly ref struct AssTagBlockToken
         ParamEnd = paramEnd;
         IsKnown = isKnown;
         Tag = tag;
-        Desc = desc;
         MatchedLength = matchedLength;
         NameAndMaybePayload = nameAndMaybePayload;
         Param = param;
@@ -115,21 +112,23 @@ internal ref struct AssTagBlockScanner
             int nextBackslash = block[i..].IndexOf((byte)'\\');
             int paramEndCandidate = nextBackslash < 0 ? block.Length : i + nextBackslash;
 
-            if (AssTagRegistry.TryMatch(nameAndMaybePayload, out var tag, out var desc, out int matchedLength))
+            if (AssTagRegistry.TryMatch(nameAndMaybePayload, out var tag, out int matchedLength))
             {
+                AssTagRegistry.TryGetTagKind(tag, out var tagKind);
+                bool shouldBeFunction = (tagKind & AssTagKind.ShouldBeFunction) != 0;
+
                 int actualParamStart = nameStart + matchedLength;
                 int paramStart = actualParamStart;
                 int paramEnd;
 
                 int parenStart = actualParamStart;
-                if ((desc.TagType & AssTagKind.ShouldBeFunction) != 0)
+                if (shouldBeFunction)
                 {
                     while ((uint)parenStart < (uint)block.Length && block[parenStart] == (byte)' ')
                         parenStart++;
                 }
 
-                if (((desc.TagType & AssTagKind.ShouldBeFunction) != 0) &&
-                    (uint)parenStart < (uint)block.Length && block[parenStart] == (byte)'(')
+                if (shouldBeFunction && (uint)parenStart < (uint)block.Length && block[parenStart] == (byte)'(')
                 {
                     int j = parenStart + 1;
                     int depth = 1;
@@ -176,7 +175,6 @@ internal ref struct AssTagBlockScanner
                     paramEnd: _absoluteStart + paramEnd,
                     isKnown: true,
                     tag: tag,
-                    desc: desc,
                     matchedLength: matchedLength,
                     nameAndMaybePayload: nameAndMaybePayload,
                     param: paramSpan,
@@ -204,7 +202,6 @@ internal ref struct AssTagBlockScanner
                 paramEnd: _absoluteStart + unknownParamEnd,
                 isKnown: false,
                 tag: default,
-                desc: default!,
                 matchedLength: 0,
                 nameAndMaybePayload: nameAndMaybePayload,
                 param: unknownParam,
@@ -224,4 +221,3 @@ internal ref struct AssTagBlockScanner
     private static bool IsAsciiLetterOrDigit(byte b)
         => (uint)(b - (byte)'0') <= 9 || (uint)((b | 0x20) - (byte)'a') <= 25;
 }
-
