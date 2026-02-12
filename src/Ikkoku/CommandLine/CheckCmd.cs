@@ -10,14 +10,34 @@ internal class CheckCmd
     internal static Command Build(Argument<FileSystemInfo> path, Option<bool> verbose)
     {
         var styleCheck = new Option<bool>("--style") { Description = "Check undefined styles." };
+        var dialectOpt = new Option<string>("--dialect")
+        {
+            Description = "Override tag dialect: ass|vsfilter|vsfiltermod.",
+            DefaultValueFactory = _ => "vsfilter",
+        };
+        var profileOpt = new Option<string>("--profile")
+        {
+            Description = "Renderer profile: vsfilter|libass_0_17_4.",
+            DefaultValueFactory = _ => "vsfilter",
+        };
+        var strictnessOpt = new Option<string>("--strictness")
+        {
+            Description = "Validation strictness: compat|normal|strict.",
+            DefaultValueFactory = _ => "normal",
+        };
 
         var checkCommand = new Command("check", "Check Your ASS!")
         {
-            path, styleCheck, verbose
+            path, styleCheck, dialectOpt, profileOpt, strictnessOpt, verbose
         };
         checkCommand.SetAction(result =>
         {
-            Execute(result.GetValue(path)!, result.GetValue(styleCheck), result.GetValue(verbose));
+            var options = CreateTextOptions(
+                result.GetValue(dialectOpt),
+                result.GetValue(profileOpt),
+                result.GetValue(strictnessOpt));
+
+            Execute(result.GetValue(path)!, result.GetValue(styleCheck), result.GetValue(verbose), options);
         });
 
         // fonts glyphs subcommand
@@ -25,17 +45,17 @@ internal class CheckCmd
         return checkCommand;
     }
 
-    internal static void Execute(FileSystemInfo path, bool styleCheck, bool verbose)
+    internal static void Execute(FileSystemInfo path, bool styleCheck, bool verbose, in AssTextOptions options)
     {
         switch (path)
         {
             case FileInfo file:
-                CheckOneAss(file, styleCheck, verbose);
+                CheckOneAss(file, styleCheck, verbose, options);
                 break;
             case DirectoryInfo dir:
                 foreach (var file in Utils.Traversal(dir, ".ass"))
                 {
-                    CheckOneAss(file, styleCheck, verbose);
+                    CheckOneAss(file, styleCheck, verbose, options);
                 }
                 break;
             default:
@@ -43,7 +63,7 @@ internal class CheckCmd
         }
     }
 
-    private static void CheckOneAss(FileInfo f, bool styleCheck, bool verbose)
+    private static void CheckOneAss(FileInfo f, bool styleCheck, bool verbose, in AssTextOptions options)
     {
         if (!f.Name.EndsWith(".ass", StringComparison.OrdinalIgnoreCase))
         {
@@ -77,7 +97,7 @@ internal class CheckCmd
             if (evt.StartSemicolon)
                 continue;
 
-            using var read = AssEventTextRead.ParseTextSpan(in evt);
+            using var read = AssEventTextRead.ParseTextSpan(in evt, options);
 
             var ctx = new AssOverrideValidationContext(
                 eventDurationMs: TryGetDurationMs(evt.Start, evt.End),
@@ -85,7 +105,7 @@ internal class CheckCmd
                 coordinateBoundY: boundY);
 
             var sink = new ConsoleSink(f.FullName, evt.LineNumber, verbose);
-            AssOverrideTagValidator.ValidateOverrideBlocks(read.Utf8, read.Segments, ref sink, ctx);
+            AssOverrideTagValidator.ValidateOverrideBlocks(read.Utf8, read.Segments, ref sink, ctx, options);
 
             totalErrors += sink.ErrorCount;
             totalWarnings += sink.WarningCount;
@@ -107,6 +127,31 @@ internal class CheckCmd
         {
             Console.WriteLine("No override tag issues.");
         }
+    }
+
+    private static AssTextOptions CreateTextOptions(string? dialect, string? profile, string? strictness)
+    {
+        var d = (dialect ?? "vsfilter").Trim().ToLowerInvariant() switch
+        {
+            "ass" => AssTextDialect.Ass,
+            "vsfiltermod" => AssTextDialect.VsFilterMod,
+            _ => AssTextDialect.VsFilter,
+        };
+
+        var p = (profile ?? "vsfilter").Trim().ToLowerInvariant() switch
+        {
+            "libass_0_17_4" => AssRendererProfile.LibAss_0_17_4,
+            _ => AssRendererProfile.VsFilter,
+        };
+
+        var s = (strictness ?? "normal").Trim().ToLowerInvariant() switch
+        {
+            "compat" => AssValidationStrictness.Compat,
+            "strict" => AssValidationStrictness.Strict,
+            _ => AssValidationStrictness.Normal,
+        };
+
+        return new AssTextOptions(d, p, s);
     }
 
     private static int? TryGetDurationMs(AssTime start, AssTime end)

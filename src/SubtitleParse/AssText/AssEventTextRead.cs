@@ -36,46 +36,46 @@ public sealed class AssEventTextRead : IDisposable
         _utf8PoolArray = utf8PoolArray;
     }
 
-    public static AssEventTextRead Parse(ReadOnlyMemory<byte> utf8)
-        => new(utf8, AssEventTextParser.ParseLinePooled(utf8), utf8PoolArray: null);
+    public static AssEventTextRead Parse(ReadOnlyMemory<byte> utf8, in AssTextOptions options = default)
+        => new(utf8, AssEventTextParser.ParseLinePooled(utf8, options), utf8PoolArray: null);
 
-    public static AssEventTextRead Parse(ReadOnlySpan<byte> utf8)
+    public static AssEventTextRead Parse(ReadOnlySpan<byte> utf8, in AssTextOptions options = default)
     {
         if (utf8.IsEmpty)
-            return Parse(ReadOnlyMemory<byte>.Empty);
+            return Parse(ReadOnlyMemory<byte>.Empty, options);
 
         byte[] rented = ArrayPool<byte>.Shared.Rent(utf8.Length);
         utf8.CopyTo(rented);
         var mem = rented.AsMemory(0, utf8.Length);
-        return new(mem, AssEventTextParser.ParseLinePooled(mem), rented);
+        return new(mem, AssEventTextParser.ParseLinePooled(mem, options), rented);
     }
 
-    public static AssEventTextRead Parse(string? text, Encoding? encoding = null)
+    public static AssEventTextRead Parse(string? text, Encoding? encoding = null, in AssTextOptions options = default)
     {
-        return Parse((text ?? string.Empty).AsSpan(), encoding);
+        return Parse((text ?? string.Empty).AsSpan(), encoding, options);
     }
 
-    public static AssEventTextRead Parse(ReadOnlySpan<char> text, Encoding? encoding = null)
+    public static AssEventTextRead Parse(ReadOnlySpan<char> text, Encoding? encoding = null, in AssTextOptions options = default)
     {
         encoding ??= Encoding.UTF8;
 
         int byteCount = encoding.GetByteCount(text);
         if (byteCount == 0)
-            return Parse(ReadOnlyMemory<byte>.Empty);
+            return Parse(ReadOnlyMemory<byte>.Empty, options);
 
         byte[] rented = ArrayPool<byte>.Shared.Rent(byteCount);
         int written = encoding.GetBytes(text, rented);
         var mem = rented.AsMemory(0, written);
-        return new(mem, AssEventTextParser.ParseLinePooled(mem), rented);
+        return new(mem, AssEventTextParser.ParseLinePooled(mem, options), rented);
     }
 
-    public static AssEventTextRead ParseTextSpan(in AssEvent ev)
+    public static AssEventTextRead ParseTextSpan(in AssEvent ev, in AssTextOptions options = default)
     {
         int len = ev.LineRaw.Length;
         int start = ev.TextReadOnly.Start.GetOffset(len);
         int end = ev.TextReadOnly.End.GetOffset(len);
         if (end < start) end = start;
-        return Parse(ev.LineRaw.Slice(start, end - start));
+        return Parse(ev.LineRaw.Slice(start, end - start), options);
     }
 
     public bool TryGetFirstOverrideBlock(out Range lineRange, out ReadOnlySpan<AssTagSpan> tags)

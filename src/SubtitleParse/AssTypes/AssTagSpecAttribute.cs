@@ -12,6 +12,14 @@ public sealed class AssTagSpecAttribute(string name, AssTagValueKind valueKind, 
 
     // Optional validation metadata (consumed by the source generator).
 
+    public AssTagSpecialRule SpecialRule { get; set; } = AssTagSpecialRule.None;
+
+    /// <summary>
+    /// Optional keyword set for <see cref="AssTagValueKind.Bytes"/> tags.
+    /// Generator emits a byte blob; validator can use it for enum/keyword validation.
+    /// </summary>
+    public string[]? BytesAllowedKeywords { get; set; }
+
     public string? ObsoleteReplacementName { get; set; }
 
     public ulong IntAllowedMask { get; set; }

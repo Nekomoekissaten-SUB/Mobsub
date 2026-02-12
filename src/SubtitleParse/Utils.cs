@@ -392,6 +392,59 @@ public class Utils
         return true;
     }
 
+    internal static bool TryParseHexIntLoose(ReadOnlySpan<byte> span, out int value, out bool invalid)
+    {
+        value = 0;
+        invalid = false;
+        span = TrimSpaces(span);
+        if (span.IsEmpty)
+            return false;
+
+        int prefix = ScanHexPrefix(span);
+        if (prefix == 0)
+        {
+            invalid = true;
+            return true;
+        }
+
+        bool negative = false;
+        int i = 0;
+        if (span[0] == (byte)'+' || span[0] == (byte)'-')
+        {
+            negative = span[0] == (byte)'-';
+            i = 1;
+        }
+
+        uint raw = 0;
+        int digits = 0;
+        while (i < prefix)
+        {
+            int n = Hex.TryGetNibbleAscii(span[i]);
+            if (n < 0)
+                break;
+            raw = (raw << 4) | (uint)n;
+            digits++;
+            i++;
+        }
+
+        if (digits == 0)
+        {
+            value = 0;
+            invalid = true;
+            return true;
+        }
+
+        if (digits > 8)
+            invalid = true;
+
+        value = negative ? unchecked(-(int)raw) : unchecked((int)raw);
+
+        if (prefix < span.Length)
+            invalid = true;
+
+        return true;
+    }
+
     internal static bool TryReadDouble(ref ReadOnlySpan<byte> span, out double value)
     {
         value = 0;
@@ -474,6 +527,22 @@ public class Utils
 
         int digitStart = i;
         while (i < span.Length && span[i] >= (byte)'0' && span[i] <= (byte)'9')
+            i++;
+
+        return i == digitStart ? 0 : i;
+    }
+
+    private static int ScanHexPrefix(ReadOnlySpan<byte> span)
+    {
+        int i = 0;
+        if (span.Length == 0)
+            return 0;
+
+        if (span[0] == (byte)'+' || span[0] == (byte)'-')
+            i++;
+
+        int digitStart = i;
+        while (i < span.Length && Hex.TryGetNibbleAscii(span[i]) >= 0)
             i++;
 
         return i == digitStart ? 0 : i;

@@ -74,6 +74,8 @@ public sealed class AssTagRegistryGenerator : IIncrementalGenerator
             int tagKindValue,
             int functionKindValue,
             byte isAlphaTag,
+            byte specialRule,
+            ImmutableArray<string> bytesAllowedKeywords,
             string? obsoleteReplacementName,
             ulong intAllowedMask,
             string? intAllowedMaskDiagnosticCode,
@@ -93,6 +95,8 @@ public sealed class AssTagRegistryGenerator : IIncrementalGenerator
             TagKindValue = tagKindValue;
             FunctionKindValue = functionKindValue;
             IsAlphaTag = isAlphaTag;
+            SpecialRule = specialRule;
+            BytesAllowedKeywords = bytesAllowedKeywords.IsDefault ? ImmutableArray<string>.Empty : bytesAllowedKeywords;
 
             ObsoleteReplacementName = obsoleteReplacementName;
 
@@ -117,6 +121,8 @@ public sealed class AssTagRegistryGenerator : IIncrementalGenerator
         public int TagKindValue { get; }
         public int FunctionKindValue { get; }
         public byte IsAlphaTag { get; }
+        public byte SpecialRule { get; }
+        public ImmutableArray<string> BytesAllowedKeywords { get; }
 
         public string? ObsoleteReplacementName { get; }
 
@@ -231,6 +237,9 @@ public sealed class AssTagRegistryGenerator : IIncrementalGenerator
             string? intRangeCode = null;
             string? intRangeMessage = null;
 
+            byte specialRule = 0;
+            ImmutableArray<string> bytesAllowedKeywords = ImmutableArray<string>.Empty;
+
             string? obsoleteReplacementName = null;
 
             ulong intAllowedMask = 0;
@@ -246,6 +255,38 @@ public sealed class AssTagRegistryGenerator : IIncrementalGenerator
             {
                 switch (kv.Key)
                 {
+                    case "SpecialRule":
+                        if (kv.Value.Value != null)
+                            specialRule = checked((byte)Convert.ToInt32(kv.Value.Value));
+                        break;
+                    case "BytesAllowedKeywords":
+                        if (kv.Value.Kind == TypedConstantKind.Array)
+                        {
+                            var builder = ImmutableArray.CreateBuilder<string>();
+                            foreach (var v in kv.Value.Values)
+                            {
+                                if (v.Value is not string s)
+                                    continue;
+                                if (s.Length == 0 || !IsAscii(s))
+                                {
+                                    spc.ReportDiagnostic(Diagnostic.Create(
+                                        new DiagnosticDescriptor(
+                                            id: "MSP008",
+                                            title: "Invalid BytesAllowedKeywords item",
+                                            messageFormat: $"AssTag member '{{0}}' has non-ASCII or empty keyword '{{1}}'",
+                                            category: "Mobsub.SubtitleParse.TagGenerator",
+                                            DiagnosticSeverity.Error,
+                                            isEnabledByDefault: true),
+                                        member.Locations.FirstOrDefault(),
+                                        member.Name,
+                                        s));
+                                    return null;
+                                }
+                                builder.Add(s);
+                            }
+                            bytesAllowedKeywords = builder.ToImmutable();
+                        }
+                        break;
                     case "IntMin":
                         if (kv.Value.Value is int iv) intMin = iv;
                         break;
@@ -334,6 +375,21 @@ public sealed class AssTagRegistryGenerator : IIncrementalGenerator
                 return null;
             }
 
+            if (!bytesAllowedKeywords.IsDefaultOrEmpty && valueKind != AssTagValueKind_Bytes)
+            {
+                spc.ReportDiagnostic(Diagnostic.Create(
+                    new DiagnosticDescriptor(
+                        id: "MSP009",
+                        title: "BytesAllowedKeywords requires Bytes value kind",
+                        messageFormat: $"AssTag member '{{0}}' has BytesAllowedKeywords but ValueKind is not Bytes",
+                        category: "Mobsub.SubtitleParse.TagGenerator",
+                        DiagnosticSeverity.Error,
+                        isEnabledByDefault: true),
+                    member.Locations.FirstOrDefault(),
+                    member.Name));
+                return null;
+            }
+
             byte isAlphaTag = IsAlphaTagName(name) ? (byte)1 : (byte)0;
 
             specs.Add(new TagSpec(
@@ -343,6 +399,8 @@ public sealed class AssTagRegistryGenerator : IIncrementalGenerator
                 tagKindValue,
                 functionKindValue,
                 isAlphaTag,
+                specialRule,
+                bytesAllowedKeywords,
                 obsoleteReplacementName,
                 intAllowedMask,
                 intAllowedMaskCode,
@@ -526,6 +584,66 @@ public sealed class AssTagRegistryGenerator : IIncrementalGenerator
         sb.AppendLine("    {");
         for (int i = 0; i <= maxTagValue; i++)
             sb.AppendLine($"        {nameLenByTag[i]},");
+        sb.AppendLine("    };");
+        sb.AppendLine();
+
+        sb.AppendLine("    private static readonly byte[] s_specialRuleByTag = new byte[]");
+        sb.AppendLine("    {");
+        for (int i = 0; i <= maxTagValue; i++)
+        {
+            if (!specByValue.TryGetValue(i, out var spec))
+            {
+                sb.AppendLine("        0,");
+                continue;
+            }
+            sb.AppendLine($"        {spec.SpecialRule},");
+        }
+        sb.AppendLine("    };");
+        sb.AppendLine();
+
+        var keywordBytes = new List<byte>(capacity: 64);
+        var keywordStartByTag = new int[maxTagValue + 1];
+        var keywordLenByTag = new ushort[maxTagValue + 1];
+
+        for (int i = 0; i <= maxTagValue; i++)
+        {
+            if (!specByValue.TryGetValue(i, out var spec) || spec.BytesAllowedKeywords.IsDefaultOrEmpty)
+            {
+                keywordStartByTag[i] = 0;
+                keywordLenByTag[i] = 0;
+                continue;
+            }
+
+            keywordStartByTag[i] = keywordBytes.Count;
+            foreach (var kw in spec.BytesAllowedKeywords)
+            {
+                var bytes = Encoding.ASCII.GetBytes(kw);
+                keywordBytes.AddRange(bytes);
+                keywordBytes.Add(0);
+            }
+
+            int len = keywordBytes.Count - keywordStartByTag[i];
+            keywordLenByTag[i] = checked((ushort)len);
+        }
+
+        sb.AppendLine("    private static readonly byte[] s_allowedKeywordBytes = new byte[]");
+        sb.AppendLine("    {");
+        for (int i = 0; i < keywordBytes.Count; i++)
+            sb.AppendLine($"        {keywordBytes[i]},");
+        sb.AppendLine("    };");
+        sb.AppendLine();
+
+        sb.AppendLine("    private static readonly int[] s_allowedKeywordStartByTag = new int[]");
+        sb.AppendLine("    {");
+        for (int i = 0; i <= maxTagValue; i++)
+            sb.AppendLine($"        {keywordStartByTag[i]},");
+        sb.AppendLine("    };");
+        sb.AppendLine();
+
+        sb.AppendLine("    private static readonly ushort[] s_allowedKeywordLenByTag = new ushort[]");
+        sb.AppendLine("    {");
+        for (int i = 0; i <= maxTagValue; i++)
+            sb.AppendLine($"        {keywordLenByTag[i]},");
         sb.AppendLine("    };");
         sb.AppendLine();
 

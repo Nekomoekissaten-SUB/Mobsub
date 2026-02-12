@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Mobsub.SubtitleParse.AssText;
+using Mobsub.SubtitleParse.AssTypes;
 
 namespace Mobsub.SubtitleParse.Language;
 
@@ -11,14 +12,15 @@ internal static class AssOverrideAnalyzer
         int baseCharInLine,
         ReadOnlySpan<char> textField,
         List<AssDiagnostic> diagnostics,
-        AssOverrideTextAnalyzerContext? context = null)
+        AssOverrideTextAnalyzerContext? context = null,
+        in AssTextOptions options = default)
     {
         // Fast path: no override blocks.
         if (textField.IndexOf('{') < 0)
             return;
 
         using var map = Utf8IndexMap.Create(textField);
-        using var read = AssEventTextRead.Parse(textField);
+        using var read = AssEventTextRead.Parse(textField, options: options);
 
         ScanForUnclosedOverrideBlock(line, baseCharInLine, textField, diagnostics);
 
@@ -28,7 +30,7 @@ internal static class AssOverrideAnalyzer
         var segments = read.Segments;
 
         var sink = new DiagnosticSink(line, baseCharInLine, map, diagnostics);
-        AssOverrideTagValidator.ValidateOverrideBlocks(utf8, segments, ref sink, validationContext);
+        AssOverrideTagValidator.ValidateOverrideBlocks(utf8, segments, ref sink, validationContext, options);
     }
 
     private static AssOverrideValidationContext CreateValidationContext(AssOverrideTextAnalyzerContext? context)

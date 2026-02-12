@@ -1,4 +1,5 @@
 using Mobsub.SubtitleParse;
+using Mobsub.SubtitleParse.AssTypes;
 
 namespace Mobsub.SubtitleParse.AssText;
 
@@ -24,6 +25,108 @@ public static class AssFunctionTagParsers
         Utils.SkipSpaces(ref inner);
         return inner.IsEmpty;
     }
+
+    public static bool TryParsePos3(ReadOnlySpan<byte> payload, out double x, out double y, out double z)
+    {
+        x = 0;
+        y = 0;
+        z = 0;
+        if (!Utils.TryGetParenContent(payload, out var inner))
+            return false;
+        if (!TryReadDoubleToken(ref inner, "pos", out x))
+            return false;
+        if (!TryReadDoubleToken(ref inner, "pos", out y))
+            return false;
+        if (!TryReadDoubleToken(ref inner, "pos", out z))
+            return false;
+
+        Utils.SkipSpaces(ref inner);
+        return inner.IsEmpty;
+    }
+
+    public static bool TryValidateDistort(ReadOnlySpan<byte> payload)
+        => TryValidateDoubleArgs(payload, "distort", minCount: 6, maxCount: 6, out _);
+
+    public static bool TryValidateJitter(ReadOnlySpan<byte> payload)
+        => TryValidateDoubleArgs(payload, "jitter", minCount: 4, maxCount: 6, out _);
+
+    public static bool TryValidateMover(ReadOnlySpan<byte> payload)
+    {
+        if (!TryValidateDoubleArgs(payload, "mover", minCount: 8, maxCount: 10, out int count))
+            return false;
+        return count is 8 or 10;
+    }
+
+    public static bool TryValidateMoves3(ReadOnlySpan<byte> payload)
+    {
+        if (!TryValidateDoubleArgs(payload, "moves3", minCount: 6, maxCount: 8, out int count))
+            return false;
+        return count is 6 or 8;
+    }
+
+    public static bool TryValidateMoves4(ReadOnlySpan<byte> payload)
+    {
+        if (!TryValidateDoubleArgs(payload, "moves4", minCount: 8, maxCount: 10, out int count))
+            return false;
+        return count is 8 or 10;
+    }
+
+    public static bool TryValidateMoveVC(ReadOnlySpan<byte> payload)
+    {
+        if (!TryValidateDoubleArgs(payload, "movevc", minCount: 2, maxCount: 6, out int count))
+            return false;
+        return count is 2 or 4 or 6;
+    }
+
+    public static bool TryValidateVc(ReadOnlySpan<byte> payload)
+    {
+        if (!Utils.TryGetParenContent(payload, out var inner))
+            return false;
+
+        if (!TryReadToken(ref inner, out var t1) ||
+            !TryReadToken(ref inner, out var t2) ||
+            !TryReadToken(ref inner, out var t3) ||
+            !TryReadToken(ref inner, out var t4))
+        {
+            return false;
+        }
+
+        if (!AssColor32.TryParseTagColor(Utils.TrimSpaces(t1), out _, out _, out var invalid1) || invalid1) return false;
+        if (!AssColor32.TryParseTagColor(Utils.TrimSpaces(t2), out _, out _, out var invalid2) || invalid2) return false;
+        if (!AssColor32.TryParseTagColor(Utils.TrimSpaces(t3), out _, out _, out var invalid3) || invalid3) return false;
+        if (!AssColor32.TryParseTagColor(Utils.TrimSpaces(t4), out _, out _, out var invalid4) || invalid4) return false;
+
+        Utils.SkipSpaces(ref inner);
+        return inner.IsEmpty;
+    }
+
+    public static bool TryValidateVa(ReadOnlySpan<byte> payload)
+    {
+        if (!Utils.TryGetParenContent(payload, out var inner))
+            return false;
+
+        if (!TryReadToken(ref inner, out var t1) ||
+            !TryReadToken(ref inner, out var t2) ||
+            !TryReadToken(ref inner, out var t3) ||
+            !TryReadToken(ref inner, out var t4))
+        {
+            return false;
+        }
+
+        if (!AssColor32.TryParseAlphaByte(Utils.TrimSpaces(t1), out _, out var invalid1) || invalid1) return false;
+        if (!AssColor32.TryParseAlphaByte(Utils.TrimSpaces(t2), out _, out var invalid2) || invalid2) return false;
+        if (!AssColor32.TryParseAlphaByte(Utils.TrimSpaces(t3), out _, out var invalid3) || invalid3) return false;
+        if (!AssColor32.TryParseAlphaByte(Utils.TrimSpaces(t4), out _, out var invalid4) || invalid4) return false;
+
+        Utils.SkipSpaces(ref inner);
+        return inner.IsEmpty;
+    }
+
+    public static bool TryValidateLua(ReadOnlySpan<byte> payload)
+        => Utils.TryGetParenContent(payload, out var inner) && !Utils.TrimSpaces(inner).IsEmpty;
+
+    public static bool TryValidateImg(ReadOnlySpan<byte> payload)
+        => Utils.TryGetParenContent(payload, out var inner) && !Utils.TrimSpaces(inner).IsEmpty;
 
     public static bool TryParseFad(ReadOnlySpan<byte> payload, out int t1, out int t2)
     {
@@ -320,6 +423,33 @@ public static class AssFunctionTagParsers
             LogInvalidNumber(tag, token);
 
         return true;
+    }
+
+    private static bool TryValidateDoubleArgs(ReadOnlySpan<byte> payload, string tag, int minCount, int maxCount, out int count)
+    {
+        count = 0;
+        if (!Utils.TryGetParenContent(payload, out var inner))
+            return false;
+
+        Utils.SkipSpaces(ref inner);
+        if (inner.IsEmpty)
+            return false;
+
+        while (true)
+        {
+            if (!TryReadDoubleToken(ref inner, tag, out _))
+                return false;
+
+            count++;
+            if (count > maxCount)
+                return false;
+
+            Utils.SkipSpaces(ref inner);
+            if (inner.IsEmpty)
+                break;
+        }
+
+        return count >= minCount;
     }
 
     private static void LogInvalidNumber(string tag, ReadOnlySpan<byte> token)

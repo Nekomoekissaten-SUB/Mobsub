@@ -113,7 +113,14 @@ public class AssEventTextParserTest
         kt.Should().Be(10);
 
         tags[1].Tag.Should().Be(AssTag.FontScale);
-        tags[1].TryGet<double>(out var fsc).Should().BeTrue();
+        tags[1].TryGet<double>(out _).Should().BeFalse();
+
+        var modOptions = new AssTextOptions(Dialect: AssTextDialect.VsFilterMod);
+        var modSegments = AssEventTextParser.ParseLine(line, modOptions).Span;
+        var modTags = modSegments[0].Tags!.Value.Span;
+        modTags.Length.Should().Be(2);
+        modTags[1].Tag.Should().Be(AssTag.FontScale);
+        modTags[1].TryGet<double>(out var fsc).Should().BeTrue();
         fsc.Should().Be(50);
     }
 }

@@ -7,9 +7,13 @@ public static class AssOverrideTextCompletionProvider
 {
     private sealed record TagCompletion(string Name, string Label, AssCompletionKind Kind, string? Detail);
 
-    private static readonly TagCompletion[] Tags = BuildTagCompletions();
+    private static readonly TagCompletion[] TagsVsFilter = BuildTagCompletions(includeModTags: false);
+    private static readonly TagCompletion[] TagsVsFilterMod = BuildTagCompletions(includeModTags: true);
 
     public static AssCompletionResult GetCompletions(string text, AssPosition position, AssOverrideTextAnalysisResult analysis)
+        => GetCompletions(text, position, analysis, options: default);
+
+    public static AssCompletionResult GetCompletions(string text, AssPosition position, AssOverrideTextAnalysisResult analysis, in AssTextOptions options)
     {
         var lineSpan = analysis.LineMap.GetLineSpan(text, position.Line);
         int col = Math.Clamp(position.Character, 0, lineSpan.Length);
@@ -18,9 +22,10 @@ public static class AssOverrideTextCompletionProvider
             return new AssCompletionResult(Array.Empty<AssCompletionItem>(), new AssRange(position, position));
 
         var items = new List<AssCompletionItem>(capacity: 32);
-        for (int i = 0; i < Tags.Length; i++)
+        var tags = options.ModMode ? TagsVsFilterMod : TagsVsFilter;
+        for (int i = 0; i < tags.Length; i++)
         {
-            var t = Tags[i];
+            var t = tags[i];
             if (t.Name.AsSpan().StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
                 items.Add(new AssCompletionItem(t.Label, t.Name, t.Kind, t.Detail));
         }
@@ -65,11 +70,14 @@ public static class AssOverrideTextCompletionProvider
         return true;
     }
 
-    private static TagCompletion[] BuildTagCompletions()
+    private static TagCompletion[] BuildTagCompletions(bool includeModTags)
     {
         var map = new Dictionary<string, TagCompletion>(StringComparer.OrdinalIgnoreCase);
         foreach (var tag in Enum.GetValues<AssTag>())
         {
+            if (!includeModTags && AssTagRegistry.TryGetTagKind(tag, out var kind) && (kind & AssTagKind.IsVsFilterMod) != 0)
+                continue;
+
             if (AssTagRegistry.TryGetObsoleteReplacement(tag, out _))
                 continue;
 

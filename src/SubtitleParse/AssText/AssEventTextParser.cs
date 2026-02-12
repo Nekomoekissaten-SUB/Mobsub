@@ -47,47 +47,47 @@ public static class AssEventTextParser
         }
     }
 
-    public static ReadOnlyMemory<AssEventSegment> ParseLine(ReadOnlyMemory<byte> line)
-        => ParseLineInternal(line.Span, line);
+    public static ReadOnlyMemory<AssEventSegment> ParseLine(ReadOnlyMemory<byte> line, in AssTextOptions options = default)
+        => ParseLineInternal(line.Span, line, options);
 
     // Prefer the ReadOnlyMemory overload when possible to keep tag payloads as slices.
-    public static ReadOnlyMemory<AssEventSegment> ParseLine(ReadOnlySpan<byte> line)
-        => ParseLineInternal(line, default);
+    public static ReadOnlyMemory<AssEventSegment> ParseLine(ReadOnlySpan<byte> line, in AssTextOptions options = default)
+        => ParseLineInternal(line, default, options);
 
-    public static AssEventSegmentBuffer ParseLinePooled(ReadOnlyMemory<byte> line)
-        => ParseLineInternalPooled(line.Span, line);
+    public static AssEventSegmentBuffer ParseLinePooled(ReadOnlyMemory<byte> line, in AssTextOptions options = default)
+        => ParseLineInternalPooled(line.Span, line, options);
 
-    public static AssEventSegmentBuffer ParseLinePooled(ReadOnlySpan<byte> line)
-        => ParseLineInternalPooled(line, default);
+    public static AssEventSegmentBuffer ParseLinePooled(ReadOnlySpan<byte> line, in AssTextOptions options = default)
+        => ParseLineInternalPooled(line, default, options);
 
-    public static void WithParsedSegments(ReadOnlyMemory<byte> line, Action<ReadOnlySpan<AssEventSegment>> action)
+    public static void WithParsedSegments(ReadOnlyMemory<byte> line, Action<ReadOnlySpan<AssEventSegment>> action, in AssTextOptions options = default)
     {
-        using var buffer = ParseLinePooled(line);
+        using var buffer = ParseLinePooled(line, options);
         action(buffer.Span);
     }
 
     // Prefer the ReadOnlyMemory overload when possible to keep tag payloads as slices.
-    public static void WithParsedSegments(ReadOnlySpan<byte> line, Action<ReadOnlySpan<AssEventSegment>> action)
+    public static void WithParsedSegments(ReadOnlySpan<byte> line, Action<ReadOnlySpan<AssEventSegment>> action, in AssTextOptions options = default)
     {
-        using var buffer = ParseLinePooled(line);
+        using var buffer = ParseLinePooled(line, options);
         action(buffer.Span);
     }
 
-    public static void WithParsedSegments(ReadOnlyMemory<byte> line, AssEventSegmentSpanAction action)
+    public static void WithParsedSegments(ReadOnlyMemory<byte> line, AssEventSegmentSpanAction action, in AssTextOptions options = default)
     {
-        using var buffer = ParseLinePooled(line);
+        using var buffer = ParseLinePooled(line, options);
         action(buffer.Span, line.Span);
     }
 
-    public static void WithParsedSegments(ReadOnlySpan<byte> line, AssEventSegmentSpanAction action)
+    public static void WithParsedSegments(ReadOnlySpan<byte> line, AssEventSegmentSpanAction action, in AssTextOptions options = default)
     {
-        using var buffer = ParseLinePooled(line);
+        using var buffer = ParseLinePooled(line, options);
         action(buffer.Span, line);
     }
 
-    private static ReadOnlyMemory<AssEventSegment> ParseLineInternal(ReadOnlySpan<byte> line, ReadOnlyMemory<byte> lineMemory)
+    private static ReadOnlyMemory<AssEventSegment> ParseLineInternal(ReadOnlySpan<byte> line, ReadOnlyMemory<byte> lineMemory, in AssTextOptions options)
     {
-        var buffer = ParseLineToPool(line, lineMemory, out int count, pooledTags: false);
+        var buffer = ParseLineToPool(line, lineMemory, out int count, pooledTags: false, options);
 
         var result = buffer.AsSpan(0, count).ToArray();
         ArrayPool<AssEventSegment>.Shared.Return(buffer, clearArray: true);
@@ -95,13 +95,13 @@ public static class AssEventTextParser
         return result;
     }
 
-    private static AssEventSegmentBuffer ParseLineInternalPooled(ReadOnlySpan<byte> line, ReadOnlyMemory<byte> lineMemory)
+    private static AssEventSegmentBuffer ParseLineInternalPooled(ReadOnlySpan<byte> line, ReadOnlyMemory<byte> lineMemory, in AssTextOptions options)
     {
-        var buffer = ParseLineToPool(line, lineMemory, out int count, pooledTags: true);
+        var buffer = ParseLineToPool(line, lineMemory, out int count, pooledTags: true, options);
         return new AssEventSegmentBuffer(buffer, count);
     }
 
-    private static AssEventSegment[] ParseLineToPool(ReadOnlySpan<byte> line, ReadOnlyMemory<byte> lineMemory, out int count, bool pooledTags)
+    private static AssEventSegment[] ParseLineToPool(ReadOnlySpan<byte> line, ReadOnlyMemory<byte> lineMemory, out int count, bool pooledTags, in AssTextOptions options)
     {
         var pool = ArrayPool<AssEventSegment>.Shared;
         var buffer = pool.Rent(32);
@@ -134,8 +134,8 @@ public static class AssEventTextParser
 
                 var block = line.Slice(i + 1, j - i - 1);
                 var tags = pooledTags
-                    ? ParseTagBlockPooled(block, i + 1, lineMemory)
-                    : ParseTagBlock(block, i + 1, lineMemory);
+                    ? ParseTagBlockPooled(block, i + 1, lineMemory, options)
+                    : ParseTagBlock(block, i + 1, lineMemory, options);
 
                 AddSegment(ref buffer, ref count, new AssEventSegment(new Range(i, j + 1), AssEventSegmentKind.TagBlock, tags));
 
@@ -196,25 +196,25 @@ public static class AssEventTextParser
         }
     }
 
-    private static ReadOnlyMemory<AssTagSpan> ParseTagBlock(ReadOnlySpan<byte> block, int absoluteStart, ReadOnlyMemory<byte> lineMemory)
-        => ParseTagBlockInternal(block, absoluteStart, lineMemory, pooled: false);
+    private static ReadOnlyMemory<AssTagSpan> ParseTagBlock(ReadOnlySpan<byte> block, int absoluteStart, ReadOnlyMemory<byte> lineMemory, in AssTextOptions options)
+        => ParseTagBlockInternal(block, absoluteStart, lineMemory, pooled: false, options);
 
-    private static ReadOnlyMemory<AssTagSpan> ParseTagBlockPooled(ReadOnlySpan<byte> block, int absoluteStart, ReadOnlyMemory<byte> lineMemory)
-        => ParseTagBlockInternal(block, absoluteStart, lineMemory, pooled: true);
+    private static ReadOnlyMemory<AssTagSpan> ParseTagBlockPooled(ReadOnlySpan<byte> block, int absoluteStart, ReadOnlyMemory<byte> lineMemory, in AssTextOptions options)
+        => ParseTagBlockInternal(block, absoluteStart, lineMemory, pooled: true, options);
 
-    private static ReadOnlyMemory<AssTagSpan> ParseTagBlockInternal(ReadOnlySpan<byte> block, int absoluteStart, ReadOnlyMemory<byte> lineMemory, bool pooled)
+    private static ReadOnlyMemory<AssTagSpan> ParseTagBlockInternal(ReadOnlySpan<byte> block, int absoluteStart, ReadOnlyMemory<byte> lineMemory, bool pooled, in AssTextOptions options)
     {
         var pool = ArrayPool<AssTagSpan>.Shared;
         AssTagSpan[] buffer = pool.Rent(8);
         int count = 0;
 
-        var scanner = new AssTagBlockScanner(block, absoluteStart, lineMemory);
+        var scanner = new AssTagBlockScanner(block, absoluteStart, lineMemory, options);
         while (scanner.MoveNext(out var token))
         {
             if (!token.IsKnown)
                 continue;
 
-            var value = ParseValue(token.Tag, token.Param, token.ParamMemory);
+            var value = ParseValue(token.Tag, token.Param, token.ParamMemory, options);
             AddTag(ref buffer, ref count, new AssTagSpan(token.Tag, new Range(token.TagStart, token.TagEnd), value));
         }
 
@@ -287,13 +287,28 @@ public static class AssEventTextParser
         buffer[count++] = seg;
     }
 
-    private static AssTagValue ParseValue(AssTag tag, ReadOnlySpan<byte> param, ReadOnlyMemory<byte> paramMemory)
+    private static AssTagValue ParseValue(AssTag tag, ReadOnlySpan<byte> param, ReadOnlyMemory<byte> paramMemory, in AssTextOptions options)
     {
         Utils.TrimSpaces(param, out int start, out int length);
         if (length == 0) return AssTagValue.Empty;
 
         var trimmedSpan = param.Slice(start, length);
         var trimmedMemory = paramMemory.IsEmpty ? default : paramMemory.Slice(start, length);
+
+        if (AssTagRegistry.TryGetSpecialRule(tag, out var specialRule))
+        {
+            // VSFilter/libass: \fsc always resets scale (payload ignored); VSFilterMod enables \fsc<scale> overload.
+            if (specialRule == AssTagSpecialRule.FontScaleFsc && !options.ModMode)
+                return AssTagValue.Empty;
+
+            if (specialRule == AssTagSpecialRule.HexInt32 && Utils.TryParseHexIntLoose(trimmedSpan, out int hex, out var invalidHex))
+            {
+                if (invalidHex && Logger != null)
+                    LogWarning($"Invalid hex integer value for \\{Utils.GetString(AssTagRegistry.GetNameBytes(tag))}: '{Utils.GetString(trimmedSpan)}', treated as 0.");
+
+                return AssTagValue.FromInt(hex);
+            }
+        }
 
         if (AssTagRegistry.IsAlphaTag(tag) && AssColor32.TryParseAlphaByte(trimmedSpan, out var alpha, out var invalidAlpha))
         {
@@ -304,7 +319,7 @@ public static class AssEventTextParser
             return AssTagValue.FromByte(alpha);
         }
 
-        if (AssTagRegistry.TryGetFunctionKind(tag, out var functionKind) && TryParseFunctionTag(functionKind, trimmedSpan, trimmedMemory, out var funcValue))
+        if (AssTagRegistry.TryGetFunctionKind(tag, out var functionKind) && TryParseFunctionTag(functionKind, trimmedSpan, trimmedMemory, out var funcValue, options))
             return AssTagValue.FromFunction(funcValue);
 
         if (!AssTagRegistry.TryGetValueKind(tag, out var valueKind))
@@ -386,13 +401,14 @@ public static class AssEventTextParser
         }
     }
 
-    private static bool TryParseFunctionTag(AssTagFunctionKind functionKind, ReadOnlySpan<byte> param, ReadOnlyMemory<byte> paramMemory, out AssTagFunctionValue value)
+    private static bool TryParseFunctionTag(AssTagFunctionKind functionKind, ReadOnlySpan<byte> param, ReadOnlyMemory<byte> paramMemory, out AssTagFunctionValue value, in AssTextOptions options)
     {
         value = default;
         switch (functionKind)
         {
             case AssTagFunctionKind.Pos:
-                if (AssFunctionTagParsers.TryParsePos(param, out var x, out var y))
+                if (AssFunctionTagParsers.TryParsePos(param, out var x, out var y) ||
+                    (options.ModMode && AssFunctionTagParsers.TryParsePos3(param, out x, out y, out _)))
                 {
                     value = new AssTagFunctionValue { Kind = AssTagFunctionKind.Pos, X1 = x, Y1 = y };
                     return true;

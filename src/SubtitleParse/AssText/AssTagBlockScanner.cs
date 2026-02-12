@@ -56,13 +56,15 @@ internal ref struct AssTagBlockScanner
     private readonly ReadOnlySpan<byte> _block;
     private readonly int _absoluteStart;
     private readonly ReadOnlyMemory<byte> _lineMemory;
+    private readonly AssTextOptions _options;
     private int _i;
 
-    public AssTagBlockScanner(ReadOnlySpan<byte> block, int absoluteStart, ReadOnlyMemory<byte> lineMemory)
+    public AssTagBlockScanner(ReadOnlySpan<byte> block, int absoluteStart, ReadOnlyMemory<byte> lineMemory, in AssTextOptions options)
     {
         _block = block;
         _absoluteStart = absoluteStart;
         _lineMemory = lineMemory;
+        _options = options;
         _i = 0;
     }
 
@@ -112,10 +114,29 @@ internal ref struct AssTagBlockScanner
             int nextBackslash = block[i..].IndexOf((byte)'\\');
             int paramEndCandidate = nextBackslash < 0 ? block.Length : i + nextBackslash;
 
-            if (AssTagRegistry.TryMatch(nameAndMaybePayload, out var tag, out int matchedLength))
+            if (AssTagRegistry.TryMatch(nameAndMaybePayload, _options, out var tag, out int matchedLength, out int gatedMatchedLength))
             {
                 AssTagRegistry.TryGetTagKind(tag, out var tagKind);
                 bool shouldBeFunction = (tagKind & AssTagKind.ShouldBeFunction) != 0;
+
+                // Prefix-conflict protection:
+                // If the registry matched a short tag name, but the immediate payload starts with an ASCII letter,
+                // it's very likely this is actually a longer (unknown / dialect-disabled) tag.
+                // Example: "\\blend1" must not become "\\b" + "lend1" when VSFilterMod tags are disabled.
+                var remainder = nameAndMaybePayload.Slice(matchedLength);
+
+                bool hasGatedLongerMatch = gatedMatchedLength > matchedLength;
+
+                bool matchRejected = hasGatedLongerMatch &&
+                    (shouldBeFunction
+                        ? !remainder.IsEmpty
+                        : (!remainder.IsEmpty && IsAsciiLetter(remainder[0]) &&
+                            AssTagRegistry.TryGetValueKind(tag, out var vk) &&
+                            (vk is AssTagValueKind.Int or AssTagValueKind.Double or AssTagValueKind.Bool
+                             || (vk == AssTagValueKind.Byte && !AssTagRegistry.IsAlphaTag(tag)))));
+
+                if (matchRejected)
+                    goto UnknownTag;
 
                 int actualParamStart = nameStart + matchedLength;
                 int paramStart = actualParamStart;
@@ -185,6 +206,7 @@ internal ref struct AssTagBlockScanner
             }
 
             // Unknown tag: treat param as bytes until next backslash.
+            UnknownTag:
             int unknownParamStart = nameEnd;
             int unknownParamEnd = paramEndCandidate;
             int unknownParamLength = Math.Max(0, unknownParamEnd - unknownParamStart);
@@ -220,4 +242,8 @@ internal ref struct AssTagBlockScanner
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool IsAsciiLetterOrDigit(byte b)
         => (uint)(b - (byte)'0') <= 9 || (uint)((b | 0x20) - (byte)'a') <= 25;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool IsAsciiLetter(byte b)
+        => (uint)((b | 0x20) - (byte)'a') <= 25;
 }

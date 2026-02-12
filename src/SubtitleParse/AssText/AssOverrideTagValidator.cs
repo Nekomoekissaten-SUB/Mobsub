@@ -53,21 +53,39 @@ public static class AssOverrideTagValidator
 {
     private const int MaxNestedTransformDepth = 4;
 
+    private static AssOverrideValidationSeverity GetVsFilterModSeverity(in AssTextOptions options)
+        => options.Strictness switch
+        {
+            AssValidationStrictness.Compat => AssOverrideValidationSeverity.Info,
+            AssValidationStrictness.Strict => AssOverrideValidationSeverity.Error,
+            _ => AssOverrideValidationSeverity.Warning,
+        };
+
+    private static AssOverrideValidationSeverity GetVsFilterModOverloadSeverity(in AssTextOptions options)
+        => options.Strictness switch
+        {
+            AssValidationStrictness.Compat => AssOverrideValidationSeverity.Info,
+            AssValidationStrictness.Strict => AssOverrideValidationSeverity.Error,
+            _ => AssOverrideValidationSeverity.Warning,
+        };
+
     public static void ValidateOverrideBlocks(
         ReadOnlyMemory<byte> lineBytes,
         ReadOnlySpan<AssEventSegment> segments,
         List<AssOverrideValidationIssue> issues,
-        in AssOverrideValidationContext context = default)
+        in AssOverrideValidationContext context = default,
+        in AssTextOptions options = default)
     {
         var sink = new ListSink(issues);
-        ValidateOverrideBlocks(lineBytes, segments, ref sink, context);
+        ValidateOverrideBlocks(lineBytes, segments, ref sink, context, options);
     }
 
     public static void ValidateOverrideBlocks<TSink>(
         ReadOnlyMemory<byte> lineBytes,
         ReadOnlySpan<AssEventSegment> segments,
         ref TSink sink,
-        in AssOverrideValidationContext context = default)
+        in AssOverrideValidationContext context = default,
+        in AssTextOptions options = default)
         where TSink : struct, IAssOverrideValidationSink
     {
         for (int i = 0; i < segments.Length; i++)
@@ -91,7 +109,8 @@ public static class AssOverrideTagValidator
                 payloadAbsoluteStartByte: innerStart,
                 sink: ref sink,
                 context: context,
-                depth: 0);
+                depth: 0,
+                options: options);
         }
     }
 
@@ -100,10 +119,11 @@ public static class AssOverrideTagValidator
         ReadOnlySpan<byte> payload,
         int payloadAbsoluteStartByte,
         List<AssOverrideValidationIssue> issues,
-        in AssOverrideValidationContext context = default)
+        in AssOverrideValidationContext context = default,
+        in AssTextOptions options = default)
     {
         var sink = new ListSink(issues);
-        ValidateTagPayload(lineBytes, payload, payloadAbsoluteStartByte, ref sink, context, depth: 0);
+        ValidateTagPayload(lineBytes, payload, payloadAbsoluteStartByte, ref sink, context, depth: 0, options: options);
     }
 
     public static void ValidateTagPayload<TSink>(
@@ -112,10 +132,11 @@ public static class AssOverrideTagValidator
         int payloadAbsoluteStartByte,
         ref TSink sink,
         in AssOverrideValidationContext context,
-        int depth)
+        int depth,
+        in AssTextOptions options = default)
         where TSink : struct, IAssOverrideValidationSink
     {
-        var scanner = new AssTagBlockScanner(payload, payloadAbsoluteStartByte, lineBytes);
+        var scanner = new AssTagBlockScanner(payload, payloadAbsoluteStartByte, lineBytes, options);
         while (scanner.MoveNext(out var token))
         {
             int tagStartByte = token.TagStart;
@@ -131,6 +152,16 @@ public static class AssOverrideTagValidator
                     Message: $"Unknown override tag: \\{Encoding.ASCII.GetString(token.NameAndMaybePayload)}",
                     Code: "ass.override.unknownTag"));
                 continue;
+            }
+
+            if (AssTagRegistry.TryGetTagKind(token.Tag, out var tagKind) && (tagKind & AssTagKind.IsVsFilterMod) != 0)
+            {
+                sink.Report(new AssOverrideValidationIssue(
+                    StartByte: tagStartByte,
+                    EndByte: nameEndByte,
+                    Severity: GetVsFilterModSeverity(options),
+                    Message: $"VSFilterMod override tag: \\{Encoding.ASCII.GetString(tagNameBytes)} (enabled by mod_mode)",
+                    Code: "ass.override.vsfiltermodTag"));
             }
 
             if (AssTagRegistry.TryGetObsoleteReplacement(token.Tag, out var obsoleteReplacement))
@@ -160,7 +191,8 @@ public static class AssOverrideTagValidator
                 tagNameBytes,
                 ref sink,
                 context,
-                depth);
+                depth,
+                options);
         }
     }
 
@@ -170,7 +202,8 @@ public static class AssOverrideTagValidator
         ReadOnlySpan<byte> tagNameBytes,
         ref TSink sink,
         in AssOverrideValidationContext context,
-        int depth)
+        int depth,
+        in AssTextOptions options)
         where TSink : struct, IAssOverrideValidationSink
     {
         int paramStartByte = token.ParamStart;
@@ -181,6 +214,116 @@ public static class AssOverrideTagValidator
         int trimmedEndByte = trimmedStartByte + trimLength;
 
         var trimmed = trimLength == 0 ? ReadOnlySpan<byte>.Empty : token.Param.Slice(trimStart, trimLength);
+
+        if (AssTagRegistry.TryGetSpecialRule(token.Tag, out var specialRule))
+        {
+            if (specialRule == AssTagSpecialRule.FontScaleFsc)
+            {
+                // VSFilter/libass: \fsc always resets font scale (payload ignored).
+                // VSFilterMod: enables overload \fsc<scale> (acts like setting fscx and fscy together).
+                if (!trimmed.IsEmpty)
+                {
+                    if (!options.ModMode)
+                    {
+                        sink.Report(new AssOverrideValidationIssue(
+                            StartByte: paramStartByte,
+                            EndByte: paramEndByte,
+                            Severity: options.Strictness == AssValidationStrictness.Strict
+                                ? AssOverrideValidationSeverity.Warning
+                                : AssOverrideValidationSeverity.Info,
+                            Message: "Non-standard payload for \\fsc is ignored by VSFilter/libass.",
+                            Code: "ass.override.nonStandardPayload"));
+                        return;
+                    }
+
+                    sink.Report(new AssOverrideValidationIssue(
+                        StartByte: paramStartByte,
+                        EndByte: paramEndByte,
+                        Severity: GetVsFilterModOverloadSeverity(options),
+                        Message: "VSFilterMod overload: \\fsc<scale>",
+                        Code: "ass.override.vsfiltermodOverload"));
+                }
+                // In mod_mode, continue validating as a regular Double tag (range, loose parsing, ...).
+            }
+            else if (specialRule == AssTagSpecialRule.HexInt32)
+            {
+                if (trimmed.IsEmpty)
+                    return;
+
+                if (!Utils.TryParseHexIntLoose(trimmed, out int v, out var invalid))
+                    return;
+
+                if (invalid)
+                {
+                    sink.Report(new AssOverrideValidationIssue(
+                        StartByte: paramStartByte,
+                        EndByte: paramEndByte,
+                        Severity: AssOverrideValidationSeverity.Info,
+                        Message: $"Non-standard hex integer value for \\{Encoding.ASCII.GetString(tagNameBytes)} (treated as 0).",
+                        Code: "ass.override.hexLoose"));
+                }
+
+                if (AssTagRegistry.TryGetIntAllowedMask(token.Tag, out var mask, out var allowedCode, out var allowedMessage))
+                {
+                    bool ok = v is >= 0 and < 64 && ((mask >> v) & 1UL) != 0;
+                    if (!ok)
+                    {
+                        sink.Report(new AssOverrideValidationIssue(
+                            StartByte: paramStartByte,
+                            EndByte: paramEndByte,
+                            Severity: AssOverrideValidationSeverity.Warning,
+                            Message: allowedMessage ?? "Value is not allowed.",
+                            Code: allowedCode ?? "ass.override.intAllowedMask"));
+                    }
+                    return;
+                }
+
+                if (AssTagRegistry.TryGetIntRange(token.Tag, out int min, out int max, out var code, out var message) && (v < min || v > max))
+                {
+                    sink.Report(new AssOverrideValidationIssue(
+                        StartByte: paramStartByte,
+                        EndByte: paramEndByte,
+                        Severity: AssOverrideValidationSeverity.Warning,
+                        Message: message ?? "Value is out of range.",
+                        Code: code ?? "ass.override.intRange"));
+                }
+                return;
+            }
+            else if (specialRule == AssTagSpecialRule.BlendMode)
+            {
+                if (trimmed.IsEmpty)
+                    return;
+
+                // VSFilterMod: keywords (len>2) or numeric (len<=2).
+                if (trimmed.Length <= 2)
+                {
+                    if (Utils.TryParseIntLoose(trimmed, out _, out var invalid) && invalid)
+                    {
+                        sink.Report(new AssOverrideValidationIssue(
+                            StartByte: paramStartByte,
+                            EndByte: paramEndByte,
+                            Severity: AssOverrideValidationSeverity.Info,
+                            Message: $"Non-standard integer value for \\{Encoding.ASCII.GetString(tagNameBytes)} (treated as 0).",
+                            Code: "ass.override.intLoose"));
+                    }
+                    return;
+                }
+
+                if (AssTagRegistry.TryGetAllowedKeywords(token.Tag, out var allowed))
+                {
+                    if (!ContainsKeyword(allowed, trimmed))
+                    {
+                        sink.Report(new AssOverrideValidationIssue(
+                            StartByte: paramStartByte,
+                            EndByte: paramEndByte,
+                            Severity: AssOverrideValidationSeverity.Warning,
+                            Message: $"Unknown keyword value for \\{Encoding.ASCII.GetString(tagNameBytes)}: '{Utils.GetString(trimmed)}'.",
+                            Code: "ass.override.keywordUnknown"));
+                    }
+                }
+                return;
+            }
+        }
 
         if (!AssTagRegistry.TryGetValueKind(token.Tag, out var valueKind))
             return;
@@ -197,7 +340,8 @@ public static class AssOverrideTagValidator
                 functionKind,
                 ref sink,
                 context,
-                depth))
+                depth,
+                options))
             {
                 var sig = AssTagRegistry.GetFunctionSignature(functionKind);
                 sink.Report(new AssOverrideValidationIssue(
@@ -316,6 +460,28 @@ public static class AssOverrideTagValidator
                     Message: message ?? "Value is out of range.",
                     Code: code ?? "ass.override.doubleRange"));
             }
+
+            if (options.RendererProfile == AssRendererProfile.LibAss_0_17_4)
+            {
+                if (token.Tag == AssTag.BlueEdges && v > 127)
+                {
+                    sink.Report(new AssOverrideValidationIssue(
+                        StartByte: paramStartByte,
+                        EndByte: paramEndByte,
+                        Severity: AssOverrideValidationSeverity.Warning,
+                        Message: "libass_0_17_4 clamps \\be to <= 127.",
+                        Code: "ass.override.profileRange"));
+                }
+                else if (token.Tag == AssTag.BlurEdgesGaussian && v > 100)
+                {
+                    sink.Report(new AssOverrideValidationIssue(
+                        StartByte: paramStartByte,
+                        EndByte: paramEndByte,
+                        Severity: AssOverrideValidationSeverity.Warning,
+                        Message: "libass_0_17_4 clamps \\blur to <= 100.",
+                        Code: "ass.override.profileRange"));
+                }
+            }
             return;
         }
 
@@ -333,16 +499,30 @@ public static class AssOverrideTagValidator
         AssTagFunctionKind functionKind,
         ref TSink sink,
         in AssOverrideValidationContext context,
-        int depth)
+        int depth,
+        in AssTextOptions options)
         where TSink : struct, IAssOverrideValidationSink
     {
         switch (functionKind)
         {
             case AssTagFunctionKind.Pos:
-                if (!AssFunctionTagParsers.TryParsePos(bytes, out var x, out var y))
-                    return false;
-                WarnCoordinateOutOfRange(trimmedParamStartByte, trimmedParamEndByte, context, x, y, ref sink);
-                return true;
+                if (AssFunctionTagParsers.TryParsePos(bytes, out var x, out var y))
+                {
+                    WarnCoordinateOutOfRange(trimmedParamStartByte, trimmedParamEndByte, context, x, y, ref sink);
+                    return true;
+                }
+                if (options.ModMode && AssFunctionTagParsers.TryParsePos3(bytes, out x, out y, out _))
+                {
+                    sink.Report(new AssOverrideValidationIssue(
+                        StartByte: trimmedParamStartByte,
+                        EndByte: trimmedParamEndByte,
+                        Severity: GetVsFilterModOverloadSeverity(options),
+                        Message: "VSFilterMod overload: \\pos(x, y, z)",
+                        Code: "ass.override.vsfiltermodOverload"));
+                    WarnCoordinateOutOfRange(trimmedParamStartByte, trimmedParamEndByte, context, x, y, ref sink);
+                    return true;
+                }
+                return false;
             case AssTagFunctionKind.Org:
                 if (!AssFunctionTagParsers.TryParseOrg(bytes, out var ox, out var oy))
                     return false;
@@ -396,10 +576,217 @@ public static class AssOverrideTagValidator
                     WarnRectOutOfRange(trimmedParamStartByte, trimmedParamEndByte, context, cx1, cy1, cx2, cy2, ref sink);
                 return true;
             case AssTagFunctionKind.Transform:
-                return ValidateTransform(lineBytes, tag, tagNameBytes, bytes, trimmedParamStartByte, trimmedParamEndByte, ref sink, context, depth);
+                return ValidateTransform(lineBytes, tag, tagNameBytes, bytes, trimmedParamStartByte, trimmedParamEndByte, ref sink, context, depth, options);
+
+            // VSFilterMod
+            case AssTagFunctionKind.Distort:
+                return AssFunctionTagParsers.TryValidateDistort(bytes);
+            case AssTagFunctionKind.Jitter:
+                return AssFunctionTagParsers.TryValidateJitter(bytes);
+            case AssTagFunctionKind.Mover:
+                return AssFunctionTagParsers.TryValidateMover(bytes);
+            case AssTagFunctionKind.Moves3:
+                return AssFunctionTagParsers.TryValidateMoves3(bytes);
+            case AssTagFunctionKind.Moves4:
+                return AssFunctionTagParsers.TryValidateMoves4(bytes);
+            case AssTagFunctionKind.MoveVC:
+                return AssFunctionTagParsers.TryValidateMoveVC(bytes);
+            case AssTagFunctionKind.Lua:
+                return AssFunctionTagParsers.TryValidateLua(bytes);
+            case AssTagFunctionKind.Img:
+                return AssFunctionTagParsers.TryValidateImg(bytes);
+            case AssTagFunctionKind.Vc:
+                return ValidateGradientColors(tagNameBytes, bytes, trimmedParamStartByte, trimmedParamEndByte, ref sink);
+            case AssTagFunctionKind.Va:
+                return ValidateGradientAlphas(tagNameBytes, bytes, trimmedParamStartByte, trimmedParamEndByte, ref sink);
             default:
                 return Utils.TryGetParenContent(bytes, out _);
         }
+    }
+
+    private static bool ValidateGradientColors<TSink>(
+        ReadOnlySpan<byte> tagNameBytes,
+        ReadOnlySpan<byte> bytes,
+        int trimmedParamStartByte,
+        int trimmedParamEndByte,
+        ref TSink sink)
+        where TSink : struct, IAssOverrideValidationSink
+    {
+        if (!Utils.TryGetParenContent(bytes, out var inner))
+            return false;
+
+        if (!TryReadCommaToken(ref inner, out var t1) ||
+            !TryReadCommaToken(ref inner, out var t2) ||
+            !TryReadCommaToken(ref inner, out var t3) ||
+            !TryReadCommaToken(ref inner, out var t4))
+        {
+            return false;
+        }
+
+        Utils.SkipSpaces(ref inner);
+        if (!inner.IsEmpty)
+            return false;
+
+        bool ok = true;
+        ok &= ValidateColorToken(tagNameBytes, Utils.TrimSpaces(t1), trimmedParamStartByte, trimmedParamEndByte, ref sink);
+        ok &= ValidateColorToken(tagNameBytes, Utils.TrimSpaces(t2), trimmedParamStartByte, trimmedParamEndByte, ref sink);
+        ok &= ValidateColorToken(tagNameBytes, Utils.TrimSpaces(t3), trimmedParamStartByte, trimmedParamEndByte, ref sink);
+        ok &= ValidateColorToken(tagNameBytes, Utils.TrimSpaces(t4), trimmedParamStartByte, trimmedParamEndByte, ref sink);
+        return ok;
+    }
+
+    private static bool ValidateColorToken<TSink>(
+        ReadOnlySpan<byte> tagNameBytes,
+        ReadOnlySpan<byte> token,
+        int trimmedParamStartByte,
+        int trimmedParamEndByte,
+        ref TSink sink)
+        where TSink : struct, IAssOverrideValidationSink
+    {
+        if (token.IsEmpty)
+            return false;
+
+        if (!AssColor32.TryParseTagColor(token, out var color, out var ignoredHighByte, out var invalidColor))
+            return false;
+
+        if (invalidColor)
+        {
+            sink.Report(new AssOverrideValidationIssue(
+                StartByte: trimmedParamStartByte,
+                EndByte: trimmedParamEndByte,
+                Severity: AssOverrideValidationSeverity.Warning,
+                Message: $"Invalid color value for \\{Encoding.ASCII.GetString(tagNameBytes)}",
+                Code: "ass.override.colorInvalid"));
+        }
+        else if (TryGetColorNormalizationSuggestion(token, color, ignoredHighByte, out var normalized))
+        {
+            sink.Report(new AssOverrideValidationIssue(
+                StartByte: trimmedParamStartByte,
+                EndByte: trimmedParamEndByte,
+                Severity: AssOverrideValidationSeverity.Info,
+                Message: $"Normalize color token in \\{Encoding.ASCII.GetString(tagNameBytes)} to {normalized}",
+                Code: "ass.override.colorNormalize"));
+        }
+
+        return true;
+    }
+
+    private static bool ValidateGradientAlphas<TSink>(
+        ReadOnlySpan<byte> tagNameBytes,
+        ReadOnlySpan<byte> bytes,
+        int trimmedParamStartByte,
+        int trimmedParamEndByte,
+        ref TSink sink)
+        where TSink : struct, IAssOverrideValidationSink
+    {
+        if (!Utils.TryGetParenContent(bytes, out var inner))
+            return false;
+
+        if (!TryReadCommaToken(ref inner, out var t1) ||
+            !TryReadCommaToken(ref inner, out var t2) ||
+            !TryReadCommaToken(ref inner, out var t3) ||
+            !TryReadCommaToken(ref inner, out var t4))
+        {
+            return false;
+        }
+
+        Utils.SkipSpaces(ref inner);
+        if (!inner.IsEmpty)
+            return false;
+
+        bool ok = true;
+        ok &= ValidateAlphaToken(tagNameBytes, Utils.TrimSpaces(t1), trimmedParamStartByte, trimmedParamEndByte, ref sink);
+        ok &= ValidateAlphaToken(tagNameBytes, Utils.TrimSpaces(t2), trimmedParamStartByte, trimmedParamEndByte, ref sink);
+        ok &= ValidateAlphaToken(tagNameBytes, Utils.TrimSpaces(t3), trimmedParamStartByte, trimmedParamEndByte, ref sink);
+        ok &= ValidateAlphaToken(tagNameBytes, Utils.TrimSpaces(t4), trimmedParamStartByte, trimmedParamEndByte, ref sink);
+        return ok;
+    }
+
+    private static bool ValidateAlphaToken<TSink>(
+        ReadOnlySpan<byte> tagNameBytes,
+        ReadOnlySpan<byte> token,
+        int trimmedParamStartByte,
+        int trimmedParamEndByte,
+        ref TSink sink)
+        where TSink : struct, IAssOverrideValidationSink
+    {
+        if (token.IsEmpty)
+            return false;
+
+        if (!AssColor32.TryParseAlphaByte(token, out var alpha, out var invalidAlpha))
+            return false;
+
+        if (invalidAlpha)
+        {
+            sink.Report(new AssOverrideValidationIssue(
+                StartByte: trimmedParamStartByte,
+                EndByte: trimmedParamEndByte,
+                Severity: AssOverrideValidationSeverity.Warning,
+                Message: $"Invalid alpha value for \\{Encoding.ASCII.GetString(tagNameBytes)}",
+                Code: "ass.override.alphaInvalid"));
+        }
+        else if (TryGetAlphaNormalizationSuggestion(token, alpha, out var normalized))
+        {
+            sink.Report(new AssOverrideValidationIssue(
+                StartByte: trimmedParamStartByte,
+                EndByte: trimmedParamEndByte,
+                Severity: AssOverrideValidationSeverity.Info,
+                Message: $"Normalize alpha token in \\{Encoding.ASCII.GetString(tagNameBytes)} to {normalized}",
+                Code: "ass.override.alphaNormalize"));
+        }
+
+        return true;
+    }
+
+    private static bool TryGetAlphaNormalizationSuggestion(ReadOnlySpan<byte> trimmedValue, byte alpha, out string normalized)
+    {
+        normalized = default!;
+
+        var sp = Utils.TrimSpaces(trimmedValue);
+        if (sp.IsEmpty)
+            return false;
+
+        bool hasTrailingAmp = sp[^1] == (byte)'&';
+        if (hasTrailingAmp)
+            sp = sp[..^1];
+
+        bool hasLeadingAmp = !sp.IsEmpty && sp[0] == (byte)'&';
+        if (hasLeadingAmp)
+            sp = sp[1..];
+
+        bool hasH = !sp.IsEmpty && (sp[0] == (byte)'H' || sp[0] == (byte)'h');
+        if (hasH)
+            sp = sp[1..];
+
+        int digits = sp.Length;
+        bool canonical = hasLeadingAmp && hasH && hasTrailingAmp && digits == 2;
+        if (canonical)
+            return false;
+
+        normalized = "&H" + alpha.ToString("X2") + "&";
+        return true;
+    }
+
+    private static bool TryReadCommaToken(ref ReadOnlySpan<byte> span, out ReadOnlySpan<byte> token)
+    {
+        Utils.SkipSpaces(ref span);
+        if (span.IsEmpty)
+        {
+            token = default;
+            return false;
+        }
+
+        int commaIndex = span.IndexOf((byte)',');
+        if (commaIndex < 0)
+        {
+            token = span;
+            span = ReadOnlySpan<byte>.Empty;
+            return true;
+        }
+
+        token = span[..commaIndex];
+        span = span[(commaIndex + 1)..];
+        return true;
     }
 
     private static bool ValidateTransform<TSink>(
@@ -411,7 +798,8 @@ public static class AssOverrideTagValidator
         int trimmedParamEndByte,
         ref TSink sink,
         in AssOverrideValidationContext context,
-        int depth)
+        int depth,
+        in AssTextOptions options)
         where TSink : struct, IAssOverrideValidationSink
     {
         if (!AssFunctionTagParsers.TryParseTransform(bytes, out var t1, out var t2, out var hasTimes, out var accel, out var hasAccel, out var tagPayload))
@@ -441,11 +829,35 @@ public static class AssOverrideTagValidator
             return false;
 
         int payloadAbsoluteStartByte = trimmedParamStartByte + slashIndex;
-        ValidateTagPayload(lineBytes: lineBytes, payload: tagPayload, payloadAbsoluteStartByte: payloadAbsoluteStartByte, sink: ref sink, context: context, depth: depth + 1);
+        ValidateTagPayload(lineBytes: lineBytes, payload: tagPayload, payloadAbsoluteStartByte: payloadAbsoluteStartByte, sink: ref sink, context: context, depth: depth + 1, options: options);
         return true;
     }
 
     private static bool IsValidAlpha(int v) => (uint)v <= 255;
+
+    private static bool ContainsKeyword(ReadOnlySpan<byte> allowedZeroSeparated, ReadOnlySpan<byte> value)
+    {
+        if (allowedZeroSeparated.IsEmpty)
+            return false;
+
+        int i = 0;
+        while ((uint)i < (uint)allowedZeroSeparated.Length)
+        {
+            int endRel = allowedZeroSeparated[i..].IndexOf((byte)0);
+            int len = endRel < 0 ? allowedZeroSeparated.Length - i : endRel;
+            if (len != 0 && allowedZeroSeparated.Slice(i, len).SequenceEqual(value))
+                return true;
+
+            i += len;
+            if ((uint)i >= (uint)allowedZeroSeparated.Length)
+                break;
+
+            // Skip separator.
+            i++;
+        }
+
+        return false;
+    }
 
     private static void WarnCoordinateOutOfRange<TSink>(
         int paramStartByte,

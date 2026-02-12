@@ -1,5 +1,7 @@
 namespace Mobsub.SubtitleParse.Language;
 
+using Mobsub.SubtitleParse.AssTypes;
+
 public static class AssOverrideTextAnalyzer
 {
     /// <summary>
@@ -7,6 +9,9 @@ public static class AssOverrideTextAnalyzer
     /// The input may contain newlines (editor representation); diagnostics are reported per line.
     /// </summary>
     public static AssOverrideTextAnalysisResult Analyze(string text, AssOverrideTextAnalyzerContext? context = null)
+        => Analyze(text, context, options: default);
+
+    public static AssOverrideTextAnalysisResult Analyze(string text, AssOverrideTextAnalyzerContext? context, in AssTextOptions options)
     {
         text ??= string.Empty;
 
@@ -16,7 +21,7 @@ public static class AssOverrideTextAnalyzer
         for (int line = 0; line < lineMap.LineCount; line++)
         {
             var span = lineMap.GetLineSpan(text, line);
-            AssOverrideAnalyzer.AnalyzeOverrideBlocks(line, baseCharInLine: 0, span, diagnostics, context);
+            AssOverrideAnalyzer.AnalyzeOverrideBlocks(line, baseCharInLine: 0, span, diagnostics, context, options);
         }
 
         return new AssOverrideTextAnalysisResult(lineMap, diagnostics);
