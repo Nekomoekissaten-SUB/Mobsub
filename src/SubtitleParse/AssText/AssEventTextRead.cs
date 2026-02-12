@@ -8,8 +8,11 @@ public sealed class AssEventTextRead : IDisposable
 {
     private AssEventTextParser.AssEventSegmentBuffer _buffer;
     private ReadOnlyMemory<byte> _utf8;
+    private readonly AssTextOptions _options;
     private byte[]? _utf8PoolArray;
     private bool _disposed;
+
+    public AssTextOptions Options => _options;
 
     public ReadOnlyMemory<byte> Utf8
     {
@@ -29,15 +32,16 @@ public sealed class AssEventTextRead : IDisposable
         }
     }
 
-    private AssEventTextRead(ReadOnlyMemory<byte> utf8, AssEventTextParser.AssEventSegmentBuffer buffer, byte[]? utf8PoolArray)
+    private AssEventTextRead(ReadOnlyMemory<byte> utf8, AssEventTextParser.AssEventSegmentBuffer buffer, byte[]? utf8PoolArray, in AssTextOptions options)
     {
         _utf8 = utf8;
         _buffer = buffer;
+        _options = options;
         _utf8PoolArray = utf8PoolArray;
     }
 
     public static AssEventTextRead Parse(ReadOnlyMemory<byte> utf8, in AssTextOptions options = default)
-        => new(utf8, AssEventTextParser.ParseLinePooled(utf8, options), utf8PoolArray: null);
+        => new(utf8, AssEventTextParser.ParseLinePooled(utf8, options), utf8PoolArray: null, options);
 
     public static AssEventTextRead Parse(ReadOnlySpan<byte> utf8, in AssTextOptions options = default)
     {
@@ -47,7 +51,7 @@ public sealed class AssEventTextRead : IDisposable
         byte[] rented = ArrayPool<byte>.Shared.Rent(utf8.Length);
         utf8.CopyTo(rented);
         var mem = rented.AsMemory(0, utf8.Length);
-        return new(mem, AssEventTextParser.ParseLinePooled(mem, options), rented);
+        return new(mem, AssEventTextParser.ParseLinePooled(mem, options), rented, options);
     }
 
     public static AssEventTextRead Parse(string? text, Encoding? encoding = null, in AssTextOptions options = default)
@@ -66,7 +70,7 @@ public sealed class AssEventTextRead : IDisposable
         byte[] rented = ArrayPool<byte>.Shared.Rent(byteCount);
         int written = encoding.GetBytes(text, rented);
         var mem = rented.AsMemory(0, written);
-        return new(mem, AssEventTextParser.ParseLinePooled(mem, options), rented);
+        return new(mem, AssEventTextParser.ParseLinePooled(mem, options), rented, options);
     }
 
     public static AssEventTextRead ParseTextSpan(in AssEvent ev, in AssTextOptions options = default)
@@ -99,6 +103,60 @@ public sealed class AssEventTextRead : IDisposable
 
         lineRange = seg.LineRange;
         tags = seg.Tags.HasValue ? seg.Tags.Value.Span : default;
+        return true;
+    }
+
+    public bool TryGetFirstOverrideTagScanner(out AssOverrideTagScanner scanner)
+    {
+        ThrowIfDisposed();
+
+        var segs = _buffer.Span;
+        if (segs.Length == 0)
+        {
+            scanner = default;
+            return false;
+        }
+
+        ref readonly var seg = ref segs[0];
+        if (seg.SegmentKind != AssEventSegmentKind.TagBlock)
+        {
+            scanner = default;
+            return false;
+        }
+
+        var (start, end) = GetRangeOffsets(seg.LineRange, _utf8.Length);
+        if (start != 0)
+        {
+            scanner = default;
+            return false;
+        }
+
+        return TryCreateTagBlockScanner(seg, out scanner);
+    }
+
+    public bool TryCreateTagBlockScanner(in AssEventSegment tagBlockSegment, out AssOverrideTagScanner scanner)
+    {
+        ThrowIfDisposed();
+
+        if (tagBlockSegment.SegmentKind != AssEventSegmentKind.TagBlock)
+        {
+            scanner = default;
+            return false;
+        }
+
+        var (start, end) = GetRangeOffsets(tagBlockSegment.LineRange, _utf8.Length);
+        if (end - start < 2)
+        {
+            scanner = default;
+            return false;
+        }
+
+        int innerStart = start + 1;
+        int innerEnd = end - 1;
+        if (innerEnd < innerStart) innerEnd = innerStart;
+
+        var payload = _utf8.Span.Slice(innerStart, innerEnd - innerStart);
+        scanner = new AssOverrideTagScanner(payload, innerStart, _utf8, _options);
         return true;
     }
 

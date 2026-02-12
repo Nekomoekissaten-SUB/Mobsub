@@ -1,5 +1,7 @@
 ﻿﻿using System;
 
+using System.Runtime.CompilerServices;
+
 namespace Mobsub.SubtitleParse.AssTypes;
 
 [Flags]
@@ -411,6 +413,56 @@ public readonly struct AssTagValue
     public static AssTagValue FromBytes(ReadOnlyMemory<byte> v) => new() { Kind = AssTagValueKind.Bytes, BytesValue = v };
     public static AssTagValue FromFunction(AssTagFunctionValue v) => new() { Kind = AssTagValueKind.Function, FunctionValue = v };
     public static AssTagValue Empty => new() { Kind = AssTagValueKind.None };
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool TryGet<T>(out T result)
+    {
+        if (typeof(T) == typeof(int) && Kind == AssTagValueKind.Int)
+        {
+            int v = IntValue;
+            result = Unsafe.As<int, T>(ref v);
+            return true;
+        }
+        if (typeof(T) == typeof(double) && Kind == AssTagValueKind.Double)
+        {
+            double v = DoubleValue;
+            result = Unsafe.As<double, T>(ref v);
+            return true;
+        }
+        if (typeof(T) == typeof(bool) && Kind == AssTagValueKind.Bool)
+        {
+            bool v = BoolValue;
+            result = Unsafe.As<bool, T>(ref v);
+            return true;
+        }
+        if (typeof(T) == typeof(byte) && Kind == AssTagValueKind.Byte)
+        {
+            byte v = ByteValue;
+            result = Unsafe.As<byte, T>(ref v);
+            return true;
+        }
+        if (typeof(T) == typeof(AssColor32) && Kind == AssTagValueKind.Color)
+        {
+            AssColor32 v = ColorValue;
+            result = Unsafe.As<AssColor32, T>(ref v);
+            return true;
+        }
+        if (typeof(T) == typeof(ReadOnlyMemory<byte>) && Kind == AssTagValueKind.Bytes)
+        {
+            ReadOnlyMemory<byte> v = BytesValue;
+            result = Unsafe.As<ReadOnlyMemory<byte>, T>(ref v);
+            return true;
+        }
+        if (typeof(T) == typeof(AssTagFunctionValue) && Kind == AssTagValueKind.Function)
+        {
+            AssTagFunctionValue v = FunctionValue;
+            result = Unsafe.As<AssTagFunctionValue, T>(ref v);
+            return true;
+        }
+
+        result = default!;
+        return false;
+    }
 
 }
 

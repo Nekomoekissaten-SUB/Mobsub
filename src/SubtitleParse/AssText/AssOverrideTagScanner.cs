@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 
 namespace Mobsub.SubtitleParse.AssText;
 
-internal readonly ref struct AssTagBlockToken
+public readonly ref struct AssOverrideTagToken
 {
     public int TagStart { get; }
     public int TagEnd { get; }
@@ -22,7 +22,7 @@ internal readonly ref struct AssTagBlockToken
     public ReadOnlySpan<byte> Param { get; }
     public ReadOnlyMemory<byte> ParamMemory { get; }
 
-    public AssTagBlockToken(
+    public AssOverrideTagToken(
         int tagStart,
         int tagEnd,
         int nameStart,
@@ -51,7 +51,7 @@ internal readonly ref struct AssTagBlockToken
     }
 }
 
-internal ref struct AssTagBlockScanner
+public ref struct AssOverrideTagScanner
 {
     private readonly ReadOnlySpan<byte> _block;
     private readonly int _absoluteStart;
@@ -59,16 +59,16 @@ internal ref struct AssTagBlockScanner
     private readonly AssTextOptions _options;
     private int _i;
 
-    public AssTagBlockScanner(ReadOnlySpan<byte> block, int absoluteStart, ReadOnlyMemory<byte> lineMemory, in AssTextOptions options)
+    public AssOverrideTagScanner(ReadOnlySpan<byte> payload, int payloadAbsoluteStartByte, ReadOnlyMemory<byte> lineBytes, in AssTextOptions options = default)
     {
-        _block = block;
-        _absoluteStart = absoluteStart;
-        _lineMemory = lineMemory;
+        _block = payload;
+        _absoluteStart = payloadAbsoluteStartByte;
+        _lineMemory = lineBytes;
         _options = options;
         _i = 0;
     }
 
-    public bool MoveNext(out AssTagBlockToken token)
+    public bool MoveNext(out AssOverrideTagToken token)
     {
         var block = _block;
         int i = _i;
@@ -187,7 +187,7 @@ internal ref struct AssTagBlockScanner
                 if (!_lineMemory.IsEmpty)
                     paramMemory = _lineMemory.Slice(_absoluteStart + paramStart, paramLength);
 
-                token = new AssTagBlockToken(
+                token = new AssOverrideTagToken(
                     tagStart: _absoluteStart + tagStart,
                     tagEnd: _absoluteStart + paramEnd,
                     nameStart: _absoluteStart + nameStart,
@@ -215,7 +215,7 @@ internal ref struct AssTagBlockScanner
             if (!_lineMemory.IsEmpty)
                 unknownParamMemory = _lineMemory.Slice(_absoluteStart + unknownParamStart, unknownParamLength);
 
-            token = new AssTagBlockToken(
+            token = new AssOverrideTagToken(
                 tagStart: _absoluteStart + tagStart,
                 tagEnd: _absoluteStart + unknownParamEnd,
                 nameStart: _absoluteStart + nameStart,

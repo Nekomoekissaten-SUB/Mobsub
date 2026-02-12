@@ -70,6 +70,23 @@ public static class AssOverrideTagValidator
         };
 
     public static void ValidateOverrideBlocks(
+        AssEventTextRead read,
+        List<AssOverrideValidationIssue> issues,
+        in AssOverrideValidationContext context = default)
+    {
+        ValidateOverrideBlocks(read.Utf8, read.Segments, issues, context, read.Options);
+    }
+
+    public static void ValidateOverrideBlocks<TSink>(
+        AssEventTextRead read,
+        ref TSink sink,
+        in AssOverrideValidationContext context = default)
+        where TSink : struct, IAssOverrideValidationSink
+    {
+        ValidateOverrideBlocks(read.Utf8, read.Segments, ref sink, context, read.Options);
+    }
+
+    public static void ValidateOverrideBlocks(
         ReadOnlyMemory<byte> lineBytes,
         ReadOnlySpan<AssEventSegment> segments,
         List<AssOverrideValidationIssue> issues,
@@ -136,7 +153,7 @@ public static class AssOverrideTagValidator
         in AssTextOptions options = default)
         where TSink : struct, IAssOverrideValidationSink
     {
-        var scanner = new AssTagBlockScanner(payload, payloadAbsoluteStartByte, lineBytes, options);
+        var scanner = new AssOverrideTagScanner(payload, payloadAbsoluteStartByte, lineBytes, options);
         while (scanner.MoveNext(out var token))
         {
             int tagStartByte = token.TagStart;
@@ -198,7 +215,7 @@ public static class AssOverrideTagValidator
 
     private static void ValidateTagValue<TSink>(
         ReadOnlyMemory<byte> lineBytes,
-        in AssTagBlockToken token,
+        in AssOverrideTagToken token,
         ReadOnlySpan<byte> tagNameBytes,
         ref TSink sink,
         in AssOverrideValidationContext context,
