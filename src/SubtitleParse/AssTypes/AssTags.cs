@@ -468,6 +468,8 @@ public readonly struct AssTagValue
 
 public static partial class AssTagRegistry
 {
+    public static int TagCount => s_nameLenByTag.Length;
+
     public static ReadOnlySpan<byte> GetNameBytes(AssTag tag)
     {
         int i = (int)tag;

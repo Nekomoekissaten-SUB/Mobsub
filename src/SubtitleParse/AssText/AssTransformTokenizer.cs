@@ -2,118 +2,118 @@ using System.Buffers;
 using System.Buffers.Text;
 using System.Globalization;
 using System.Text;
-using Mobsub.SubtitleParse.AssText;
 using Mobsub.SubtitleParse.AssTypes;
 
 namespace Mobsub.SubtitleParse.AssText;
 
 public sealed class AssTokenizedText
 {
-    private const char TokenDelimiter = '\u0003';
+    private const byte TokenDelimiterUtf8 = 0x03;
 
-    public string Text { get; }
+    public byte[] Utf8 { get; }
     public IReadOnlyList<AssTransform> Transforms { get; }
     public int LineDurationMs { get; }
 
-    public AssTokenizedText(string text, IReadOnlyList<AssTransform> transforms, int lineDurationMs)
+    public AssTokenizedText(byte[] utf8, IReadOnlyList<AssTransform> transforms, int lineDurationMs)
     {
-        Text = text;
+        Utf8 = utf8 ?? Array.Empty<byte>();
         Transforms = transforms;
         LineDurationMs = lineDurationMs;
     }
 
-    public string DontTouchTransforms()
+    public byte[] DontTouchTransforms()
     {
         if (Transforms.Count == 0)
-            return Text;
+            return Utf8;
 
-        return ReplaceTokens(static tr => "\\t" + tr.RawParenString);
+        return ReplaceTokens(static tr => tr.RawTagUtf8);
     }
 
-    public string DetokenizeShifted(int shiftMs)
+    public byte[] DetokenizeShifted(int shiftMs)
     {
         if (Transforms.Count == 0)
-            return Text;
+            return Utf8;
 
-        return ReplaceTokens(tr => tr.ToShiftedString(shiftMs, LineDurationMs));
+        return ReplaceTokens(tr => tr.ToShiftedBytes(shiftMs, LineDurationMs));
     }
 
-    public string InterpolateAt(int shiftMs, int timeMs)
+    public byte[] InterpolateAt(int shiftMs, int timeMs)
     {
         if (Transforms.Count == 0)
-            return Text;
+            return Utf8;
 
-        string text = Text;
-        var sb = new StringBuilder(text.Length + Transforms.Count * 8);
+        byte[] text = Utf8;
+        var writer = new ArrayBufferWriter<byte>(text.Length + Transforms.Count * 8);
 
         int pos = 0;
-        while (pos < text.Length)
+        while ((uint)pos < (uint)text.Length)
         {
-            int d = text.IndexOf(TokenDelimiter, pos);
+            int d = text.AsSpan(pos).IndexOf(TokenDelimiterUtf8);
             if (d < 0)
             {
-                sb.Append(text.AsSpan(pos));
+                writer.Write(text.AsSpan(pos));
                 break;
             }
 
+            d += pos;
             if (d > pos)
-                sb.Append(text.AsSpan(pos, d - pos));
+                writer.Write(text.AsSpan(pos, d - pos));
 
             if (TryParseTokenIndex(text, d, out int tokenIndex, out int next) && (uint)(tokenIndex - 1) < (uint)Transforms.Count)
             {
                 var tr = Transforms[tokenIndex - 1];
-                string before = sb.Length == 0 ? string.Empty : sb.ToString();
-                string rep = tr.InterpolateToTags(before, shiftMs, LineDurationMs, timeMs);
-                sb.Append(rep);
+                ReadOnlySpan<byte> before = writer.WrittenSpan;
+                writer.Write(tr.InterpolateToTags(before, shiftMs, LineDurationMs, timeMs));
                 pos = next;
                 continue;
             }
 
-            sb.Append(TokenDelimiter);
+            WriteByte(writer, TokenDelimiterUtf8);
             pos = d + 1;
         }
 
-        return sb.ToString();
+        return writer.WrittenSpan.ToArray();
     }
 
-    private string ReplaceTokens(Func<AssTransform, string> replacement)
+    private byte[] ReplaceTokens(Func<AssTransform, ReadOnlySpan<byte>> replacement)
     {
-        string text = Text;
-        var sb = new StringBuilder(text.Length + Transforms.Count * 8);
+        byte[] text = Utf8;
+        var writer = new ArrayBufferWriter<byte>(text.Length + Transforms.Count * 8);
 
         int pos = 0;
-        while (pos < text.Length)
+        while ((uint)pos < (uint)text.Length)
         {
-            int d = text.IndexOf(TokenDelimiter, pos);
+            int d = text.AsSpan(pos).IndexOf(TokenDelimiterUtf8);
             if (d < 0)
             {
-                sb.Append(text.AsSpan(pos));
+                writer.Write(text.AsSpan(pos));
                 break;
             }
 
+            d += pos;
             if (d > pos)
-                sb.Append(text.AsSpan(pos, d - pos));
+                writer.Write(text.AsSpan(pos, d - pos));
 
             if (TryParseTokenIndex(text, d, out int tokenIndex, out int next) && (uint)(tokenIndex - 1) < (uint)Transforms.Count)
             {
-                sb.Append(replacement(Transforms[tokenIndex - 1]));
+                writer.Write(replacement(Transforms[tokenIndex - 1]));
                 pos = next;
                 continue;
             }
 
-            sb.Append(TokenDelimiter);
+            WriteByte(writer, TokenDelimiterUtf8);
             pos = d + 1;
         }
 
-        return sb.ToString();
+        return writer.WrittenSpan.ToArray();
     }
 
-    private static bool TryParseTokenIndex(string text, int start, out int tokenIndex, out int nextIndex)
+    private static bool TryParseTokenIndex(ReadOnlySpan<byte> text, int start, out int tokenIndex, out int nextIndex)
     {
         tokenIndex = 0;
         nextIndex = start;
 
-        if ((uint)start >= (uint)text.Length || text[start] != TokenDelimiter)
+        if ((uint)start >= (uint)text.Length || text[start] != TokenDelimiterUtf8)
             return false;
 
         int i = start + 1;
@@ -124,8 +124,8 @@ public sealed class AssTokenizedText
         int digits = 0;
         while ((uint)i < (uint)text.Length)
         {
-            char c = text[i];
-            int digit = c - '0';
+            byte c = text[i];
+            int digit = c - (byte)'0';
             if ((uint)digit > 9)
                 break;
 
@@ -141,91 +141,103 @@ public sealed class AssTokenizedText
         if (digits == 0)
             return false;
 
-        if ((uint)i >= (uint)text.Length || text[i] != TokenDelimiter)
+        if ((uint)i >= (uint)text.Length || text[i] != TokenDelimiterUtf8)
             return false;
 
         tokenIndex = v;
         nextIndex = i + 1;
         return true;
     }
+
+    private static void WriteByte(IBufferWriter<byte> writer, byte b)
+    {
+        Span<byte> span = writer.GetSpan(1);
+        span[0] = b;
+        writer.Advance(1);
+    }
 }
 
 public sealed class AssTransform
 {
-    public string Token { get; }
-    public string RawParenString { get; }
+    public ReadOnlySpan<byte> RawTagUtf8 => _rawTagUtf8;
 
+    private readonly byte[] _rawTagUtf8;
     private readonly int _startMs;
     private readonly int _endMs;
     private readonly double _accel;
-    private readonly string _tagPayload;
+    private readonly byte[] _tagPayloadUtf8;
 
     private readonly bool _payloadParsedOk;
     private readonly PayloadTag[] _payloadTags;
 
-    public AssTransform(string token, string rawParenString, int startMs, int endMs, double accel, string tagPayload)
+    public AssTransform(ReadOnlySpan<byte> rawParenUtf8, int startMs, int endMs, double accel, ReadOnlySpan<byte> tagPayloadUtf8)
     {
-        Token = token;
-        RawParenString = rawParenString;
-
         _startMs = startMs;
         _endMs = endMs;
         _accel = accel;
-        _tagPayload = tagPayload;
+        _tagPayloadUtf8 = tagPayloadUtf8.IsEmpty ? Array.Empty<byte>() : tagPayloadUtf8.ToArray();
 
-        _payloadParsedOk = TryParseTransformPayload(_tagPayload.AsSpan(), out var tags);
-        _payloadTags = tags.ToArray();
+        _rawTagUtf8 = new byte[2 + rawParenUtf8.Length];
+        _rawTagUtf8[0] = (byte)'\\';
+        _rawTagUtf8[1] = (byte)'t';
+        rawParenUtf8.CopyTo(_rawTagUtf8.AsSpan(2));
+
+        _payloadParsedOk = TryParseTransformPayload(_tagPayloadUtf8, out _payloadTags);
     }
 
-    public string ToShiftedString(int shiftMs, int lineDurationMs)
+    public byte[] ToShiftedBytes(int shiftMs, int lineDurationMs)
     {
         int start = _startMs - shiftMs;
         int end = _endMs - shiftMs;
-        if (string.IsNullOrEmpty(_tagPayload))
-            return string.Empty;
+
+        ReadOnlySpan<byte> payload = _tagPayloadUtf8;
+        if (payload.IsEmpty)
+            return Array.Empty<byte>();
 
         // Match a-mo: if the transform ends before/at 0, just apply the effect.
         if (end <= 0)
-            return _tagPayload;
+            return payload.ToArray();
 
         if (end < start)
-            return string.Empty;
+            return Array.Empty<byte>();
 
         // a-mo uses the original line duration as the bounds check.
         if (start > lineDurationMs)
-            return string.Empty;
+            return Array.Empty<byte>();
 
-        var sb = new StringBuilder(64);
-        sb.Append("\\t(")
-          .Append(start.ToString(CultureInfo.InvariantCulture))
-          .Append(',')
-          .Append(end.ToString(CultureInfo.InvariantCulture))
-          .Append(',');
+        var writer = new ArrayBufferWriter<byte>(payload.Length + 32);
+        writer.Write("\\t("u8);
+        WriteInt(writer, start);
+        WriteByte(writer, (byte)',');
+        WriteInt(writer, end);
+        WriteByte(writer, (byte)',');
 
         if (Math.Abs(_accel - 1.0) > 1e-9)
         {
-            sb.Append(_accel.ToString("0.###", CultureInfo.InvariantCulture));
-            sb.Append(',');
+            AssUtf8Number.WriteCompact3(writer, _accel);
+            WriteByte(writer, (byte)',');
         }
 
-        sb.Append(_tagPayload);
-        sb.Append(')');
-        return sb.ToString();
+        writer.Write(payload);
+        WriteByte(writer, (byte)')');
+        return writer.WrittenSpan.ToArray();
     }
 
-    public string InterpolateToTags(string textBeforeThisTransform, int shiftMs, int lineDurationMs, int timeMs)
+    public byte[] InterpolateToTags(ReadOnlySpan<byte> textBeforeThisTransform, int shiftMs, int lineDurationMs, int timeMs)
     {
         int start = _startMs - shiftMs;
         int end = _endMs - shiftMs;
-        if (string.IsNullOrEmpty(_tagPayload))
-            return string.Empty;
+
+        ReadOnlySpan<byte> payload = _tagPayloadUtf8;
+        if (payload.IsEmpty)
+            return Array.Empty<byte>();
 
         // If it already completed, return its payload.
         if (end <= 0)
-            return _tagPayload;
+            return payload.ToArray();
 
         if (end <= start)
-            return _tagPayload;
+            return payload.ToArray();
 
         double linearProgress = (timeMs - start) / (double)(end - start);
         double p = Math.Pow(linearProgress, _accel);
@@ -233,112 +245,81 @@ public sealed class AssTransform
         // Supported tags: numeric + alpha.
         // If the payload contains something we can't parse, fall back to a shifted \t.
         if (!_payloadParsedOk)
-            return ToShiftedString(shiftMs, lineDurationMs);
+            return ToShiftedBytes(shiftMs, lineDurationMs);
 
-        var sb = new StringBuilder(capacity: 64);
+        var writer = new ArrayBufferWriter<byte>(initialCapacity: 64);
         for (int i = 0; i < _payloadTags.Length; i++)
         {
             var tag = _payloadTags[i];
             if (tag.Kind == PayloadTagKind.Unknown)
-                return ToShiftedString(shiftMs, lineDurationMs);
+                return ToShiftedBytes(shiftMs, lineDurationMs);
 
+            double value;
             if (linearProgress <= 0)
             {
-                AppendTagValue(sb, tag, GetPriorValue(textBeforeThisTransform, tag));
-                continue;
+                value = GetPriorValue(textBeforeThisTransform, tag);
             }
-
-            if (linearProgress >= 1)
+            else if (linearProgress >= 1)
             {
-                AppendTagValue(sb, tag, tag.EndValue);
-                continue;
+                value = tag.EndValue;
+            }
+            else
+            {
+                double prior = GetPriorValue(textBeforeThisTransform, tag);
+                value = (1.0 - p) * prior + p * tag.EndValue;
             }
 
-            double prior = GetPriorValue(textBeforeThisTransform, tag);
-            double value = (1.0 - p) * prior + p * tag.EndValue;
-            AppendTagValue(sb, tag, value);
+            AppendTagValue(writer, tag, value);
         }
 
-        return sb.ToString();
+        return writer.WrittenSpan.ToArray();
     }
 
-    private static double GetPriorValue(string text, PayloadTag tag)
+    private static double GetPriorValue(ReadOnlySpan<byte> text, PayloadTag tag)
     {
-        // Prior value is the last explicit tag value before this transform.
-        // Fallback default: 0 (matches a-mo for non-style tags, and is correct for alpha).
-        if (TryFindLastNumericTag(text, tag.Name, out double v))
+        if (TryFindLastNumericOrAlphaTag(text, tag.Tag, tag.Kind, out double v))
             return v;
 
-        // alpha1..4 fall back to \alpha if not present (a-mo affectedBy).
-        if (tag.Kind == PayloadTagKind.Alpha && tag.Name.Length == 3 && tag.Name[1] is '1' or '2' or '3' or '4')
+        if (tag.Kind == PayloadTagKind.Alpha && tag.Tag is AssTag.AlphaPrimary or AssTag.AlphaSecondary or AssTag.AlphaBorder or AssTag.AlphaShadow)
         {
-            if (TryFindLastAlphaTag(text, "\\alpha", out var a))
+            if (TryFindLastNumericOrAlphaTag(text, AssTag.Alpha, PayloadTagKind.Alpha, out var a))
                 return a;
         }
 
         return 0.0;
     }
 
-    private static bool TryFindLastNumericTag(string text, string tagName, out double value)
+    private static bool TryFindLastNumericOrAlphaTag(ReadOnlySpan<byte> text, AssTag tag, PayloadTagKind kind, out double value)
     {
         value = 0;
 
-        int idx = text.LastIndexOf(tagName, StringComparison.Ordinal);
+        ReadOnlySpan<byte> name = AssTagRegistry.GetNameBytes(tag);
+        if (name.IsEmpty)
+            return false;
+
+        Span<byte> key = stackalloc byte[1 + name.Length];
+        key[0] = (byte)'\\';
+        name.CopyTo(key[1..]);
+
+        int idx = text.LastIndexOf(key);
         if (idx < 0)
             return false;
 
-        int i = idx + tagName.Length;
-        while (i < text.Length && text[i] == ' ')
-            i++;
+        var rest = text.Slice(idx + key.Length);
 
-        int start = i;
-        while (i < text.Length)
+        if (kind == PayloadTagKind.Alpha)
         {
-            char c = text[i];
-            if ((c >= '0' && c <= '9') || c == '-' || c == '+' || c == '.' || c == 'e' || c == 'E')
-            {
-                i++;
-                continue;
-            }
-            break;
+            if (!AssColor32.TryParseAlphaByte(rest, out var a, out _))
+                return false;
+            value = a;
+            return true;
         }
 
-        if (i <= start)
+        if (!Utils.TryParseDoubleLoose(rest, out var v, out _))
             return false;
 
-        return double.TryParse(text.AsSpan(start, i - start), NumberStyles.Float, CultureInfo.InvariantCulture, out value);
-    }
-
-    private static bool TryFindLastAlphaTag(string text, string tagName, out int alpha)
-    {
-        alpha = 0;
-        int idx = text.LastIndexOf(tagName + "&H", StringComparison.Ordinal);
-        if (idx < 0)
-            return false;
-
-        int i = idx + tagName.Length + 2;
-        if (i + 2 > text.Length)
-            return false;
-
-        // Expect 2 hex digits.
-        int hi = FromHex(text[i]);
-        int lo = i + 1 < text.Length ? FromHex(text[i + 1]) : -1;
-        if (hi < 0 || lo < 0)
-            return false;
-
-        alpha = (hi << 4) | lo;
+        value = v;
         return true;
-    }
-
-    private static int FromHex(char c)
-    {
-        if (c is >= '0' and <= '9')
-            return c - '0';
-        if (c is >= 'a' and <= 'f')
-            return 10 + (c - 'a');
-        if (c is >= 'A' and <= 'F')
-            return 10 + (c - 'A');
-        return -1;
     }
 
     private enum PayloadTagKind : byte
@@ -348,120 +329,109 @@ public sealed class AssTransform
         Alpha = 2,
     }
 
-    private readonly record struct PayloadTag(PayloadTagKind Kind, string Name, double EndValue);
+    private readonly record struct PayloadTag(PayloadTagKind Kind, AssTag Tag, double EndValue);
 
-    private static bool TryParseTransformPayload(ReadOnlySpan<char> payload, out List<PayloadTag> tags)
+    private static bool TryParseTransformPayload(ReadOnlySpan<byte> payloadUtf8, out PayloadTag[] tags)
     {
-        tags = new List<PayloadTag>(capacity: 8);
-        int i = 0;
-        while (i < payload.Length)
+        tags = Array.Empty<PayloadTag>();
+        if (payloadUtf8.IsEmpty)
+            return true;
+
+        var list = new List<PayloadTag>(capacity: 8);
+        var scanner = new AssOverrideTagScanner(payloadUtf8, payloadAbsoluteStartByte: 0, lineBytes: default);
+
+        while (scanner.MoveNext(out var token))
         {
-            int slash = payload[i..].IndexOf('\\');
-            if (slash < 0)
-                break;
-            i += slash + 1;
-            if (i >= payload.Length)
-                break;
+            if (!token.IsKnown)
+                return false;
 
-            int j = i;
-            while (j < payload.Length)
+            var param = Utils.TrimSpaces(token.Param);
+            if (param.IsEmpty)
+                return false;
+
+            if (AssTagRegistry.IsAlphaTag(token.Tag))
             {
-                char c = payload[j];
-                if (c == '\\' || c == '(' || c == ')' || c == ',' || c == '&' || c == '{' || c == '}' || c == ' ')
-                    break;
-                if (c >= '0' && c <= '9')
-                {
-                    j++;
-                    continue;
-                }
-                if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'))
-                {
-                    j++;
-                    continue;
-                }
-                break;
-            }
-
-            string name = "\\" + payload.Slice(i, j - i).ToString();
-            i = j;
-
-            if (string.Equals(name, "\\alpha", StringComparison.Ordinal) ||
-                string.Equals(name, "\\1a", StringComparison.Ordinal) ||
-                string.Equals(name, "\\2a", StringComparison.Ordinal) ||
-                string.Equals(name, "\\3a", StringComparison.Ordinal) ||
-                string.Equals(name, "\\4a", StringComparison.Ordinal))
-            {
-                int hIdx = payload.Slice(i).IndexOf("&H", StringComparison.Ordinal);
-                if (hIdx < 0 || i + hIdx + 4 > payload.Length)
+                if (!AssColor32.TryParseAlphaByte(param, out var alpha, out _))
                     return false;
-                int hexStart = i + hIdx + 2;
-                int hi = FromHex(payload[hexStart]);
-                int lo = FromHex(payload[hexStart + 1]);
-                if (hi < 0 || lo < 0)
-                    return false;
-                int a = (hi << 4) | lo;
-                tags.Add(new PayloadTag(PayloadTagKind.Alpha, name, a));
-                i = hexStart + 2;
+                list.Add(new PayloadTag(PayloadTagKind.Alpha, token.Tag, alpha));
                 continue;
             }
 
-            int numStart = i;
-            while (numStart < payload.Length && payload[numStart] == ' ')
-                numStart++;
+            if (!Utils.TryParseDoubleLoose(param, out var dv, out _))
+                return false;
 
-            int numEnd = numStart;
-            while (numEnd < payload.Length)
-            {
-                char c = payload[numEnd];
-                if ((c >= '0' && c <= '9') || c == '-' || c == '+' || c == '.' || c == 'e' || c == 'E')
-                {
-                    numEnd++;
-                    continue;
-                }
-                break;
-            }
-
-            if (numEnd > numStart && double.TryParse(payload.Slice(numStart, numEnd - numStart), NumberStyles.Float, CultureInfo.InvariantCulture, out var d))
-            {
-                tags.Add(new PayloadTag(PayloadTagKind.Numeric, name, d));
-                i = numEnd;
-                continue;
-            }
-
-            tags.Add(new PayloadTag(PayloadTagKind.Unknown, name, 0));
-            return false;
+            list.Add(new PayloadTag(PayloadTagKind.Numeric, token.Tag, dv));
         }
 
+        tags = list.ToArray();
         return true;
     }
 
-    private static void AppendTagValue(StringBuilder sb, PayloadTag tag, double value)
+    private static void AppendTagValue(IBufferWriter<byte> writer, PayloadTag tag, double value)
     {
-        sb.Append(tag.Name);
+        ReadOnlySpan<byte> name = AssTagRegistry.GetNameBytes(tag.Tag);
+        if (name.IsEmpty)
+            return;
+
+        Span<byte> key = stackalloc byte[1 + name.Length];
+        key[0] = (byte)'\\';
+        name.CopyTo(key[1..]);
+        writer.Write(key);
+
         if (tag.Kind == PayloadTagKind.Alpha)
         {
             int a = (int)Math.Round(value, MidpointRounding.AwayFromZero);
             if (a < 0) a = 0;
             if (a > 255) a = 255;
-            sb.Append("&H").Append(a.ToString("X2", CultureInfo.InvariantCulture)).Append('&');
+
+            writer.Write("&H"u8);
+            Span<byte> hex = stackalloc byte[2];
+            WriteHexByteUpper((byte)a, hex);
+            writer.Write(hex);
+            WriteByte(writer, (byte)'&');
             return;
         }
 
-        sb.Append(value.ToString("0.###", CultureInfo.InvariantCulture));
+        AssUtf8Number.WriteCompact3(writer, value);
     }
+
+    private static void WriteHexByteUpper(byte value, Span<byte> dest2)
+    {
+        if (dest2.Length != 2)
+            return;
+
+        const string digits = "0123456789ABCDEF";
+        dest2[0] = (byte)digits[(value >> 4) & 0xF];
+        dest2[1] = (byte)digits[value & 0xF];
+    }
+
+    private static void WriteByte(IBufferWriter<byte> writer, byte b)
+    {
+        Span<byte> span = writer.GetSpan(1);
+        span[0] = b;
+        writer.Advance(1);
+    }
+
+    private static void WriteInt(IBufferWriter<byte> writer, int value)
+    {
+        Span<byte> tmp = stackalloc byte[16];
+        if (!Utf8Formatter.TryFormat(value, tmp, out int written))
+            return;
+        writer.Write(tmp[..written]);
+    }
+
 }
 
 public static class AssTransformTokenizer
 {
-    private const char TokenDelimiter = '\u0003';
     private const byte TokenDelimiterUtf8 = 0x03;
 
-    public static AssTokenizedText Tokenize(string text, int lineDurationMs)
+    public static AssTokenizedText Tokenize(ReadOnlySpan<byte> utf8, int lineDurationMs)
     {
-        if (string.IsNullOrEmpty(text) || text.IndexOf("\\t", StringComparison.Ordinal) < 0)
-            return new AssTokenizedText(text ?? string.Empty, Array.Empty<AssTransform>(), lineDurationMs);
+        if (utf8.IsEmpty || utf8.IndexOf("\\t"u8) < 0)
+            return new AssTokenizedText(utf8.ToArray(), Array.Empty<AssTransform>(), lineDurationMs);
 
-        using var read = AssEventTextRead.Parse(text);
+        using var read = AssEventTextRead.Parse(utf8);
         return Tokenize(read, lineDurationMs);
     }
 
@@ -497,7 +467,7 @@ public static class AssTransformTokenizer
         }
 
         if (spans.Count == 0)
-            return new AssTokenizedText(Encoding.UTF8.GetString(utf8), Array.Empty<AssTransform>(), lineDurationMs);
+            return new AssTokenizedText(utf8.ToArray(), Array.Empty<AssTransform>(), lineDurationMs);
 
         spans.Sort(static (a, b) => a.Start.CompareTo(b.Start));
 
@@ -517,8 +487,6 @@ public static class AssTransformTokenizer
                 writer.Write(utf8.Slice(pos, start - pos));
 
             int tokenIndex = transforms.Count + 1;
-            string token = string.Concat(TokenDelimiter, tokenIndex.ToString(CultureInfo.InvariantCulture), TokenDelimiter);
-
             WriteByte(writer, TokenDelimiterUtf8);
             if (Utf8Formatter.TryFormat(tokenIndex, numBuf, out int written))
                 writer.Write(numBuf[..written]);
@@ -526,7 +494,7 @@ public static class AssTransformTokenizer
 
             ReadOnlySpan<byte> tagSpanUtf8 = utf8.Slice(start, end - start);
             int paren = tagSpanUtf8.IndexOf((byte)'(');
-            string rawParenString = paren >= 0 ? Encoding.UTF8.GetString(tagSpanUtf8[paren..]) : "()";
+            ReadOnlySpan<byte> rawParen = paren >= 0 ? tagSpanUtf8[paren..] : "() "u8[..2];
 
             int trStart = func.HasTimes ? func.T1 : 0;
             int trEnd = func.HasTimes ? func.T2 : 0;
@@ -534,9 +502,9 @@ public static class AssTransformTokenizer
                 trEnd = lineDurationMs;
 
             double accel = func.HasAccel ? func.Accel : 1.0;
-            string payload = func.TagPayload.IsEmpty ? string.Empty : Encoding.UTF8.GetString(func.TagPayload.Span);
+            ReadOnlySpan<byte> payload = func.TagPayload.Span;
 
-            transforms.Add(new AssTransform(token, rawParenString, trStart, trEnd, accel, payload));
+            transforms.Add(new AssTransform(rawParen, trStart, trEnd, accel, payload));
 
             pos = end;
         }
@@ -544,7 +512,7 @@ public static class AssTransformTokenizer
         if (pos < utf8.Length)
             writer.Write(utf8[pos..]);
 
-        string tokenized = Encoding.UTF8.GetString(writer.WrittenSpan);
+        byte[] tokenized = writer.WrittenSpan.ToArray();
         return new AssTokenizedText(tokenized, transforms, lineDurationMs);
     }
 

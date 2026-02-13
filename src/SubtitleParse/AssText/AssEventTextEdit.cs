@@ -76,9 +76,24 @@ public sealed class AssEventTextEdit : IDisposable
     public void Insert(int index, ReadOnlySpan<byte> insertUtf8)
         => Replace(index, index, insertUtf8);
 
+    public void Insert(int index, byte[] insertUtf8)
+        => Replace(index, index, insertUtf8);
+
     public void Replace(Range range, ReadOnlySpan<byte> replacementUtf8)
     {
         ThrowIfDisposed();
+
+        int len = _read.Utf8.Length;
+        int start = range.Start.GetOffset(len);
+        int end = range.End.GetOffset(len);
+        Replace(start, end, replacementUtf8);
+    }
+
+    public void Replace(Range range, byte[] replacementUtf8)
+    {
+        ThrowIfDisposed();
+        if (replacementUtf8 == null)
+            throw new ArgumentNullException(nameof(replacementUtf8));
 
         int len = _read.Utf8.Length;
         int start = range.Start.GetOffset(len);
@@ -99,6 +114,22 @@ public sealed class AssEventTextEdit : IDisposable
 
         byte[]? repl = replacementUtf8.IsEmpty ? null : replacementUtf8.ToArray();
         _edits.Add(new Edit(start, endExclusive, repl, _nextOrder++));
+    }
+
+    public void Replace(int start, int endExclusive, byte[] replacementUtf8)
+    {
+        ThrowIfDisposed();
+        if (replacementUtf8 == null)
+            throw new ArgumentNullException(nameof(replacementUtf8));
+
+        int len = _read.Utf8.Length;
+        start = Math.Clamp(start, 0, len);
+        endExclusive = Math.Clamp(endExclusive, start, len);
+
+        if (start == endExclusive && replacementUtf8.Length == 0)
+            return;
+
+        _edits.Add(new Edit(start, endExclusive, replacementUtf8.Length == 0 ? null : replacementUtf8, _nextOrder++));
     }
 
     /// <summary>
@@ -190,6 +221,59 @@ public sealed class AssEventTextEdit : IDisposable
             writer.Write(src[pos..]);
 
         return encoding.GetString(writer.WrittenSpan);
+    }
+
+    public byte[] ApplyToUtf8Bytes()
+    {
+        ThrowIfDisposed();
+
+        if (_edits.Count == 0)
+            return _read.Utf8.ToArray();
+
+        var edits = _edits;
+        edits.Sort(static (a, b) =>
+        {
+            int c = a.Start.CompareTo(b.Start);
+            if (c != 0) return c;
+            c = a.EndExclusive.CompareTo(b.EndExclusive);
+            if (c != 0) return c;
+            return a.Order.CompareTo(b.Order);
+        });
+
+        ReadOnlySpan<byte> src = _read.Utf8.Span;
+        int srcLen = src.Length;
+
+        int extra = 0;
+        for (int i = 0; i < edits.Count; i++)
+        {
+            var e = edits[i];
+            int replLen = e.ReplacementUtf8?.Length ?? 0;
+            int removedLen = e.EndExclusive - e.Start;
+            extra += replLen - removedLen;
+        }
+
+        var writer = new ArrayBufferWriter<byte>(Math.Max(0, srcLen + extra));
+
+        int pos = 0;
+        for (int i = 0; i < edits.Count; i++)
+        {
+            var e = edits[i];
+            if (e.Start < pos)
+                throw new InvalidOperationException("Overlapping edits are not supported.");
+
+            if (e.Start > pos)
+                writer.Write(src.Slice(pos, e.Start - pos));
+
+            if (e.ReplacementUtf8 is { Length: > 0 } repl)
+                writer.Write(repl);
+
+            pos = e.EndExclusive;
+        }
+
+        if (pos < srcLen)
+            writer.Write(src[pos..]);
+
+        return writer.WrittenSpan.ToArray();
     }
 
     public void ClearEdits()

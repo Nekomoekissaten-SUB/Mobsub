@@ -225,6 +225,64 @@ public static class AssSubtitleParseTagEditor
         return Utf8.GetString(writer.WrittenSpan);
     }
 
+    public static byte[] InsertOrReplaceTagsInFirstOverrideBlockUtf8(
+        AssEventTextRead read,
+        ReadOnlySpan<byte> insertTagsUtf8,
+        Func<AssTag, bool> shouldRemove)
+    {
+        if (insertTagsUtf8.IsEmpty)
+            return read.Utf8.ToArray();
+
+        ReadOnlySpan<byte> lineUtf8 = read.Utf8.Span;
+
+        if (!read.TryGetFirstOverrideBlock(out var firstBlockRange, out var tags))
+            return PrefixNewOverrideBlockUtf8(lineUtf8, insertTagsUtf8);
+
+        var (segStart, segEnd) = GetRangeOffsets(firstBlockRange, lineUtf8.Length);
+
+        if (segStart != 0 || segEnd <= 1 || segEnd > lineUtf8.Length)
+            return PrefixNewOverrideBlockUtf8(lineUtf8, insertTagsUtf8);
+
+        int contentStart = segStart + 1;
+        int contentEnd = segEnd - 1; // before '}'
+
+        if (contentEnd < contentStart)
+            return PrefixNewOverrideBlockUtf8(lineUtf8, insertTagsUtf8);
+
+        var writer = new ArrayBufferWriter<byte>(lineUtf8.Length + insertTagsUtf8.Length + 16);
+
+        // New block
+        writer.Write(stackalloc byte[1] { (byte)'{' });
+        writer.Write(insertTagsUtf8);
+
+        int pos = contentStart;
+        for (int i = 0; i < tags.Length; i++)
+        {
+            ref readonly var t = ref tags[i];
+            if (!shouldRemove(t.Tag))
+                continue;
+
+            var (ts, te) = GetRangeOffsets(t.LineRange, lineUtf8.Length);
+            if (ts < contentStart || te > contentEnd || te <= ts)
+                continue;
+
+            if (ts > pos)
+                writer.Write(lineUtf8.Slice(pos, ts - pos));
+            pos = Math.Max(pos, te);
+        }
+
+        if (contentEnd > pos)
+            writer.Write(lineUtf8.Slice(pos, contentEnd - pos));
+
+        writer.Write(stackalloc byte[1] { (byte)'}' });
+
+        // Suffix after original block
+        if (segEnd < lineUtf8.Length)
+            writer.Write(lineUtf8.Slice(segEnd));
+
+        return writer.WrittenSpan.ToArray();
+    }
+
     public static bool TryGetPolygonMode(string lineText, out int p, out int firstTagBlockEndByteIndex, out byte[] lineUtf8)
     {
         p = 0;
@@ -278,6 +336,16 @@ public static class AssSubtitleParseTagEditor
         writer.Write(stackalloc byte[1] { (byte)'}' });
         writer.Write(lineUtf8);
         return Utf8.GetString(writer.WrittenSpan);
+    }
+
+    private static byte[] PrefixNewOverrideBlockUtf8(ReadOnlySpan<byte> lineUtf8, ReadOnlySpan<byte> insertTagsUtf8)
+    {
+        var writer = new ArrayBufferWriter<byte>(lineUtf8.Length + insertTagsUtf8.Length + 2);
+        writer.Write(stackalloc byte[1] { (byte)'{' });
+        writer.Write(insertTagsUtf8);
+        writer.Write(stackalloc byte[1] { (byte)'}' });
+        writer.Write(lineUtf8);
+        return writer.WrittenSpan.ToArray();
     }
 
     private static (int Start, int End) GetRangeOffsets(Range range, int length)
