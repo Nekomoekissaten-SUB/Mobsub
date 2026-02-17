@@ -236,6 +236,56 @@ LuaJIT FFI 能调用 C API，但当接口扩展成大量 `struct`、`char*`、`c
 
 `Set-Location src\\SimpleTools\\AutomationBridge; dotnet publish -c Release -r win-x64`
 
+## Debug 与踩坑总结（2026-02）
+
+### Lua 侧调试（推荐工作流）
+
+- 在脚本里用行首开关控制（例如 `local DEBUG=false`），发布时保持关闭。
+- `mobsub_bridge.lua` 支持将请求前的 `method/context/lines/args` 以“可读化+截断”的 JSON 输出（避免二进制/超长文本写爆文件）：
+  - `mobsub.DEBUG_JSON=true`
+  - `mobsub.DEBUG_JSON_FILE="mobsub.*.last_call.json"`
+- 当 `code=2 (ErrDecode)` 时，Lua glue 会在错误信息中附带 request/payload 的前缀 hex，便于快速确认请求是否为 `[schema_version, call]` 结构。
+
+### MessagePack 反序列化失败（Unexpected msgpack code 0x90 / fixarray）
+
+现象：Aegisub 弹窗 `mobsub error (code=2)`，提示 `Unexpected msgpack code 144 (fixarray) encountered.`
+
+原因：Lua 侧把“空 table”编码成 `[]`（`fixarray(0)`），但 C# 模型字段类型是 map（例如 `Dictionary<string,string>`），期望 msgpack map，导致 `BridgeRequest` 反序列化失败。
+
+处理：
+- Lua pack 时 **空 dict 一律转 `nil`**（不要传 `{}`）。
+- `mobsub_bridge_gen.lua` 是生成文件，不应手改；修复应落在生成器 `tools/AutomationBridgeProtocolGen`，并重新生成：
+  - `dotnet run --project tools/AutomationBridgeProtocolGen/AutomationBridgeProtocolGen.csproj`
+
+### Aegisub 的 `subtitles`/`line.extra` 不是普通 Lua table
+
+现象：调用了 `ensure_extradata()` 但 `changed=0`，并且 dump/request 里看不到 `extra["a-mo"]`。
+
+原因（常见于部分 Aegisub 构建）：
+- `subtitles` 是 `userdata`（不是 table）；Lua glue 若用 `type(subtitles) ~= "table"` 守卫会直接 return。
+- `line.extra` 可能是 `userdata/proxy`；不能通过“替换为新 table”的方式写入，否则会断开 Aegisub 内部 extradata 机制。
+
+处理建议：
+- glue 侧把 `subtitles` 视为 `table|userdata`，并用 `pcall` 保护索引读写。
+- extradata 写入策略：优先在原 `extra` 上写入（`extra[key]=value`），失败再 fallback 为 table。
+- `collect_selected_lines_*()` 是快照拷贝；如果要在请求里看到新写入的 `extra`，需要 `ensure_extradata()` 后重新 collect 一次 `lines`。
+
+### `frame_ms`/时间字段的整数化
+
+- C# 协议里 `frame_ms` 是 `int[]`（毫秒）；在 VFR 或某些环境下 `aegisub.ms_from_frame()` 可能返回非整数，Lua 侧需要在打包前做四舍五入到 int，否则会造成 decode/handler 行为不一致。
+
+### `start_frame` 的相对/绝对语义（对齐 a-mo）
+
+- `relative=true`：`start_frame` 是选区内相对帧（`1..total_frames`，`-1=last`）。
+- `relative=false`：`start_frame` 是视频绝对帧号，会换算为选区相对帧：`start_frame - selection_start_frame + 1`。
+- 常见 `code=1 (ErrBadArgs)`：`Out-of-range absolute start_frame (before selection)` 表示绝对模式下 `start_frame` 在选区之前（playhead 不在选区内也会导致默认值落在选区外）。
+
+### “Track \\clip separately” 打开 clip 对话框崩溃/布局异常
+
+原因：控件坐标/尺寸不匹配导致重叠（Aegisub UI 侧可能直接崩溃）。
+
+处理：clip dialog 的 data 输入框建议保持与 a-mo 一致的尺寸（例如 `width=10,height=4`），避免覆盖后续控件。
+
 输出的原生 DLL 通常位于：
 
 `src\\SimpleTools\\AutomationBridge\\bin\\Release\\net10.0\\win-x64\\publish\\Mobsub.AutomationBridge.dll`
