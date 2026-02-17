@@ -42,6 +42,9 @@ local function _pack_dict_str_map(src)
       out[k] = v
     end
   end
+  if not next(out) then
+    return nil
+  end
   return out
 end
 
@@ -54,6 +57,9 @@ local function _pack_dict_record_map(src, pack_value)
     if type(k) == "string" and k ~= "" then
       out[k] = pack_value(v)
     end
+  end
+  if not next(out) then
+    return nil
   end
   return out
 end

@@ -77,6 +77,9 @@ internal static partial class LuaEmitterV2
         sb.AppendLine("      out[k] = v");
         sb.AppendLine("    end");
         sb.AppendLine("  end");
+        sb.AppendLine("  if not next(out) then");
+        sb.AppendLine("    return nil");
+        sb.AppendLine("  end");
         sb.AppendLine("  return out");
         sb.AppendLine("end");
         sb.AppendLine();
@@ -90,6 +93,9 @@ internal static partial class LuaEmitterV2
         sb.AppendLine("    if type(k) == \"string\" and k ~= \"\" then");
         sb.AppendLine("      out[k] = pack_value(v)");
         sb.AppendLine("    end");
+        sb.AppendLine("  end");
+        sb.AppendLine("  if not next(out) then");
+        sb.AppendLine("    return nil");
         sb.AppendLine("  end");
         sb.AppendLine("  return out");
         sb.AppendLine("end");

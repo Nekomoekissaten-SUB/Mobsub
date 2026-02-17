@@ -86,10 +86,14 @@ internal static class AmoApplyEngine
             return false;
         }
 
-        if (!AmoOptionsParser.TryNormalizeStartFrame(clipOpt.StartFrame, mainOpt.Relative, input.SelectionStartFrame, input.TotalFrames, out int clipStartFrame, out var errClipFrame))
+        int clipStartFrame = mainStartFrame;
+        if (hasClipData)
         {
-            error = "clip.start_frame: " + errClipFrame;
-            return false;
+            if (!AmoOptionsParser.TryNormalizeStartFrame(clipOpt.StartFrame, mainOpt.Relative, input.SelectionStartFrame, input.TotalFrames, out clipStartFrame, out var errClipFrame))
+            {
+                error = "clip.start_frame: " + errClipFrame;
+                return false;
+            }
         }
 
         mainOpt = mainOpt with { StartFrame = mainStartFrame };

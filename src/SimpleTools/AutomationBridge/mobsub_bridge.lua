@@ -24,6 +24,169 @@ local M = {}
 
 local BRIDGE_MAGIC = "MSB1"
 
+-- Debug helpers:
+-- Set these from your macro script before calling into the bridge, e.g.:
+--   local mobsub = require("mobsub_bridge").load("Mobsub.AutomationBridge.dll")
+--   mobsub.DEBUG_JSON = true
+--   mobsub.DEBUG_JSON_FILE = "mobsub.bridge.last_call.json"
+M.DEBUG_JSON = false
+M.DEBUG_JSON_DUMP_TYPED_REQUEST = false
+M.DEBUG_JSON_FILE = "mobsub.bridge.last_call.json"
+M.DEBUG_JSON_MAX_DEPTH = 6
+M.DEBUG_JSON_MAX_ITEMS = 40
+M.DEBUG_JSON_MAX_STRING = 200
+
+local function _byte_preview(s, max_len)
+  if type(s) ~= "string" then
+    return ""
+  end
+  max_len = tonumber(max_len) or 200
+  if max_len < 0 then max_len = 0 end
+  local n = #s
+  if n > max_len then
+    n = max_len
+  end
+  local out = {}
+  local j = 0
+  for i = 1, n do
+    local b = s:byte(i)
+    if b == 0x5C then -- '\'
+      j = j + 1; out[j] = "\\\\"
+    elseif b == 0x0A then
+      j = j + 1; out[j] = "\\n"
+    elseif b == 0x0D then
+      j = j + 1; out[j] = "\\r"
+    elseif b == 0x09 then
+      j = j + 1; out[j] = "\\t"
+    elseif b >= 0x20 and b <= 0x7E then
+      j = j + 1; out[j] = string.char(b)
+    else
+      j = j + 1; out[j] = string.format("\\x%02X", b)
+    end
+  end
+  local suffix = (#s > max_len) and ("…(+" .. tostring(#s - max_len) .. " bytes)") or ""
+  return table.concat(out) .. suffix
+end
+
+local function _is_array_table(t)
+  if type(t) ~= "table" then
+    return false
+  end
+  -- Heuristic: treat as array if it has element 1 or is empty and has no non-integer keys.
+  local n = 0
+  for k, _ in pairs(t) do
+    if type(k) ~= "number" or k < 1 or k % 1 ~= 0 then
+      return false
+    end
+    if k > n then n = k end
+  end
+  return n == 0 or t[1] ~= nil
+end
+
+local function _sanitize_for_json(x, depth, seen)
+  depth = tonumber(depth) or 0
+  if depth > (M.DEBUG_JSON_MAX_DEPTH or 6) then
+    return { __type = "max_depth" }
+  end
+
+  local tx = type(x)
+  if tx == "nil" or tx == "boolean" or tx == "number" then
+    return x
+  end
+  if tx == "string" then
+    return {
+      __type = "bytes",
+      len = #x,
+      preview = _byte_preview(x, M.DEBUG_JSON_MAX_STRING or 200),
+    }
+  end
+  if tx ~= "table" then
+    return { __type = tx, value = tostring(x) }
+  end
+
+  if seen[x] then
+    return { __type = "cycle" }
+  end
+  seen[x] = true
+
+  local max_items = tonumber(M.DEBUG_JSON_MAX_ITEMS) or 40
+
+  if _is_array_table(x) then
+    local out = {}
+    local count = 0
+    for i, v in ipairs(x) do
+      count = count + 1
+      if count > max_items then
+        out[#out + 1] = { __type = "truncated", len = #x }
+        break
+      end
+      out[#out + 1] = _sanitize_for_json(v, depth + 1, seen)
+    end
+    seen[x] = nil
+    return out
+  end
+
+  local out = {}
+  local count = 0
+  for k, v in pairs(x) do
+    count = count + 1
+    if count > max_items then
+      out["__truncated__"] = true
+      break
+    end
+    local kk = tostring(k)
+    out[kk] = _sanitize_for_json(v, depth + 1, seen)
+  end
+  seen[x] = nil
+  return out
+end
+
+function M.dump_json(filename, obj)
+  filename = filename or M.DEBUG_JSON_FILE
+  if type(filename) ~= "string" or filename == "" then
+    return false, nil
+  end
+
+  local safe = _sanitize_for_json(obj, 0, {})
+  local ok, s = pcall(json.encode, safe)
+  if not ok or type(s) ~= "string" then
+    return false, nil
+  end
+
+  -- Reuse config paths so this works in Aegisub portable installs.
+  local paths = M.get_config_paths(filename)
+  for _, path in ipairs(paths) do
+    local f = io.open(path, "wb")
+    if f then
+      f:write(s)
+      f:close()
+      return true, path
+    end
+  end
+
+  return false, nil
+end
+
+local function _hex_prefix(s, max_bytes)
+  if type(s) ~= "string" then
+    return nil
+  end
+  max_bytes = tonumber(max_bytes) or 64
+  if max_bytes < 1 then
+    return ""
+  end
+  local n = #s
+  if n > max_bytes then
+    n = max_bytes
+  end
+  local t = {}
+  for i = 1, n do
+    t[i] = string.format("%02X", s:byte(i))
+  end
+  local suffix = (#s > max_bytes) and ("…(+" .. tostring(#s - max_bytes) .. " bytes)") or ""
+  return table.concat(t, " ") .. suffix
+end
+
 local function _wrap_envelope(payload)
   return BRIDGE_MAGIC .. payload
 end
@@ -72,8 +235,22 @@ end
 function M.invoke(req_tbl)
   if not M._dll then error("mobsub bridge dll not loaded") end
 
+  if M.DEBUG_JSON and M.DEBUG_JSON_DUMP_TYPED_REQUEST then
+    local ok, path = M.dump_json("mobsub.bridge.last_typed_request.json", req_tbl)
+    M._last_req_dump_path = ok and path or nil
+  end
+
   local req_bytes = _encode_request(req_tbl)
   local req_len = #req_bytes
+
+  -- Save a small debug trace for decode errors (code=2).
+  M._last_req_len = req_len
+  M._last_req_hex = _hex_prefix(req_bytes, 64)
+  if req_len >= 4 and req_bytes:sub(1, 4) == BRIDGE_MAGIC then
+    M._last_req_payload_hex = _hex_prefix(req_bytes:sub(5), 64)
+  else
+    M._last_req_payload_hex = nil
+  end
 
   local resp_ptr = ffi.new("uint8_t*[1]")
   local resp_len = ffi.new("int[1]")
@@ -91,6 +268,24 @@ end
 
 function M.show_error(code, resp)
   local err = (type(resp) == "table" and resp[2]) or "no response"
+  if tonumber(code) == 2 then
+    local extra = {}
+    if M._last_req_len ~= nil then
+      extra[#extra + 1] = "req_len=" .. tostring(M._last_req_len)
+    end
+    if type(M._last_req_hex) == "string" and M._last_req_hex ~= "" then
+      extra[#extra + 1] = "req_hex_prefix=" .. M._last_req_hex
+    end
+    if type(M._last_req_payload_hex) == "string" and M._last_req_payload_hex ~= "" then
+      extra[#extra + 1] = "payload_hex_prefix=" .. M._last_req_payload_hex
+    end
+    if type(M._last_req_dump_path) == "string" and M._last_req_dump_path ~= "" then
+      extra[#extra + 1] = "debug_json=" .. M._last_req_dump_path
+    end
+    if #extra > 0 then
+      err = tostring(err) .. "\n\n" .. table.concat(extra, "\n")
+    end
+  end
   M.dialog_error("mobsub error (code=" .. tostring(code) .. ")", err)
 end
 
@@ -115,33 +310,63 @@ local function _random_hex32()
 end
 
 local function _shallow_copy_str_map(src)
-  if type(src) ~= "table" then
+  local out = {}
+
+  if src == nil then
     return nil
   end
-  local out = {}
-  for k, v in pairs(src) do
-    if type(k) == "string" and type(v) == "string" then
-      out[k] = v
+
+  -- `line.extra` can be a table or a userdata (with metamethods) depending on Aegisub build.
+  -- Use `pairs()` in a protected call to support both.
+  local ok = pcall(function()
+    for k, v in pairs(src) do
+      if type(k) == "string" and type(v) == "string" then
+        out[k] = v
+      end
     end
+  end)
+  if not ok then
+    return nil
+  end
+
+  if not next(out) then
+    return nil
   end
   return out
 end
 
-local function _ensure_extradata_on_line(line, extra_key)
+local function _to_int(v)
+  v = tonumber(v)
+  if v == nil then
+    return nil
+  end
+  if v >= 0 then
+    return math.floor(v + 0.5)
+  end
+  return -math.floor(-v + 0.5)
+end
+
+local function _ensure_extradata_on_line(line, extra_key, force)
   if type(line) ~= "table" then
     return false
   end
 
   extra_key = extra_key or "a-mo"
-  local extra = line.extra
-  if type(extra) ~= "table" then
-    extra = {}
-    line.extra = extra
-  end
+  force = force and true or false
 
-  local existing = extra[extra_key]
-  if type(existing) == "string" and existing ~= "" then
-    return false
+  local extra = line.extra
+  local existing = nil
+  pcall(function()
+    if extra ~= nil then
+      existing = extra[extra_key]
+    end
+  end)
+  if not force and type(existing) == "string" and existing ~= "" then
+    -- Skip only if the existing value looks like our JSON payload.
+    local ok, data = pcall(json.decode, existing)
+    if ok and type(data) == "table" and type(data.uuid) == "string" then
+      return false
+    end
   end
 
   local uuid = _random_hex32()
@@ -150,16 +375,32 @@ local function _ensure_extradata_on_line(line, extra_key)
     original_text = line.text
   end
 
-  extra[extra_key] = json.encode({
+  local payload = json.encode({
     uuid = uuid,
     original_text = original_text,
   })
+
+  -- Prefer mutating existing `extra` (even if it's userdata) to keep Aegisub's internal extradata wiring.
+  local set_ok = false
+  pcall(function()
+    if extra ~= nil then
+      extra[extra_key] = payload
+      set_ok = true
+    end
+  end)
+
+  if not set_ok then
+    extra = {}
+    extra[extra_key] = payload
+    line.extra = extra
+  end
   return true
 end
 
 -- Ensure extradata is written to subtitles (needed for revert_by_extradata).
-function M.ensure_extradata(subtitles, selected_lines, extra_key)
-  if type(subtitles) ~= "table" or type(selected_lines) ~= "table" then
+function M.ensure_extradata(subtitles, selected_lines, extra_key, force)
+  local st = type(subtitles)
+  if (st ~= "table" and st ~= "userdata") or type(selected_lines) ~= "table" then
     return 0
   end
 
@@ -167,7 +408,7 @@ function M.ensure_extradata(subtitles, selected_lines, extra_key)
   for _, idx in ipairs(selected_lines) do
     local line = subtitles[idx]
     if type(line) == "table" then
-      if _ensure_extradata_on_line(line, extra_key) then
+      if _ensure_extradata_on_line(line, extra_key, force) then
         changed = changed + 1
       end
       subtitles[idx] = line
@@ -176,9 +417,59 @@ function M.ensure_extradata(subtitles, selected_lines, extra_key)
   return changed
 end
 
+-- Debug: read a specific extradata key for selected lines.
+function M.peek_extradata(subtitles, selected_lines, extra_key)
+  extra_key = extra_key or "a-mo"
+  local st = type(subtitles)
+  if (st ~= "table" and st ~= "userdata") or type(selected_lines) ~= "table" then
+    return {}
+  end
+
+  local out = {}
+  for _, idx in ipairs(selected_lines) do
+    local line = subtitles[idx]
+    local v = nil
+    local extra_t = nil
+    if type(line) == "table" then
+      extra_t = type(line.extra)
+      pcall(function()
+        if line.extra ~= nil then
+          v = line.extra[extra_key]
+        end
+      end)
+    end
+    if type(v) == "string" then
+      out[#out + 1] = {
+        index = idx,
+        extra_type = extra_t,
+        len = #v,
+        preview = _byte_preview(v, 200),
+      }
+    else
+      out[#out + 1] = {
+        index = idx,
+        extra_type = extra_t,
+        value_type = type(v),
+        value = (v ~= nil) and tostring(v) or nil,
+      }
+    end
+  end
+  return out
+end
+
 M.make_request = bridge_gen.make_request
 
 function M.invoke_method(method, context, lines, args, schema_version)
+  if M.DEBUG_JSON then
+    local ok, path = M.dump_json(M.DEBUG_JSON_FILE, {
+      method = method,
+      schema_version = schema_version,
+      context = context,
+      lines = lines,
+      args = args,
+    })
+    M._last_req_dump_path = ok and path or nil
+  end
   return M.invoke(M.make_request(method, context, lines, args, schema_version))
 end
 
@@ -282,22 +573,22 @@ local function _copy_bridge_line_minimal(src, idx, opts)
   local line = {
     index = idx,
     class = src.class,
-    layer = src.layer,
-    start_time = src.start_time,
-    end_time = src.end_time,
-    start_frame = src.start_frame,
-    end_frame = src.end_frame,
+    layer = _to_int(src.layer),
+    start_time = _to_int(src.start_time),
+    end_time = _to_int(src.end_time),
+    start_frame = _to_int(src.start_frame),
+    end_frame = _to_int(src.end_frame),
     style = src.style,
     actor = src.actor,
-    margin_l = src.margin_l,
-    margin_r = src.margin_r,
-    margin_t = src.margin_t,
+    margin_l = _to_int(src.margin_l),
+    margin_r = _to_int(src.margin_r),
+    margin_t = _to_int(src.margin_t),
     effect = src.effect,
     comment = src.comment,
     extra = _shallow_copy_str_map(src.extra),
-    width = src.width,
-    height = src.height,
-    align = src.align,
+    width = tonumber(src.width),
+    height = tonumber(src.height),
+    align = _to_int(src.align),
   }
 
   if type(src.text) == "string" then
@@ -328,8 +619,8 @@ function M.collect_selected_lines_with_frames_minimal(subtitles, selected_lines,
   local out = M.collect_selected_lines_minimal(subtitles, selected_lines, opts)
   for _, l in ipairs(out) do
     if l.start_time and l.end_time then
-      l.start_frame = aegisub.frame_from_ms(l.start_time)
-      l.end_frame = aegisub.frame_from_ms(l.end_time)
+      l.start_frame = _to_int(aegisub.frame_from_ms(l.start_time))
+      l.end_frame = _to_int(aegisub.frame_from_ms(l.end_time))
     end
   end
   return out
@@ -353,8 +644,8 @@ function M.collect_selected_lines_with_frames(subtitles, selected_lines)
   local out = M.collect_selected_lines(subtitles, selected_lines)
   for _, l in ipairs(out) do
     if l.start_time and l.end_time then
-      l.start_frame = aegisub.frame_from_ms(l.start_time)
-      l.end_frame = aegisub.frame_from_ms(l.end_time)
+      l.start_frame = _to_int(aegisub.frame_from_ms(l.start_time))
+      l.end_frame = _to_int(aegisub.frame_from_ms(l.end_time))
     end
   end
   return out
@@ -602,7 +893,7 @@ function M.collect_frame_ms(selection_start_frame, total_frames)
   end
   local arr = {}
   for f = selection_start_frame, selection_start_frame + total_frames do
-    arr[#arr + 1] = aegisub.ms_from_frame(f)
+    arr[#arr + 1] = _to_int(aegisub.ms_from_frame(f))
   end
   return arr
 end
@@ -773,8 +1064,14 @@ function M.revert_by_extradata(subtitles, selected_lines, extra_key)
   local uuids = {}
   for _, idx in ipairs(selected_lines) do
     local line = subtitles[idx]
-    if type(line.extra) == "table" and type(line.extra[extra_key]) == "string" then
-      local ok, data = pcall(json.decode, line.extra[extra_key])
+    local v = nil
+    pcall(function()
+      if type(line) == "table" and line.extra ~= nil then
+        v = line.extra[extra_key]
+      end
+    end)
+    if type(v) == "string" then
+      local ok, data = pcall(json.decode, v)
       if ok and type(data) == "table" and type(data.uuid) == "string" then
         uuids[data.uuid] = true
       end
@@ -790,8 +1087,14 @@ function M.revert_by_extradata(subtitles, selected_lines, extra_key)
 
   for i = 1, #subtitles do
     local line = subtitles[i]
-    if type(line.extra) == "table" and type(line.extra[extra_key]) == "string" then
-      local ok, data = pcall(json.decode, line.extra[extra_key])
+    local v = nil
+    pcall(function()
+      if type(line) == "table" and line.extra ~= nil then
+        v = line.extra[extra_key]
+      end
+    end)
+    if type(v) == "string" then
+      local ok, data = pcall(json.decode, v)
       if ok and type(data) == "table" and type(data.uuid) == "string" and uuids[data.uuid] then
         local uuid = data.uuid
         local original_text = data.originalText or data.original_text
@@ -827,9 +1130,11 @@ function M.revert_by_extradata(subtitles, selected_lines, extra_key)
     end
     line.start_time = k.start_time
     line.end_time = k.end_time
-    if type(line.extra) == "table" then
-      line.extra[extra_key] = nil
-    end
+    pcall(function()
+      if type(line) == "table" and line.extra ~= nil then
+        line.extra[extra_key] = nil
+      end
+    end)
     subtitles[idx] = line
     changed = changed + 1
   end

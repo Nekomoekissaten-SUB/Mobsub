@@ -36,7 +36,7 @@ internal static class BridgeMessagePack
         catch (Exception ex)
         {
             schemaVersion = 0;
-            error = "MessagePack decode failed: " + ex.Message;
+            error = FormatDecodeError(ex);
             return false;
         }
     }
@@ -56,7 +56,7 @@ internal static class BridgeMessagePack
         catch (Exception ex)
         {
             request = null;
-            error = "MessagePack decode failed: " + ex.Message;
+            error = FormatDecodeError(ex);
             return false;
         }
     }
@@ -76,7 +76,7 @@ internal static class BridgeMessagePack
         catch (Exception ex)
         {
             response = null;
-            error = "MessagePack decode failed: " + ex.Message;
+            error = FormatDecodeError(ex);
             return false;
         }
     }
@@ -105,6 +105,15 @@ internal static class BridgeMessagePack
         return MessagePackSerializerOptions.Standard
             .WithResolver(resolver)
             .WithSecurity(MessagePackSecurity.UntrustedData);
+    }
+
+    private static string FormatDecodeError(Exception ex)
+    {
+        // Keep it short enough for Aegisub dialog boxes, but include the key discriminator + inner exception message.
+        var msg = $"MessagePack decode failed: {ex.GetType().Name}: {ex.Message}";
+        if (ex.InnerException is not null)
+            msg += $" | Inner: {ex.InnerException.GetType().Name}: {ex.InnerException.Message}";
+        return msg;
     }
 
     private sealed unsafe class UnmanagedMemoryManager : MemoryManager<byte>

@@ -52,7 +52,7 @@ internal static class AmoOptionsParser
             normalized = startFrame - selectionStartFrame + 1;
             if (normalized <= 0)
             {
-                error = "Out-of-range absolute start_frame (before selection).";
+                error = $"Out-of-range absolute start_frame (before selection): start_frame={startFrame}, selection_start_frame={selectionStartFrame}.";
                 return false;
             }
         }

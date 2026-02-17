@@ -1,11 +1,12 @@
 -- mobsub.Aegisub-Motion.lua
--- Aegisub-Motion (Bridge): keep Lua thin; delegate parsing/algorithms/batch logic to Mobsub.AutomationBridge (NativeAOT).
-
 script_name        = "Mobsub.Aegisub-Motion"
 script_description = "Apply AE Keyframe / shake_shape_data motion like Aegisub-Motion, but with a thin Lua bridge."
 script_author      = "MIR"
-script_version     = "0.0.4"
+script_version     = "0.0.1"
 script_namespace   = "mobsub.Aegisub-Motion"
+
+-- Debug toggle (set true when diagnosing issues).
+local DEBUG = false
 
 local clipboard = require("aegisub.clipboard")
 local m = require("mobsub_bridge").load("Mobsub.AutomationBridge.dll")
@@ -13,6 +14,10 @@ local m = require("mobsub_bridge").load("Mobsub.AutomationBridge.dll")
 -- (and ensure a `json` module is available for config/extradata).
 
 local CONFIG_FILE = "mobsub.aegisub-motion.json"
+
+-- Optional request dump (sanitized) for debugging.
+m.DEBUG_JSON = DEBUG
+m.DEBUG_JSON_FILE = "mobsub.aegisub-motion.last_call.json"
 
 local STATE_LOADED = false
 local function can_run(_, selected)
@@ -224,7 +229,7 @@ local function build_clip_dialog(cfg)
 
   return {
     { class = "label", x = 0, y = 0, width = 10, height = 1, label = "This stuff is for clips." },
-    { class = "textbox", x = 0, y = 1, width = 4, height = 20, name = "data", value = s("data", ""), hint = "AE Keyframe Data or shake_shape_data 4.0, or a file path." },
+    { class = "textbox", x = 0, y = 1, width = 10, height = 4, name = "data", value = s("data", ""), hint = "AE Keyframe Data or shake_shape_data 4.0, or a file path." },
 
     { class = "label", x = 0, y = 5, width = 5, height = 1, label = "Data to be applied:" },
     { class = "checkbox", x = 0, y = 6, width = 1, height = 1, name = "x_position", label = "&x", value = b("x_position", true) },
@@ -325,12 +330,17 @@ local function apply(subtitles, selected)
   for k, v in pairs(STATE_MAIN) do cfg.main[k] = v end
   for k, v in pairs(STATE_CLIP) do cfg.clip[k] = v end
 
+  -- Match a-mo behavior: default reference frame is based on current video position,
+  -- not whatever was persisted in the config from a previous run.
   if cfg.main.relative then
-    if cfg.main.start_frame == nil then cfg.main.start_frame = default_rel end
-    if cfg.clip.start_frame == nil then cfg.clip.start_frame = default_rel end
+    local relative_frame = current_frame - selection_start_frame + 1
+    if relative_frame > 0 and relative_frame <= total_frames then
+      cfg.main.start_frame = relative_frame
+      cfg.clip.start_frame = relative_frame
+    end
   else
-    if cfg.main.start_frame == nil then cfg.main.start_frame = current_frame end
-    if cfg.clip.start_frame == nil then cfg.clip.start_frame = current_frame end
+    cfg.main.start_frame = current_frame
+    cfg.clip.start_frame = current_frame
   end
 
   local buttons = {
@@ -340,7 +350,7 @@ local function apply(subtitles, selected)
     },
     clip = {
       list = { "&Go", "&Back", "&Quit" },
-      namedList = { ok = "&Go", back = "&Back", cancel = "&Quit" },
+      namedList = { ok = "&Go", close = "&Back", abort = "&Quit" },
     },
   }
 
@@ -370,11 +380,11 @@ local function apply(subtitles, selected)
         break
       end
     else
-      if btn == buttons.clip.namedList.cancel then
+      if btn == buttons.clip.namedList.abort then
         aegisub.cancel()
         return
       end
-      if btn == buttons.clip.namedList.back then
+      if btn == buttons.clip.namedList.close then
         current = "main"
       else
         break
@@ -404,8 +414,17 @@ local function apply(subtitles, selected)
     return
   end
 
-  -- Write extradata to subtitles so the Revert macro can locate/merge lines.
-  m.ensure_extradata(subtitles, selected, "a-mo")
+  -- Write extradata so inserted lines preserve it (needed for Revert macro).
+  local extra_changed = m.ensure_extradata(subtitles, selected, "a-mo")
+  if DEBUG then
+    aegisub.debug.out(0, "mobsub: ensure_extradata changed=" .. tostring(extra_changed) .. "\n")
+    local peek = m.peek_extradata(subtitles, selected, "a-mo")
+    local ok, path = m.dump_json("mobsub.aegisub-motion.extradata_peek.json", peek)
+    if ok then
+      aegisub.debug.out(0, "mobsub: extradata_peek=" .. tostring(path) .. "\n")
+    end
+  end
+  lines = m.collect_selected_lines_with_frames_minimal(subtitles, selected)
 
   local context = {
     script_resolution = { w = sub_res_x, h = sub_res_y },
@@ -494,11 +513,18 @@ local function apply(subtitles, selected)
   if type(logs) == "table" and #logs > 0 then
     aegisub.debug.out(0, table.concat(logs, "\n") .. "\n")
   end
+
+  if aegisub.set_undo_point then
+    aegisub.set_undo_point(script_name .. "/Apply")
+  end
 end
 
 local function revert(subtitles, selected)
   local changed = m.revert_by_extradata(subtitles, selected, "a-mo")
   -- aegisub.debug.out(0, "revert changed: " .. tostring(changed) .. "\n")
+  if aegisub.set_undo_point then
+    aegisub.set_undo_point(script_name .. "/Revert")
+  end
 end
 
 aegisub.register_macro(script_name .. "/Apply", "Apply motion data like Aegisub-Motion (Bridge; no trim/encoding).", apply, can_run)
