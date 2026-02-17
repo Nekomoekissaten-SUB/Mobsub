@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "calls": [
+    {
+      "kind": 0,
+      "method": "ping",
+      "call_type": "BridgePingCall",
+      "description": "Health check; returns logs=['pong']."
+    },
+    {
+      "kind": 1,
+      "method": "list_methods",
+      "call_type": "BridgeListMethodsCall",
+      "description": "List supported method names."
+    },
+    {
+      "kind": 2,
+      "method": "motion.amo_apply",
+      "call_type": "MotionAmoApplyCall",
+      "description": "Aegisub-Motion Apply (ported from a-mo.Aegisub-Motion; no trim/encoding)."
+    },
+    {
+      "kind": 3,
+      "method": "perspective.apply_clip_quad",
+      "call_type": "PerspectiveApplyClipQuadCall",
+      "description": "Insert/replace \\\\clip(m ... l ...) from AE CC Power Pin quad."
+    },
+    {
+      "kind": 4,
+      "method": "perspective.apply_tags_from_quad",
+      "call_type": "PerspectiveApplyTagsFromQuadCall",
+      "description": "Insert/replace perspective tags (\\\\pos/\\\\org/\\\\frx/\\\\fry/...) from AE quad."
+    },
+    {
+      "kind": 5,
+      "method": "perspective.apply_tags_from_clip_quad",
+      "call_type": "PerspectiveApplyTagsFromClipQuadCall",
+      "description": "Extract quad from \\\\clip and insert perspective tags."
+    },
+    {
+      "kind": 6,
+      "method": "drawing.optimize_lines",
+      "call_type": "DrawingOptimizeLinesCall",
+      "description": "Optimize \\\\p drawings: flatten curves to m/l and optional RDP simplification."
+    }
+  ],
+  "lua": {
+    "target_path": "src/SimpleTools/AutomationBridge/mobsub_bridge_gen.lua"
+  }
+}

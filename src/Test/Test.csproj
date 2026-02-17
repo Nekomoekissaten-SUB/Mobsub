@@ -13,6 +13,7 @@
     <ProjectReference Include="..\SubtitleParse\Mobsub.SubtitleParse.csproj" />
     <ProjectReference Include="..\SubtitleParse.Language\Mobsub.SubtitleParse.Language.csproj" />
     <ProjectReference Include="..\Ikkoku\Ikkoku.csproj" />
+    <ProjectReference Include="..\SimpleTools\AutomationBridge\Mobsub.AutomationBridge.csproj" />
     <PackageReference Include="FluentAssertions" Version="8.8.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <PackageReference Include="MSTest.TestAdapter" Version="3.6.0" />
