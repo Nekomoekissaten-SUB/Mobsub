@@ -13,4 +13,10 @@ namespace Mobsub.AutomationBridge.Protocol;
 [Union(4, typeof(PerspectiveApplyTagsFromQuadCall))]
 [Union(5, typeof(PerspectiveApplyTagsFromClipQuadCall))]
 [Union(6, typeof(DrawingOptimizeLinesCall))]
+[Union(7, typeof(HydraAddTagsCall))]
+[Union(8, typeof(HydraRemoveTagsCall))]
+[Union(9, typeof(HydraAddTagsToTransformsCall))]
+[Union(10, typeof(HydraSortTagsCall))]
+[Union(11, typeof(HydraConvertClipCall))]
+[Union(12, typeof(HydraGradientCall))]
 internal interface IBridgeCall;

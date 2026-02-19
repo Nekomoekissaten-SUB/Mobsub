@@ -40,5 +40,29 @@ internal static partial class BridgeScriptCatalog
                 new BridgeMethodInfo("drawing.optimize_lines", "Optimize \\\\p drawings: flatten curves to m/l and optional RDP simplification."),
                 global::Mobsub.AutomationBridge.Scripts.Drawing.DrawingOptimizeLinesHandler.Handle),
 
+            new BridgeCallHandler<HydraAddTagsCall>(
+                new BridgeMethodInfo("hydra.add_tags", "Add tags to the first override block (Mobsub.Hydra)."),
+                global::Mobsub.AutomationBridge.Scripts.Hydra.HydraAddTagsHandler.Handle),
+
+            new BridgeCallHandler<HydraRemoveTagsCall>(
+                new BridgeMethodInfo("hydra.remove_tags", "Remove specified tags from the first/all override blocks (Mobsub.Hydra)."),
+                global::Mobsub.AutomationBridge.Scripts.Hydra.HydraRemoveTagsHandler.Handle),
+
+            new BridgeCallHandler<HydraAddTagsToTransformsCall>(
+                new BridgeMethodInfo("hydra.add_tags_to_transforms", "Hydra mode 3: append tags to all existing \\\\t(...) payloads."),
+                global::Mobsub.AutomationBridge.Scripts.Hydra.HydraAddTagsToTransformsHandler.Handle),
+
+            new BridgeCallHandler<HydraSortTagsCall>(
+                new BridgeMethodInfo("hydra.sort_tags", "Sort tags in override blocks using Hydra's tag order."),
+                global::Mobsub.AutomationBridge.Scripts.Hydra.HydraSortTagsHandler.Handle),
+
+            new BridgeCallHandler<HydraConvertClipCall>(
+                new BridgeMethodInfo("hydra.convert_clip", "Toggle \\\\clip <-> \\\\iclip in all override blocks."),
+                global::Mobsub.AutomationBridge.Scripts.Hydra.HydraConvertClipHandler.Handle),
+
+            new BridgeCallHandler<HydraGradientCall>(
+                new BridgeMethodInfo("hydra.gradient", "Hydra mode 3: gradients (vertical/horizontal/by_char/by_line)."),
+                global::Mobsub.AutomationBridge.Scripts.Hydra.HydraGradientHandler.Handle),
+
         ];
 }

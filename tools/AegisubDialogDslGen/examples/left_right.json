@@ -1,0 +1,20 @@
+{
+  "$schema": "../schema/dialog.schema.json",
+  "rows": [
+    {
+      "left": [
+        { "class": "label", "label": "Left group", "w": 3 }
+      ],
+      "right": [
+        { "class": "label", "label": "Right:" },
+        { "class": "edit", "name": "value", "value": "abc", "w": 3 }
+      ],
+      "gap": 1
+    },
+    [
+      { "class": "checkbox", "name": "x", "label": "X" },
+      { "spacer": 1 },
+      { "class": "checkbox", "name": "y", "label": "Y" }
+    ]
+  ]
+}

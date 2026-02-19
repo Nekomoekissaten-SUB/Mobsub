@@ -129,6 +129,20 @@ internal enum BridgeAmoPosErrorMode : int
     IgnoreScaleRot = 1,
 }
 
+internal enum HydraTagScope : int
+{
+    FirstBlock = 0,
+    AllBlocks = 1,
+}
+
+internal enum HydraGradientKind : int
+{
+    Vertical = 0,
+    Horizontal = 1,
+    ByChar = 2,
+    ByLine = 3,
+}
+
 [LuaPackMode(LuaPackMode.Default)]
 [MessagePackObject(AllowPrivate = true)]
 internal readonly partial record struct BridgeAmoFixOptions(
@@ -269,3 +283,76 @@ internal sealed partial record DrawingOptimizeLinesCall(
     [property: Key(1)] DrawingOptimizeLinesArgs Args
 ) : IBridgeCall;
 
+[LuaPackMode(LuaPackMode.Default)]
+[MessagePackObject(AllowPrivate = true)]
+internal sealed partial record HydraAddTagsArgs(
+    [property: Key(0), MessagePackFormatter(typeof(Utf8BytesReadOnlyMemoryFormatter)), LuaKey("tags"), LuaAltKeys("tags_utf8"), LuaDefault("")] ReadOnlyMemory<byte>? TagsUtf8
+);
+
+[MessagePackObject(AllowPrivate = true)]
+internal sealed partial record HydraAddTagsCall(
+    [property: Key(0)] BridgeLine[] Lines,
+    [property: Key(1)] HydraAddTagsArgs Args
+) : IBridgeCall;
+
+[LuaPackMode(LuaPackMode.Default)]
+[MessagePackObject(AllowPrivate = true)]
+internal sealed partial record HydraRemoveTagsArgs(
+    [property: Key(0), MessagePackFormatter(typeof(Utf8BytesReadOnlyMemoryFormatter)), LuaKey("tags"), LuaAltKeys("tags_utf8"), LuaDefault("")] ReadOnlyMemory<byte>? TagsUtf8,
+    [property: Key(1)] HydraTagScope Scope = HydraTagScope.FirstBlock
+);
+
+[MessagePackObject(AllowPrivate = true)]
+internal sealed partial record HydraRemoveTagsCall(
+    [property: Key(0)] BridgeLine[] Lines,
+    [property: Key(1)] HydraRemoveTagsArgs Args
+) : IBridgeCall;
+
+[LuaPackMode(LuaPackMode.Default)]
+[MessagePackObject(AllowPrivate = true)]
+internal sealed partial record HydraAddTagsToTransformsArgs(
+    [property: Key(0), MessagePackFormatter(typeof(Utf8BytesReadOnlyMemoryFormatter)), LuaKey("tags"), LuaAltKeys("tags_utf8"), LuaDefault("")] ReadOnlyMemory<byte>? TagsUtf8
+);
+
+[MessagePackObject(AllowPrivate = true)]
+internal sealed partial record HydraAddTagsToTransformsCall(
+    [property: Key(0)] BridgeLine[] Lines,
+    [property: Key(1)] HydraAddTagsToTransformsArgs Args
+) : IBridgeCall;
+
+[LuaPackMode(LuaPackMode.Default)]
+[MessagePackObject(AllowPrivate = true)]
+internal sealed partial record HydraSortTagsArgs(
+    [property: Key(0), MessagePackFormatter(typeof(Utf8BytesReadOnlyMemoryFormatter)), LuaKey("order"), LuaAltKeys("order_utf8"), LuaDefault("")] ReadOnlyMemory<byte>? OrderUtf8
+);
+
+[MessagePackObject(AllowPrivate = true)]
+internal sealed partial record HydraSortTagsCall(
+    [property: Key(0)] BridgeLine[] Lines,
+    [property: Key(1)] HydraSortTagsArgs Args
+) : IBridgeCall;
+
+[MessagePackObject(AllowPrivate = true)]
+internal sealed partial record HydraConvertClipCall(
+    [property: Key(0)] BridgeLine[] Lines
+) : IBridgeCall;
+
+[LuaPackMode(LuaPackMode.Default)]
+[MessagePackObject(AllowPrivate = true)]
+internal sealed partial record HydraGradientArgs(
+    [property: Key(0), MessagePackFormatter(typeof(Utf8BytesReadOnlyMemoryFormatter)), LuaKey("tags"), LuaAltKeys("tags_utf8"), LuaDefault("")] ReadOnlyMemory<byte>? TagsUtf8,
+    [property: Key(1)] HydraGradientKind Kind = HydraGradientKind.Vertical,
+    [property: Key(2), LuaMin(0.0001)] double Stripe = 2.0,
+    [property: Key(3), LuaMin(0.0001)] double Accel = 1.0,
+    [property: Key(4)] bool Centered = false,
+    [property: Key(5)] bool UseHsl = false,
+    [property: Key(6)] bool ShortRotation = false,
+    [property: Key(7), LuaMin(1)] int CharGroup = 1,
+    [property: Key(8)] bool ByLineUseLast = false
+);
+
+[MessagePackObject(AllowPrivate = true)]
+internal sealed partial record HydraGradientCall(
+    [property: Key(0)] BridgeLine[] Lines,
+    [property: Key(1)] HydraGradientArgs Args
+) : IBridgeCall;

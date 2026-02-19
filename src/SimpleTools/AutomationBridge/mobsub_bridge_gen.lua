@@ -13,6 +13,12 @@ local CALL_PERSPECTIVE_APPLY_CLIP_QUAD = 3
 local CALL_PERSPECTIVE_APPLY_TAGS_FROM_QUAD = 4
 local CALL_PERSPECTIVE_APPLY_TAGS_FROM_CLIP_QUAD = 5
 local CALL_DRAWING_OPTIMIZE_LINES = 6
+local CALL_HYDRA_ADD_TAGS = 7
+local CALL_HYDRA_REMOVE_TAGS = 8
+local CALL_HYDRA_ADD_TAGS_TO_TRANSFORMS = 9
+local CALL_HYDRA_SORT_TAGS = 10
+local CALL_HYDRA_CONVERT_CLIP = 11
+local CALL_HYDRA_GRADIENT = 12
 
 local function _nil_if_empty(s)
   if s == "" then
@@ -207,6 +213,60 @@ local function _pack_DrawingOptimizeLinesArgs(t)
   return out
 end
 
+local function _pack_HydraAddTagsArgs(t)
+  if type(t) ~= "table" then
+    return { "" }
+  end
+  local out = {}
+  out[1] = (((type(t.tags) == "string") and t.tags) or ((type(t.tags_utf8) == "string") and t.tags_utf8) or "")
+  return out
+end
+
+local function _pack_HydraAddTagsToTransformsArgs(t)
+  if type(t) ~= "table" then
+    return { "" }
+  end
+  local out = {}
+  out[1] = (((type(t.tags) == "string") and t.tags) or ((type(t.tags_utf8) == "string") and t.tags_utf8) or "")
+  return out
+end
+
+local function _pack_HydraGradientArgs(t)
+  if type(t) ~= "table" then
+    return { "", 0, 2, 1, false, false, false, 1, false }
+  end
+  local out = {}
+  out[1] = (((type(t.tags) == "string") and t.tags) or ((type(t.tags_utf8) == "string") and t.tags_utf8) or "")
+  out[2] = tonumber(t.kind) or 0
+  out[3] = tonumber(t.stripe) or 2
+  out[4] = tonumber(t.accel) or 1
+  out[5] = t.centered and true or false
+  out[6] = t.use_hsl and true or false
+  out[7] = t.short_rotation and true or false
+  out[8] = tonumber(t.char_group) or 1
+  out[9] = t.by_line_use_last and true or false
+  return out
+end
+
+local function _pack_HydraRemoveTagsArgs(t)
+  if type(t) ~= "table" then
+    return { "", 0 }
+  end
+  local out = {}
+  out[1] = (((type(t.tags) == "string") and t.tags) or ((type(t.tags_utf8) == "string") and t.tags_utf8) or "")
+  out[2] = tonumber(t.scope) or 0
+  return out
+end
+
+local function _pack_HydraSortTagsArgs(t)
+  if type(t) ~= "table" then
+    return { "" }
+  end
+  local out = {}
+  out[1] = (((type(t.order) == "string") and t.order) or ((type(t.order_utf8) == "string") and t.order_utf8) or "")
+  return out
+end
+
 local function _pack_MotionAmoApplyArgs(t)
   if type(t) ~= "table" then
     return { 0, 0, {}, "", nil, nil, _pack_BridgeAmoFixOptions(nil), _pack_BridgeAmoMainOptions(nil), _pack_BridgeAmoClipOptions(nil) }
@@ -291,6 +351,24 @@ local function _make_call(method, context, lines, args)
   end
   if method == "drawing.optimize_lines" then
     return { CALL_DRAWING_OPTIMIZE_LINES, { _pack_array(lines, _pack_BridgeLine), _pack_DrawingOptimizeLinesArgs(args) } }
+  end
+  if method == "hydra.add_tags" then
+    return { CALL_HYDRA_ADD_TAGS, { _pack_array(lines, _pack_BridgeLine), _pack_HydraAddTagsArgs(args) } }
+  end
+  if method == "hydra.remove_tags" then
+    return { CALL_HYDRA_REMOVE_TAGS, { _pack_array(lines, _pack_BridgeLine), _pack_HydraRemoveTagsArgs(args) } }
+  end
+  if method == "hydra.add_tags_to_transforms" then
+    return { CALL_HYDRA_ADD_TAGS_TO_TRANSFORMS, { _pack_array(lines, _pack_BridgeLine), _pack_HydraAddTagsToTransformsArgs(args) } }
+  end
+  if method == "hydra.sort_tags" then
+    return { CALL_HYDRA_SORT_TAGS, { _pack_array(lines, _pack_BridgeLine), _pack_HydraSortTagsArgs(args) } }
+  end
+  if method == "hydra.convert_clip" then
+    return { CALL_HYDRA_CONVERT_CLIP, { _pack_array(lines, _pack_BridgeLine) } }
+  end
+  if method == "hydra.gradient" then
+    return { CALL_HYDRA_GRADIENT, { _pack_array(lines, _pack_BridgeLine), _pack_HydraGradientArgs(args) } }
   end
   error("mobsub: unsupported method: " .. tostring(method))
 end

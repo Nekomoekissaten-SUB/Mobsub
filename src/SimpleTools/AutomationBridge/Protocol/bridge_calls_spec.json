@@ -42,6 +42,42 @@
       "method": "drawing.optimize_lines",
       "call_type": "DrawingOptimizeLinesCall",
       "description": "Optimize \\\\p drawings: flatten curves to m/l and optional RDP simplification."
+    },
+    {
+      "kind": 7,
+      "method": "hydra.add_tags",
+      "call_type": "HydraAddTagsCall",
+      "description": "Add tags to the first override block (Mobsub.Hydra)."
+    },
+    {
+      "kind": 8,
+      "method": "hydra.remove_tags",
+      "call_type": "HydraRemoveTagsCall",
+      "description": "Remove specified tags from the first/all override blocks (Mobsub.Hydra)."
+    },
+    {
+      "kind": 9,
+      "method": "hydra.add_tags_to_transforms",
+      "call_type": "HydraAddTagsToTransformsCall",
+      "description": "Hydra mode 3: append tags to all existing \\\\t(...) payloads."
+    },
+    {
+      "kind": 10,
+      "method": "hydra.sort_tags",
+      "call_type": "HydraSortTagsCall",
+      "description": "Sort tags in override blocks using Hydra's tag order."
+    },
+    {
+      "kind": 11,
+      "method": "hydra.convert_clip",
+      "call_type": "HydraConvertClipCall",
+      "description": "Toggle \\\\clip <-> \\\\iclip in all override blocks."
+    },
+    {
+      "kind": 12,
+      "method": "hydra.gradient",
+      "call_type": "HydraGradientCall",
+      "description": "Hydra mode 3: gradients (vertical/horizontal/by_char/by_line)."
     }
   ],
   "lua": {

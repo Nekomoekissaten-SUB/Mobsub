@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mobsub:aegisub-dialog-schema",
+  "title": "Aegisub dialog grid DSL (Mobsub.AegisubDialogDslGen)",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "columns": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Optional. Grid columns count; defaults to widest row."
+    },
+    "rows": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/row" }
+    }
+  },
+  "required": ["rows"],
+  "$defs": {
+    "row": {
+      "description": "Either a sequential row (array of cells) or a left/right row (object).",
+      "oneOf": [
+        { "$ref": "#/$defs/rowSequential" },
+        { "$ref": "#/$defs/rowLeftRight" }
+      ]
+    },
+    "rowSequential": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/cell" }
+    },
+    "rowLeftRight": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "left": { "type": "array", "items": { "$ref": "#/$defs/cell" } },
+        "right": { "type": "array", "items": { "$ref": "#/$defs/cell" } },
+        "gap": { "type": "integer", "minimum": 0, "default": 0 }
+      },
+      "required": ["left", "right"]
+    },
+    "cell": {
+      "description": "A control cell or a spacer.",
+      "oneOf": [
+        { "$ref": "#/$defs/spacerCell" },
+        { "$ref": "#/$defs/controlCell" }
+      ]
+    },
+    "spacerCell": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "spacer": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["spacer"]
+    },
+    "controlCell": {
+      "type": "object",
+      "properties": {
+        "class": {
+          "type": "string",
+          "description": "Aegisub dialog control class."
+        },
+        "w": { "type": "integer", "minimum": 1, "default": 1 },
+        "h": { "type": "integer", "minimum": 1, "default": 1 },
+        "width": { "type": "integer", "minimum": 1, "default": 1 },
+        "height": { "type": "integer", "minimum": 1, "default": 1 },
+
+        "name": { "type": "string" },
+        "label": { "type": "string" },
+        "hint": { "type": "string" },
+        "value": { "$ref": "#/$defs/value" },
+        "items": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/value" }
+        },
+
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "step": { "type": "number" }
+      },
+      "required": ["class"],
+      "additionalProperties": true
+    },
+    "value": {
+      "description": "JSON primitive/array, or raw Lua via '@expr', or raw Lua object via {\"lua\":\"...\"}.",
+      "oneOf": [
+        { "type": "string" },
+        { "type": "number" },
+        { "type": "boolean" },
+        { "type": "null" },
+        { "type": "array", "items": { "$ref": "#/$defs/value" } },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "lua": { "type": "string" }
+          },
+          "required": ["lua"]
+        }
+      ]
+    }
+  }
+}
+
