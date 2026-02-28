@@ -1,6 +1,6 @@
 ﻿using System.Globalization;
 
-namespace Mobsub.Helper;
+namespace Mobsub.Font;
 
 public static class Platform
 {

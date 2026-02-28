@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Diagnostics;
 
-namespace Mobsub.Helper.Font;
+namespace Mobsub.Font;
 
 public class FontFaceInfoBase
 {

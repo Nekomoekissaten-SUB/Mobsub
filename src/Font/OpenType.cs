@@ -2,7 +2,7 @@
 using System.Globalization;
 using static OTFontFile.Table_name;
 
-namespace Mobsub.Helper.Font;
+namespace Mobsub.Font;
 
 public class OpenType : IParseFonts
 {

@@ -1,4 +1,4 @@
-namespace Mobsub.Helper.Font;
+namespace Mobsub.Font;
 
 public enum FontStretch : int
 {

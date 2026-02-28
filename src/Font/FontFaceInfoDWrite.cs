@@ -1,6 +1,6 @@
 using Win32.Graphics.DirectWrite;
 
-namespace Mobsub.Helper.Font;
+namespace Mobsub.Font;
 
 public unsafe class FontFaceInfoDWrite : FontFaceInfoBase
 {

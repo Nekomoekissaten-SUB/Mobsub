@@ -7,7 +7,7 @@ using Win32;
 using Win32.Graphics.DirectWrite;
 using DWApis = Win32.Graphics.DirectWrite.Apis;
 
-namespace Mobsub.Helper.Font;
+namespace Mobsub.Font;
 
 public unsafe class DirectWrite : IParseFonts
 {

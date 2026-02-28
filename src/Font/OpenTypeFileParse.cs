@@ -3,7 +3,7 @@ using System.Text;
 using OTFontFile;
 using static OTFontFile.Table_name;
 
-namespace Mobsub.Helper.Font;
+namespace Mobsub.Font;
 
 public class OpenTypeFileParse(string fontFile)
 {
