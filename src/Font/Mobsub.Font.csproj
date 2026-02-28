@@ -17,6 +17,7 @@
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Diagnostics" Version="8.4.0" />
     <PackageReference Include="OTFontFile" Version="1.0.1-beta" />
+    <PackageReference Include="OTFontFile2" Version="0.1.0-alpha" />
     <PackageReference Include="Vortice.Win32.Graphics.DirectWrite" Version="2.2.7" />
     <!-- <PackageReference Include="CXuesong.OpenCCSharp.Conversion" Version="0.0.1-int.6" />
     <PackageReference Include="CXuesong.TriesSharp" Version="0.0.1-int.3" />
