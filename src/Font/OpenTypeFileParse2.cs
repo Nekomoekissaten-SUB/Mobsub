@@ -48,6 +48,7 @@ public sealed class OpenTypeFileParse2(string fontFile) : IDisposable
         }
 
         faceInfo.FamilyNamesGdi = GetNameRecordStrings(nameTable, NameTable.NameId.FamilyName);
+        faceInfo.FullNames = GetNameRecordStrings(nameTable, NameTable.NameId.FullName);
 
         // Keep behavior similar to the OTFontFile-based parser:
         // 1) prefer en-US, 2) fallback to any language.
@@ -56,13 +57,10 @@ public sealed class OpenTypeFileParse2(string fontFile) : IDisposable
 
         var psNameParams = new GetStringParams
             { EncID = Wildcard, LangID = langEnUs, NameID = (ushort)NameTable.NameId.PostScriptName };
-        var fullNameParams = new GetStringParams
-            { EncID = Wildcard, LangID = langEnUs, NameID = (ushort)NameTable.NameId.FullName };
         var subFamNameParams = new GetStringParams
             { EncID = Wildcard, LangID = langEnUs, NameID = (ushort)NameTable.NameId.SubfamilyName };
 
         var psName = GetNameRecordString(nameTable, psNameParams);
-        var fullName = GetNameRecordString(nameTable, fullNameParams);
         var subFamName = GetNameRecordString(nameTable, subFamNameParams);
 
         if (subFamName is null)
@@ -77,13 +75,6 @@ public sealed class OpenTypeFileParse2(string fontFile) : IDisposable
             psName = GetNameRecordString(nameTable, psNameParams);
         }
         faceInfo.PostScriptName = psName;
-
-        if (fullName is null)
-        {
-            fullNameParams.LangID = null;
-            fullName = GetNameRecordString(nameTable, fullNameParams);
-        }
-        faceInfo.FullName = fullName;
 
         var fsSel = os2Table.FsSelection;
 

@@ -48,7 +48,7 @@ public unsafe class DirectWrite : IParseFonts
             var psname = GetLocalizedString(pStr, localNameEng);
 
             Marshal.ThrowExceptionForHR(fontSet->GetPropertyValues(i, FontPropertyId.FullName, existsPtr, &pStr));
-            var fullname = GetLocalizedString(pStr, localNameEng);
+            var fullNames = GetLocalizedStrings(pStr);
 
             Marshal.ThrowExceptionForHR(fontSet->GetPropertyValues(i, FontPropertyId.Weight, existsPtr, &pStr));
             var weight = GetLocalizedString(pStr, localNameEng);
@@ -77,7 +77,7 @@ public unsafe class DirectWrite : IParseFonts
             Marshal.ThrowExceptionForHR(fontFaceRef->GetFileTime(&lastWriteTime));
             var dateTime = DateTime.FromFileTime((long)lastWriteTime);
 
-            Debug.WriteLine($"psname: {psname}, fullname: {fullname}, weight: {weight}, stretch: {stretch}, style: {style}, " +
+            Debug.WriteLine($"psname: {psname}, fullname: {string.Join("|", fullNames!.Values.Distinct())}, weight: {weight}, stretch: {stretch}, style: {style}, " +
                             $"faceIndex: {faceIndex}, famName: {string.Join("|", famNames!.Values.Distinct())}, famNameWws: {string.Join("|", famNamesWws!.Values.Distinct())}, " +
                             $"glyphCount: {glyphCount}");
             
@@ -85,7 +85,7 @@ public unsafe class DirectWrite : IParseFonts
             {
                 FaceIndex = faceIndex,
                 PostScriptName = psname,
-                FullName = fullname,
+                FullNames = fullNames,
                 FamilyNames = famNames,
                 FamilyNamesGdi = famNamesWws,
                 Weight = Convert.ToInt32(weight),

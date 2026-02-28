@@ -25,16 +25,14 @@ public class OpenTypeFileParse(string fontFile)
         var fsSel = os2Table.fsSelection;
 
         faceInfo.FamilyNamesGdi = GetNameRecordStrings(nameTable, NameID.familyName);
+        faceInfo.FullNames = GetNameRecordStrings(nameTable, NameID.fullName);
         
         var psNameParams = new GetStringParams
             { EncID = 0xffff, LangID = (ushort)LanguageIDWindows.en_US, NameID = (ushort)NameID.postScriptName };
-        var fullNameParams = new GetStringParams
-            { EncID = 0xffff, LangID = (ushort)LanguageIDWindows.en_US, NameID = (ushort)NameID.fullName };
         var subFamNameParams = new GetStringParams()
             { EncID = 0xffff, LangID = (ushort)LanguageIDWindows.en_US, NameID = (ushort)NameID.subfamilyName };
         
         var psName = GetNameRecordString(nameTable, psNameParams);
-        var fullName = GetNameRecordString(nameTable, fullNameParams);
         var subFamName = GetNameRecordString(nameTable, subFamNameParams);
 
         if (subFamName == null)
@@ -49,13 +47,6 @@ public class OpenTypeFileParse(string fontFile)
             psName = GetNameRecordString(nameTable, psNameParams);
         }
         faceInfo.PostScriptName = psName;
-        
-        if (fullName == null)
-        {
-            fullNameParams.LangID = null;
-            fullName = GetNameRecordString(nameTable, fullNameParams);
-        }
-        faceInfo.FullName = fullName;
         
         // Some mismatches:
         // A1MinchoStd-Bold, fsSelection: 6, usWeightClass=400, dwrite mark 700 (DWRITE_FONT_WEIGHT_BOLD)
