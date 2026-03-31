@@ -152,6 +152,7 @@ public class ShiftMergeYamlV2
     public string Fps = "24000/1001";
     public Dictionary<string, int> TplFr = [];
     public Dictionary<string, Dictionary<string, int[]>> ShiftFr = [];
+    public Dictionary<string, int> ShiftFrGlobal = [];
     public bool ConvertFromV1 = false;
     public string? OutputName;
 }

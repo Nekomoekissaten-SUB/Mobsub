@@ -68,7 +68,14 @@ public class MergeByConfig(string configPath)
             throw new FileNotFoundException($"File {bf} not found.");
         }
         baseData.ReadAssFile(bf);
-        
+
+        //var needShiftFrGlobal = false;
+        var shiftFrGlobal = 0;
+        if (ConfigDataBase.ShiftFrGlobal.Count > 0 && ConfigDataBase.ShiftFrGlobal.TryGetValue(episode, out shiftFrGlobal))
+        {
+            //needShiftFrGlobal = true;
+        }
+
         string[]? mergePartName = null;
         foreach (var kvp in ConfigDataBase.ShiftFr.Where(kvp => kvp.Key == episode))
         {
@@ -89,11 +96,11 @@ public class MergeByConfig(string configPath)
                 var dataFrom = new AssData();
                 dataFrom.ReadAssFile(mf);
                 var dataEvents = dataFrom.Events ?? throw new InvalidDataException($"ASS events missing in {mf}.");
-                tsp = Utils.GetTimespan($"{kvpEp.Value[0]}frm", ConfigDataBase.Fps);
+                tsp = Utils.GetTimespan($"{kvpEp.Value[0] + shiftFrGlobal}frm", ConfigDataBase.Fps);
     
-                if (kvpEp.Value.Length == 3 && kvpEp.Value[2] != -1)
+                if (kvpEp.Value.Length == 3 && kvpEp.Value[2] + shiftFrGlobal != -1)
                 {
-                    var start = new AssTime((int)Utils.FrameToMillisecond(kvpEp.Value[2], Utils.UnifiedFps(ConfigDataBase.Fps)));
+                    var start = new AssTime((int)Utils.FrameToMillisecond(kvpEp.Value[2] + shiftFrGlobal, Utils.UnifiedFps(ConfigDataBase.Fps)));
                     Tpp.ShiftAss(dataEvents.Collection, tsp, start);
                 }
                 else
