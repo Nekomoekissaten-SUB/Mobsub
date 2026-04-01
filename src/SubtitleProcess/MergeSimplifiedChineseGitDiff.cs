@@ -705,10 +705,18 @@ public static class MergeSimplifiedChineseGitDiff
                 {
                     continue;
                 }
+
                 var delta = *deltaPtr;
-                var oldPath = delta.old_file.path_string ?? string.Empty;
-                var newPath = delta.new_file.path_string ?? string.Empty;
-                var path = string.IsNullOrEmpty(oldPath) ? newPath : oldPath;
+                if (delta.status != git_delta_t.GIT_DELTA_MODIFIED)
+                {
+                    continue;
+                }
+
+                var path = delta.old_file.path_string;
+                if (string.IsNullOrEmpty(path))
+                {
+                    continue;
+                }
 
                 if (!IsUnderRelativePath(normalizedRelativePath, path))
                 {
