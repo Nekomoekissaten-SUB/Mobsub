@@ -50,7 +50,7 @@ public class IkkokuProcessTests
     public void CleanMore_Ass()
     {
         var input = TestFile("clean_more.ass");
-        var expected = JoinLines("\n",
+        var expected = JoinLines(Environment.NewLine,
             "[Script Info]",
             "Title: clean_more",
             "ScriptType: v4.00+",
@@ -113,7 +113,7 @@ public class IkkokuProcessTests
     public void Convert_AssToTxt()
     {
         var input = TestFile("convert_tags.ass");
-        var expected = JoinLines("\r\n",
+        var expected = JoinLines(Environment.NewLine,
             @"Hello World\\NNext line",
             "Curly  drop");
         var tempDir = CreateTempDir();
@@ -146,7 +146,7 @@ public class IkkokuProcessTests
     public void Tpp_ShiftStyles()
     {
         var input = TestFile("tpp_shift.ass");
-        var expected = JoinLines("\n",
+        var expected = JoinLines(Environment.NewLine,
             "[Script Info]",
             "Title: TppShift",
             "ScriptType: v4.00+",
@@ -187,7 +187,7 @@ public class IkkokuProcessTests
     public void Tpp_AssumeFps_Vfr()
     {
         var input = TestFile("tpp_vfr.ass");
-        var expected = JoinLines("\n",
+        var expected = JoinLines(Environment.NewLine,
             "[Script Info]",
             "Title: TppVfr",
             "ScriptType: v4.00+",
@@ -233,7 +233,7 @@ public class IkkokuProcessTests
     {
         var baseFile = TestFile("merge_base.ass");
         var mergeFile = TestFile("merge_add.ass");
-        var expected = JoinLines("\n",
+        var expected = JoinLines(Environment.NewLine,
             "[Script Info]",
             "Title: MergeBase",
             "ScriptType: v4.00+",
@@ -276,7 +276,7 @@ public class IkkokuProcessTests
     public void Merge_ByConfig()
     {
         var config = TestFile("merge_config.yml");
-        var expected = JoinLines("\n",
+        var expected = JoinLines(Environment.NewLine,
             "[Script Info]",
             "Title: CfgMaster",
             "ScriptType: v4.00+",
@@ -332,7 +332,7 @@ public class IkkokuProcessTests
     public void Cjkpp_Convert()
     {
         var input = TestFile("cjkpp.ass");
-        var expected = JoinLines("\n",
+        var expected = JoinLines(Environment.NewLine,
             "[Script Info]",
             "Title: Cjkpp",
             "ScriptType: v4.00+",
