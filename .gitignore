@@ -17,3 +17,4 @@ debug.log
 **/_ref/
 
 src/SubtitleParse/AssEditExp/
+**/*.csproj.lscache
