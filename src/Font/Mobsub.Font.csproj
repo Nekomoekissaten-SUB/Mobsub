@@ -8,7 +8,7 @@
     <IsAotCompatible>true</IsAotCompatible>
     <Authors>MIR</Authors>
     <Description>Mobsub helper</Description>
-    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <!-- <PackageReadmeFile>README.md</PackageReadmeFile> -->
     <PackageProjectUrl>https://github.com/Nekomoekissaten-SUB/Mobsub</PackageProjectUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <TargetFrameworks>net10.0</TargetFrameworks>
