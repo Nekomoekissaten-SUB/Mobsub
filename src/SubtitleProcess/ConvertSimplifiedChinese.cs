@@ -1,6 +1,5 @@
-﻿using System.Text;
+﻿﻿﻿using System.Text;
 using Mobsub.SubtitleParse.AssTypes;
-using Mobsub.SubtitleParse;
 using OpenCCSharp.Conversion;
 
 namespace Mobsub.SubtitleProcess;
@@ -9,7 +8,7 @@ public class ConvertSimplifiedChinese(ChainedScriptConverter converter)
 {
     private StringBuilder sb = new();
     
-    public void ZhConvertEventTextByOpenccSharp(AssEvent evt, out string[]? charsCountChange)
+    public void ZhConvertEventTextByOpenccSharp(ref AssEvent evt, out string[]? charsCountChange)
     {
         // wip: correct block insert position
         sb.Clear();
@@ -25,7 +24,7 @@ public class ConvertSimplifiedChinese(ChainedScriptConverter converter)
         {
             var range = evt.TextRanges[i];
             var blk = text[range];
-            if (AssEvent.IsTextBlock(blk))
+            if (!AssEvent.IsOverrideBlock(blk))
             {
                 sb.Append(blk);
                 textBlockIndex.Add(i);
@@ -65,21 +64,21 @@ public class ConvertSimplifiedChinese(ChainedScriptConverter converter)
         evt.UpdateTextRanges();
     }
     
-    public void ZhConvertEventByOpenccSharp(AssEvent evt)
+    public void ZhConvertEventByOpenccSharp(ref AssEvent evt)
     {
         if (!NotZhConvert(evt))
         {
-            StyleZhConvert(evt);
-            ZhConvertEventTextByOpenccSharp(evt, out var _);
+            StyleZhConvert(ref evt);
+            ZhConvertEventTextByOpenccSharp(ref evt, out var _);
         }
     }
     
-    public void ZhConvertEventByOpenccSharp(AssEvent evt, Dictionary<int, string[]> changesRecord)
+    public void ZhConvertEventByOpenccSharp(ref AssEvent evt, Dictionary<int, string[]> changesRecord)
     {
         if (!NotZhConvert(evt))
         {
-            StyleZhConvert(evt);
-            ZhConvertEventTextByOpenccSharp(evt, out var countChanges);
+            StyleZhConvert(ref evt);
+            ZhConvertEventTextByOpenccSharp(ref evt, out var countChanges);
             
             if (countChanges is not null)
             {
@@ -88,12 +87,12 @@ public class ConvertSimplifiedChinese(ChainedScriptConverter converter)
         }
     }
     
-    public static bool NotZhConvert(AssEvent evt)
+    public static bool NotZhConvert(in AssEvent evt)
     {
         return evt.Style.AsSpan().Contains("JP".AsSpan(), StringComparison.OrdinalIgnoreCase);
     }
 
-    internal static bool StyleZhConvert(AssEvent evt)
+    internal static bool StyleZhConvert(ref AssEvent evt)
     {
         var span = evt.Style.AsSpan();
         var len = span.Length;

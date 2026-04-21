@@ -1,308 +1,253 @@
-using Microsoft.Extensions.Logging;
-using ZLogger;
 using System.Text;
+using Mobsub.SubtitleParse.AssUtils;
 
 namespace Mobsub.SubtitleParse.AssTypes;
 
-public class AssEmbedded
+public enum AssEmbeddedFileType
 {
-    public class Font(ILogger? logger = null)
+    Unknown,
+    Font,
+    Graphics
+}
+
+public struct AssEmbeddedFile
+{
+    public string Name { get; set; }
+    public string OriginalName { get; set; }
+    public AssEmbeddedFileType FileType { get; set; }
+
+    // Stores raw uuencoded lines to avoid allocation/decoding until needed
+    public List<ReadOnlyMemory<byte>> Data { get; private set; }
+
+    public AssEmbeddedFile(string name, string originalName, AssEmbeddedFileType type)
     {
-        public string OriginalName = string.Empty;  // lowercase
-        public bool Bold = false;
-        public bool Italic = false;
-        public int CharacterEncoding = 0;
-        public readonly string Suffix = ".ttf";
-        public List<string> Data = [];
-        public int DataLength = 0;
-
-        private readonly ILogger? _logger = logger;
-
-        // public void EncodeFont(FileInfo file)
-        // {
-        //     if (!file.Exists)
-        //     {
-        //         throw new IOException($"{file.FullName} not exists");
-        //     }
-
-        //     // record font name?
-        // }
-
-        public void Write(StreamWriter sw, char[] newline)
-        {
-            var sb = new StringBuilder($"filename: {OriginalName}_");
-
-            var info = new List<char>();
-            if (Bold)
-            {
-                info.Add('B');
-            }
-            if (Italic)
-            {
-                info.Add('I');
-            }
-            info.Add((char)(CharacterEncoding + '0'));
-            sb.Append(info);
-            sw.Write($"filename: {sb}");
-            sw.Write(newline);
-            for (int i = 0; i < Data.Count; i++)
-            {
-                sw.Write(Data.ToArray()[i]);
-                sw.Write(newline);
-            }
-        }
-
-        public void WriteFile(DirectoryInfo dirPath)
-        {
-            var filePath = Path.Combine(dirPath.FullName, $"{OriginalName}{Suffix}");
-            WriteFile(filePath);
-        }
-
-        public void WriteFile(string filePath)
-        {
-            _logger?.ZLogInformation($"Extract font info: {OriginalName}{Suffix}{(Bold ? ", Bold" : string.Empty)}{(Italic ? ", Italic" : string.Empty)}{(CharacterEncoding > 0 ? $", Character Encoding: {CharacterEncoding}" : string.Empty)}");
-            AssEmbedded.WriteFile([.. Data], DataLength, filePath);
-            _logger?.ZLogInformation($"Extract fine");
-        }
+        Name = name;
+        OriginalName = originalName;
+        FileType = type;
+        Data = new List<ReadOnlyMemory<byte>>();
     }
 
-    public class Graphic(ILogger? logger = null)
+    public byte[] GetDecodedData()
     {
-        public string Name = string.Empty;  // lowercase
-        public List<string> Data = [];
-        public int DataLength = 0;
-
-        private readonly ILogger? _logger = logger;
-
-        public void EncodeGraphic(FileInfo file)
+        // libass-compatible decode:
+        // Each 6-bit value is stored as (value + 33). Decoding is base64-like with no padding.
+        int encodedLen = 0;
+        for (int i = 0; i < Data.Count; i++)
         {
-            if (!file.Exists)
-            {
-                throw new IOException($"{file.FullName} not exists");
-            }
-
-            Name = file.Name;
-            using var fs = new FileStream(file.FullName, FileMode.Open, FileAccess.Read);
-            var br = new BinaryReader(fs);
-            UUEncode(br, Data, ref DataLength);
-            fs.Close();
+            ReadOnlySpan<byte> span = Utils.TrimSpaces(Data[i].Span);
+            if (!span.IsEmpty)
+                encodedLen += span.Length;
         }
 
-        public void Write(StreamWriter sw, char[] newline)
+        if (encodedLen == 0)
+            return Array.Empty<byte>();
+
+        if (encodedLen % 4 == 1)
+            throw new Exception("Bad embedded font data size (mod 4 == 1).");
+
+        int outputLen = checked((encodedLen / 4) * 3 + Math.Max(encodedLen % 4, 1) - 1);
+        if (outputLen == 0)
+            return Array.Empty<byte>();
+
+        byte[] decoded = new byte[outputLen];
+        int dst = 0;
+
+        Span<byte> buf = stackalloc byte[4];
+        int bufCount = 0;
+
+        for (int i = 0; i < Data.Count; i++)
         {
-            sw.Write($"filename: {Name}");
-            sw.Write(newline);
-            for (int i = 0; i < Data.Count; i++)
+            ReadOnlySpan<byte> span = Utils.TrimSpaces(Data[i].Span);
+            if (span.IsEmpty)
+                continue;
+
+            for (int j = 0; j < span.Length; j++)
             {
-                sw.Write(Data.ToArray()[i]);
-                sw.Write(newline);
-            }
-        }
-
-        public void WriteFile(string filePath)
-        {
-            _logger?.ZLogInformation($"Extract {Name}");
-            AssEmbedded.WriteFile([..Data], DataLength, filePath);
-            _logger?.ZLogInformation($"Extract fine");
-        }
-
-    }
-
-    internal static List<Font> ParseFontsFromAss(ReadOnlySpan<char> sp, int lineNumber, ILogger? _logger = null)
-    {
-        var fonts = new List<Font>();
-        if (sp.StartsWith("fontname:"))
-        {
-            var eFont = new Font();
-            var startIdx = "fontname:".Length + 1;  // fontname: chaucer_B0.ttf
-            var lastSepIdx = sp.LastIndexOf('_');
-            var lastSeg = sp[(lastSepIdx + 1)..];
-            var noAddition = false;
-            _logger?.ZLogInformation($"Start parse embedded font {lastSeg.ToString()} begin at line {lineNumber}");
-
-            int encoding;
-            var bPos = lastSeg.IndexOf('B');
-            var iPos = lastSeg.IndexOf('I');
-            if (bPos == 0)
-            {
-                eFont.Bold = true;
-                if (iPos == 1)
+                buf[bufCount++] = span[j];
+                if (bufCount == 4)
                 {
-                    eFont.Italic = true;
-                    if (int.TryParse(lastSeg[2..], out encoding))
-                    {
-                        eFont.CharacterEncoding = encoding;
-                    }
-                    else
-                    {
-                        noAddition = true;
-                    }
-                }
-                else if (int.TryParse(lastSeg[1..], out encoding))
-                {
-                    eFont.CharacterEncoding = encoding;
-                }
-                else
-                {
-                    noAddition = true;
+                    dst = DecodeCharsLibass(buf, decoded, dst, 4);
+                    bufCount = 0;
+                    if (dst >= decoded.Length)
+                        return decoded;
                 }
             }
-            else if (iPos == 0)
+        }
+
+        if (bufCount == 2)
+            _ = DecodeCharsLibass(buf, decoded, dst, 2);
+        else if (bufCount == 3)
+            _ = DecodeCharsLibass(buf, decoded, dst, 3);
+        else if (bufCount != 0)
+            throw new Exception("Bad embedded font data size.");
+
+        return decoded;
+    }
+
+    public void Encode(ReadOnlySpan<byte> sourceData)
+    {
+        Data.Clear();
+        var len = sourceData.Length;
+        var pos = 0;
+        if (len == 0)
+            return;
+
+        var lineBuffer = new byte[80];
+        int lineLength = 0;
+
+        while (pos < len)
+        {
+            var remain = len - pos;
+            var readLen = remain >= 3 ? 3 : remain;
+
+            int needed = readLen == 3 ? 4 : readLen == 2 ? 3 : 2;
+            if (lineLength + needed > 80)
             {
-                eFont.Italic = true;
-                if (int.TryParse(lastSeg[1..], out encoding))
+                AddLine(lineBuffer, lineLength);
+                lineLength = 0;
+            }
+
+            if (readLen == 3)
+            {
+                lineLength += EncodeChar3(sourceData.Slice(pos, 3), lineBuffer.AsSpan(lineLength));
+                pos += 3;
+            }
+            else if (readLen == 2)
+            {
+                lineLength += EncodeChar2(sourceData.Slice(pos, 2), lineBuffer.AsSpan(lineLength));
+                pos += 2;
+            }
+            else // 1
+            {
+                lineLength += EncodeChar1(sourceData.Slice(pos, 1), lineBuffer.AsSpan(lineLength));
+                pos += 1;
+            }
+
+            if (lineLength == 80)
+            {
+                AddLine(lineBuffer, lineLength);
+                lineLength = 0;
+            }
+        }
+        if (lineLength > 0)
+        {
+            AddLine(lineBuffer, lineLength);
+        }
+    }
+
+    private void AddLine(byte[] buffer, int length)
+    {
+        if (length <= 0)
+            return;
+
+        var bytes = new byte[length];
+        Buffer.BlockCopy(buffer, 0, bytes, 0, length);
+        Data.Add(bytes);
+    }
+
+    private static int EncodeChar1(ReadOnlySpan<byte> buffer, Span<byte> dest)
+    {
+        dest[0] = (byte)(((buffer[0] >> 2) & 0x3f) + 33);
+        dest[1] = (byte)(((buffer[0] << 4) & 0x3f) + 33);
+        return 2;
+    }
+
+    private static int EncodeChar2(ReadOnlySpan<byte> buffer, Span<byte> dest)
+    {
+        dest[0] = (byte)(((buffer[0] >> 2) & 0x3f) + 33);
+        dest[1] = (byte)(((buffer[0] << 4) & 0x3f | (buffer[1] >> 4) & 0x0f) + 33);
+        dest[2] = (byte)(((buffer[1] << 2) & 0x3f) + 33);
+        return 3;
+    }
+
+    private static int EncodeChar3(ReadOnlySpan<byte> buffer, Span<byte> dest)
+    {
+        dest[0] = (byte)(((buffer[0] >> 2) & 0x3f) + 33);
+        dest[1] = (byte)(((buffer[0] << 4) & 0x3f | (buffer[1] >> 4) & 0x0f) + 33);
+        dest[2] = (byte)(((buffer[1] << 2) & 0x3f | (buffer[2] >> 6) & 0x03) + 33);
+        dest[3] = (byte)(((buffer[2] << 0) & 0x3f) + 33);
+        return 4;
+    }
+
+    private static int DecodeCharsLibass(ReadOnlySpan<byte> src, byte[] dst, int dstIndex, int cntIn)
+    {
+        uint value = 0;
+        for (int i = 0; i < cntIn; i++)
+            value |= (uint)(((src[i] - 33) & 63) << (6 * (3 - i)));
+
+        dst[dstIndex++] = (byte)(value >> 16);
+        if (cntIn >= 3)
+            dst[dstIndex++] = (byte)((value >> 8) & 0xff);
+        if (cntIn >= 4)
+            dst[dstIndex++] = (byte)(value & 0xff);
+
+        return dstIndex;
+    }
+}
+
+public class AssEmbeddedSection
+{
+    public List<AssEmbeddedFile> Files { get; } = new();
+    private AssEmbeddedFile? _currentFile;
+    private readonly AssEmbeddedFileType _sectionType;
+
+    public AssEmbeddedSection(AssEmbeddedFileType type)
+    {
+        _sectionType = type;
+    }
+
+    public void Read(ReadOnlyMemory<byte> line, int lineNumber)
+    {
+        var span = line.Span;
+        if (span.IsEmpty) return;
+
+        // Check for header
+        // Fonts: "fontname: "
+        // Graphics: "filename: "
+        if (span.IndexOf((byte)':') is int idx && idx > 0)
+        {
+            var key = span[..idx];
+            bool isHeader = false;
+
+            if (_sectionType == AssEmbeddedFileType.Font && key.SequenceEqual("fontname"u8))
+            {
+                isHeader = true;
+            }
+            else if (_sectionType == AssEmbeddedFileType.Graphics && key.SequenceEqual("filename"u8))
+            {
+                isHeader = true;
+            }
+
+            if (isHeader)
+            {
+                if (_currentFile.HasValue)
                 {
-                    eFont.CharacterEncoding = encoding;
+                    Files.Add(_currentFile.Value);
                 }
-                else
-                {
-                    noAddition = true;
-                }
-            }
-            else if (int.TryParse(lastSeg, out encoding))
-            {
-                eFont.CharacterEncoding = encoding;
-            }
-            else
-            {
-                noAddition = true;
-            }
 
-            eFont.OriginalName = noAddition ? sp[startIdx..].ToString() : sp[startIdx..lastSepIdx].ToString();
-
-            fonts.Add(eFont);
-        }
-        else if (fonts.Count > 0)
-        {
-            var lastFont = fonts[^1];
-            lastFont.Data.Add(sp.ToString());
-            lastFont.DataLength += sp.Length;
-        }
-        
-        return fonts;
-    }
-
-    internal static List<Graphic> ParseGraphicsFromAss(ReadOnlySpan<char> sp, int lineNumber, ILogger? _logger = null)
-    {
-        var graphics = new List<Graphic>();
-        if (sp.StartsWith("filename:"))
-        {
-            if (Utils.TrySplitKeyValue(sp, out var _, out var value))
-                graphics.Add(new Graphic() { Name = value });
-            else
-                throw new Exception($"Please check {sp.ToString()}");
-            _logger?.ZLogInformation($"Start parse embedded file {value} begin at line {lineNumber}");
-        }
-        else
-        {
-            graphics.Last().Data.Add(sp.ToString());
-            graphics.Last().DataLength += sp.Length;
-        }
-        return graphics;
-    }
-
-    internal static void UUDecode(string[] data, int length, MemoryStream memStream)
-    {
-        var orgLen = (int)Math.Truncate(length * 3 / 4d);
-
-        for (var i = 0; i < data.Length; i++)
-        {
-            var s = data[i].AsSpan();
-            if (i != data.Length - 1 && s.Length != 80)
-            {
-                throw new Exception("Embedded data is broken!");
-            }
-            DecodeChars(s, memStream);
-        }
-        memStream.SetLength(orgLen);
-    }
-
-    private static void DecodeChars(ReadOnlySpan<char> s, MemoryStream memStream)
-    {
-        for (var i = 0; i < s.Length; i += 4)
-        {
-            var r = (i + 4 <= s.Length) ? s.Slice(i, 4) : s[i..];
-
-            var na = new int[4];
-
-            for (var j = 0; j < r.Length; j++)
-            {
-                na[j] = r[j] - 33;
-            }
-
-            var buffer = new byte[3];
-            buffer[0] = (byte)((na[0] << 2) & 0xff | (na[1] >> 4) & 0x03);
-            buffer[1] = (byte)((na[1] << 4) & 0xff | (na[2] >> 2) & 0x0f);
-            buffer[2] = (byte)((na[2] << 6) & 0xff | (na[3] >> 0) & 0x3f);
-
-            memStream.Write(buffer);
-        }
-    }
-
-    internal static void UUEncode(BinaryReader br, List<string> data, ref int len)
-    {
-        var sb = new StringBuilder(80);
-
-        var buffer = new byte[3];
-        while (br.BaseStream.Position < br.BaseStream.Length)
-        {
-            int readLength = br.Read(buffer, 0, 3);
-
-            switch (readLength)
-            {
-                case 1:
-                    EncodeChar1(buffer, sb);
-                    data.Add(sb.ToString());
-                    len += sb.Length;
-                    sb.Clear();
-                    break;
-                case 2:
-                    EncodeChar2(buffer, sb);
-                    data.Add(sb.ToString());
-                    len += sb.Length;
-                    sb.Clear();
-                    break;
-                case 3:
-                    EncodeChar3(buffer, sb);
-                    if (sb.Length == 80)
-                    {
-                        data.Add(sb.ToString());
-                        sb.Clear();
-                        len += 80;
-                    }
-                    break;
+                var valueSpan = Utils.TrimSpaces(span[(idx + 1)..]);
+                var name = Utils.GetString(valueSpan); // Usually ASCII/UTF8
+                // OriginalName might be same or processed
+                _currentFile = new AssEmbeddedFile(name, name, _sectionType);
+                return;
             }
         }
+
+        // It's data (uuencoded)
+        if (_currentFile.HasValue)
+        {
+            // We just store the view. 
+            // NOTE: AssData buffer must be kept alive! (It is)
+            _currentFile.Value.Data.Add(line);
+        }
     }
 
-    private static void EncodeChar1(byte[] buffer, StringBuilder sb)
+    public void Finish()
     {
-        sb.Append((char)(((buffer[0] >> 2) & 0x3f) + 33));
-        sb.Append((char)(((buffer[0] << 4) & 0x3f) + 33));
-    }
-
-    private static void EncodeChar2(byte[] buffer, StringBuilder sb)
-    {
-        sb.Append((char)(((buffer[0] >> 2) & 0x3f) + 33));
-        sb.Append((char)(((buffer[0] << 4) & 0x3f | (buffer[1] >> 4) & 0x0f) + 33));
-        sb.Append((char)(((buffer[1] << 2) & 0x3f) + 33));
-    }
-
-    private static void EncodeChar3(byte[] buffer, StringBuilder sb)
-    {
-        sb.Append((char)(((buffer[0] >> 2) & 0x3f) + 33));
-        sb.Append((char)(((buffer[0] << 4) & 0x3f | (buffer[1] >> 4) & 0x0f) + 33));
-        sb.Append((char)(((buffer[1] << 2) & 0x3f | (buffer[2] >> 6) & 0x03) + 33));
-        sb.Append((char)(((buffer[2] << 0) & 0x3f) + 33));
-    }
-
-    private static void WriteFile(string[] data, int length, string filePath)
-    {
-        using var fs = new FileStream(filePath, FileMode.Create, FileAccess.Write);
-        using var ms = new MemoryStream();
-        UUDecode(data, length, ms);
-        ms.Seek(0, SeekOrigin.Begin);
-        ms.CopyTo(fs);
-        fs.Close();
+        if (_currentFile.HasValue)
+        {
+            Files.Add(_currentFile.Value);
+            _currentFile = null;
+        }
     }
 }

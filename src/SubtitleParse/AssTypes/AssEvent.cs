@@ -1,347 +1,252 @@
-using Microsoft.Extensions.Logging;
+using System.Buffers;
+using System.Buffers.Text;
 using System.Text;
-using ZLogger;
+using Mobsub.SubtitleParse.AssUtils;
 
 namespace Mobsub.SubtitleParse.AssTypes;
 
-public class AssEvents(ILogger? logger = null)
+public struct AssEvent
 {
-    private string[]? formats;
-    public string[] Formats
-    {
-        get => formats ?? AssConstants.FormatV4P.Split(',').Select(s => s.Trim()).ToArray();
-        set => formats = value;
-    }
-    public List<AssEvent> Collection = [];
-    internal const string sectionName = "[Events]";
+    public int LineNumber { get; set; }
+    public ReadOnlyMemory<byte> LineRaw { get; set; }
 
-    public void Read(ReadOnlySpan<char> sp, string scriptType, int lineNumber, AssParseOption option = AssParseOption.None)
-    {
-        var sepIndex = sp.IndexOf(':');
-        var evt = new AssEvent(logger);
-        if (evt.Read(sp, sepIndex, lineNumber, Formats, option))
-        {
-            Collection.Add(evt);
-        }
-        else
-        {
-            if (scriptType.AsSpan().SequenceEqual("v4.00++".AsSpan()))
-            {
-                throw new Exception($"{scriptType} not have format line");
-            }
-            Formats = sp[(sepIndex + 1)..].ToString().Split(',').Select(s => s.Trim()).ToArray();
-            if (!Formats[^1].AsSpan().SequenceEqual("Text".AsSpan()))
-            {
-                throw new Exception("Events: Text must be last field.");
-            }
-            logger?.ZLogDebug($"Parse format line fine");
-        }
-    }
+    public bool StartSemicolon { get; set; }
+    public bool IsDialogue { get; set; }
+    public int Layer { get; set; }
+    public int Marked { get; set; }
+    public AssTime Start { get; set; }
+    public AssTime End { get; set; }
+    public Range StyleReadOnly { get; set; }
+    public Range NameReadOnly { get; set; }
+    public int MarginL { get; set; }
+    public int MarginR { get; set; }
+    public int MarginV { get; set; }
+    public int MarginT { get; set; }
+    public int MarginB { get; set; }
+    public Range EffectReadOnly { get; set; }
+    public Range TextReadOnly { get; set; }
 
-    public void Write(StreamWriter sw, char[] newline, bool ctsRounding)
-    {
-        logger?.ZLogInformation($"Start write section {sectionName}");
-        sw.Write(sectionName);
-        sw.Write(newline);
-        sw.Write($"Format: {string.Join(", ", Formats)}");
-        sw.Write(newline);
-        logger?.ZLogDebug($"Write format line fine");
-
-        logger?.ZLogDebug($"Start Write event line");
-        for (var i = 0; i < Collection.Count; i++)
-        {
-            Collection[i].Write(sw, Formats, ctsRounding);
-            sw.Write(newline);
-        }
-        //sw.Write(newline);
-        logger?.ZLogDebug($"Write event lines fine");
-    }
-}
-
-public partial class AssEvent(ILogger? logger = null)
-{
-    public int lineNumber;
-    public bool StartSemicolon = false;
-    public string? Untouched = string.Empty;
-    [AssProperty] private bool _isDialogue = true;
-    [AssProperty] private int _layer;
-    public readonly int Marked = 0;
-    [AssProperty] private AssTime _start;
-    [AssProperty] private AssTime _end;
-    [AssProperty] private string _style = "Default";
-    [AssProperty] private string _name = string.Empty;
-    [AssProperty] private int _marginL;
-    [AssProperty] private int _marginR;
-    [AssProperty] private int _marginV;
-    [AssProperty] private int _marginT;
-    [AssProperty] private int _marginB;
-    [AssProperty] private string? _effect;
-    [AssProperty(InvalidatesProperties = new[] { nameof(TextRanges) })]
+    // Hybrid Editing Fields
+    private string? _style;
+    private string? _name;
+    private string? _effect;
     private string? _text;
 
-    [AssCachedProperty(CalculationMethod = nameof(CalculateTextRanges))]
-    private Range[] TextRangesCache = [];
-    private Range[] CalculateTextRanges() => SplitEventText(_text.AsSpan());
+    public uint[]? AegisubExtradataIds { get; set; }
 
-    public bool Read(ReadOnlySpan<char> sp, int lineNum, string[] formats, AssParseOption option = AssParseOption.None) => Read(sp, sp.IndexOf(':'), lineNum, formats, option);
-
-    public bool Read(ReadOnlySpan<char> sp, int sepIndex, int lineNum, string[] formats, AssParseOption option = AssParseOption.None)
+    public string Style
     {
-        if (sp[0] == ';' || sepIndex < 1)
+        get => _style ?? Utils.GetString(LineRaw, StyleReadOnly);
+        set => _style = value;
+    }
+
+    public string Name
+    {
+        get => _name ?? Utils.GetString(LineRaw, NameReadOnly);
+        set => _name = value;
+    }
+
+    public string Effect
+    {
+        get => _effect ?? Utils.GetString(LineRaw, EffectReadOnly);
+        set => _effect = value;
+    }
+
+    public string Text
+    {
+        get => _text ?? Utils.GetString(LineRaw, TextReadOnly);
+        set => _text = value;
+    }
+
+    public int lineNumber
+    {
+        get => LineNumber;
+        set => LineNumber = value;
+    }
+
+    // Zero-copy accessors (safe to use if not modified)
+    public ReadOnlySpan<byte> StyleSpan => LineRaw.Span[StyleReadOnly];
+    public ReadOnlySpan<byte> NameSpan => LineRaw.Span[NameReadOnly];
+    public ReadOnlySpan<byte> EffectSpan => LineRaw.Span[EffectReadOnly];
+    public ReadOnlySpan<byte> TextSpan => LineRaw.Span[TextReadOnly];
+
+    public AssEvent(ReadOnlyMemory<byte> line, int lineNum, ReadOnlySpan<byte> header, string[] formats)
+    {
+        LineNumber = lineNum;
+        LineRaw = line;
+
+        StartSemicolon = false;
+        IsDialogue = true;
+        Layer = 0;
+        Marked = 0;
+        Start = default;
+        End = default;
+
+        StyleReadOnly = default;
+        NameReadOnly = default;
+        MarginL = 0;
+        MarginR = 0;
+        MarginV = 0;
+        MarginT = 0;
+        MarginB = 0;
+        EffectReadOnly = default;
+        TextReadOnly = default;
+
+        _style = null;
+        _name = null;
+        _effect = null;
+        _text = null;
+        AegisubExtradataIds = null;
+
+        var sp = line.Span;
+        if (header.SequenceEqual(AssConstants.EventsLineHeaders.Semicolon))
         {
             StartSemicolon = true;
-            Untouched = sp.ToString();
-            lineNumber = lineNum;
-            logger?.ZLogInformation($"Line ${lineNum} is a comment line, will record untouched");
-            return true;
+            return;
         }
-
-        var header = sp[..sepIndex];
-        if (header.SequenceEqual("Format".AsSpan()))
+        else if (header.SequenceEqual(AssConstants.EventsLineHeaders.Format))
         {
-            return false;
+            return;
         }
-        else if (header.SequenceEqual("Dialogue".AsSpan()) || header.SequenceEqual("Comment".AsSpan()))
+        else if (header.SequenceEqual(AssConstants.EventsLineHeaders.Dialogue))
         {
-            IsDialogue = header.SequenceEqual("Dialogue".AsSpan());
-            lineNumber = lineNum;
-            sepIndex += (char.IsWhiteSpace(sp[sepIndex + 1])) ? 2 : 1;
-            ReadWithoutHeader(sp[sepIndex..], formats, option);
-            return true;
+            IsDialogue = true;
+        }
+        else if (header.SequenceEqual(AssConstants.EventsLineHeaders.Comment))
+        {
+            IsDialogue = false;
         }
         else
         {
-            throw new Exception($"Unknown Events line {sp.ToString()}");
+            throw new Exception($"Unknown Events line '{Utils.GetString(line)}'");
         }
-    }
 
-    public void ReadWithoutHeader(ReadOnlySpan<char> sp, string[] fmts, AssParseOption option = AssParseOption.None)
-    {
-        var startIndex = 0;
-        var nextSep = 0;
-        var sepChar = ',';
+        var sepIndex = header.Length;
+        sepIndex += (sp[sepIndex + 1] == 0x20) ? 2 : 1;
+
         var segCount = 0;
+        int nextSep;
 
-        while (segCount < fmts.Length - 1)
+        while (segCount < formats.Length - 1)
         {
-            nextSep = sp[startIndex..].IndexOf(sepChar) + startIndex;
-
-            if (nextSep < startIndex)
+            nextSep = sp[sepIndex..].IndexOf(((byte)','));
+            if (nextSep == -1) throw new FormatException($"Invalid line: '{Utils.GetString(line)}'");
+            nextSep += sepIndex;
+            var value = sp[sepIndex..nextSep];
+            switch (formats[segCount])
             {
-                throw new FormatException($"Invalid line: '{sp.ToString()}'");
-            }
-            
-            var v = sp[startIndex..nextSep].TrimStart();
-
-            switch (fmts[segCount])
-            {
-                case "Marked":
-                    break;
-                case "Style":
-                    var target = Utils.AssParseStyleName(v);
-                    if (!target.SequenceEqual(v))
-                    {
-                        logger?.ZLogWarning($"The style of line {lineNumber} will be fixed from '{v.ToString()}' to '{target.ToString()}'.");
-                    }
-                    Style = option.HasFlag(AssParseOption.FixStyleName) ? target.ToString() : v.ToString();
-                    break;
-                default:
-                    Utils.SetProperty(this, typeof(AssEvent), fmts[segCount], v);
-                    break;
+                case AssConstants.EventFields.Layer: Layer = Utils.ParseInt(value); break;
+                case AssConstants.EventFields.Marked: break;
+                case AssConstants.EventFields.Start: Start = AssTime.ParseFromAss(value); break;
+                case AssConstants.EventFields.End: End = AssTime.ParseFromAss(value); break;
+                case AssConstants.EventFields.Style: StyleReadOnly = new Range(sepIndex, nextSep); break;
+                case AssConstants.EventFields.Name: NameReadOnly = new Range(sepIndex, nextSep); break;
+                case AssConstants.EventFields.MarginL: MarginL = Utils.ParseInt(value); break;
+                case AssConstants.EventFields.MarginR: MarginR = Utils.ParseInt(value); break;
+                case AssConstants.EventFields.MarginV: MarginV = Utils.ParseInt(value); break;
+                case AssConstants.EventFields.MarginT: MarginT = Utils.ParseInt(value); break;
+                case AssConstants.EventFields.MarginB: MarginB = Utils.ParseInt(value); break;
+                case AssConstants.EventFields.Effect: EffectReadOnly = new Range(sepIndex, nextSep); break;
             }
 
             segCount++;
-            startIndex = nextSep + 1;
+            sepIndex = nextSep + 1;
         }
-
-        Text = sp[startIndex..].ToString();
+        TextReadOnly = Range.StartAt(sepIndex);
     }
 
-    /// <summary>
-    /// Split to override tags block, special chars block and normal text block
-    /// </summary>
-    /// <param name="span"></param>
-    /// <returns></returns>
-    public static Range[] SplitEventText(ReadOnlySpan<char> span)
-    {
-        List<Range> ranges = [];
+    public Range[] TextRanges { get; set; } = [];
 
-        var inBlock = false;
-        var backslash = false;
-        var start = 0;
-        for (var i = 0; i < span.Length; i++)
+    public void UpdateTextRanges()
+    {
+        var text = Text; // Use property to ensure we get string
+        if (string.IsNullOrEmpty(text))
         {
-            switch (span[i])
+            TextRanges = [];
+            return;
+        }
+
+        var list = new List<Range>();
+        var s = text.AsSpan();
+        int i = 0;
+        while (i < s.Length)
+        {
+            if (s[i] == '{')
             {
-                case AssConstants.StartOvrBlock:
-                    if (!inBlock)
-                    {
-                        if (start != i)
-                        {
-                            ranges.Add(new Range(start, i));
-                            start = i;
-                        }
-                        inBlock = true;
-                    }
-                    break;
-                case AssConstants.EndOvrBlock:
-                    if (inBlock)
-                    {
-                        ranges.Add(new Range(start, i + 1));
-                        start = i + 1;
-                        inBlock = false;
-                    }
-                    break;
-                case AssConstants.BackSlash:
-                    if (!inBlock)
-                    {
-                        if (start != i)
-                        {
-                            ranges.Add(new Range(start, i));
-                            start = i;
-                        }
-                        backslash = true;
-                    }
-                    break;
-                case AssConstants.NoBreakSpace:
-                case AssConstants.WordBreaker:
-                case AssConstants.LineBreaker:
-                    if (backslash)
-                    {
-                        ranges.Add(new Range(start, i + 1));
-                        start = i + 1;
-                        backslash = false;
-                    }
-                    break;
-                default:
-                    backslash = false;
-                    break;
-            }
-        }
-
-        if (start < span.Length)
-        {
-            ranges.Add(new Range(start, span.Length));
-        }
-        
-        return ranges.ToArray();
-    }
-    public void UpdateTextRanges() => InvalidateTextRanges();
-
-    public void Write(StreamWriter sw, string[] fmts, bool ctsRounding)
-    {
-        var sb = new StringBuilder();
-        Write(sb, fmts, ctsRounding);
-        sw.Write(sb.ToString());
-    }
-
-    public void Write(StringBuilder sb, string[] fmts, bool ctsRounding)
-    {
-        if (StartSemicolon)
-        {
-            sb.Append($";{Untouched}");
-        }
-        else
-        {
-            sb.Append(IsDialogue ? "Dialogue: " : "Comment: ");
-            
-            for (var i = 0; i < fmts.Length; i++)
-            {
-                // var fmt = fmts[i];
-                switch (fmts[i])
+                int k = s.Slice(i + 1).IndexOf('}');
+                if (k != -1)
                 {
-                    case "Marked":
-                        sb.Append(Marked);
-                        break;
-                    case "Layer":
-                        sb.Append(Layer);
-                        break;
-                    case "Start":
-                        AssTime.WriteAssTime(sb, Start, ctsRounding);
-                        break;
-                    case "End":
-                        AssTime.WriteAssTime(sb, End, ctsRounding);
-                        break;
-                    case "Style":
-                        sb.Append(Style);
-                        break;
-                    case "Name":
-                        sb.Append(Name);
-                        break;
-                    case "MarginL":
-                        sb.Append(MarginL);
-                        break;
-                    case "MarginR":
-                        sb.Append(MarginR);
-                        break;
-                    case "MarginV":
-                        sb.Append(MarginV);
-                        break;
-                    case "MarginT":
-                        sb.Append(MarginT);
-                        break;
-                    case "MarginB":
-                        sb.Append(MarginB);
-                        break;
-                    case "Effect":
-                        sb.Append(Effect);
-                        break;
-                    case "Text":
-                        sb.Append(Text);
-                        break;
-                }
-                
-                if (i < fmts.Length - 1)
-                {
-                    sb.Append(',');
+                    // Found block
+                    int len = k + 2; // +1 for offset, +1 for }
+                    list.Add(new Range(i, i + len));
+                    i += len;
+                    continue;
                 }
             }
+
+            // Text content
+            int j = i + 1;
+            while (j < s.Length && s[j] != '{') j++;
+            list.Add(new Range(i, j));
+            i = j;
         }
+        TextRanges = [.. list];
     }
 
-    // Utils
-    public static bool IsOverrideBlock(ReadOnlySpan<char> block)
+    public static bool IsOverrideBlock(ReadOnlySpan<char> s) => s.Length >= 2 && s[0] == '{' && s[^1] == '}';
+
+    public AssEvent DeepClone() => this;
+
+    public bool TryExtractAegisubExtradataMarkerFromText()
     {
-        if (block.Length < 2)
-        {
+        var textSpan = TextSpan;
+        if (!TryParseAegisubExtradataMarker(textSpan, out var ids, out int markerLen))
             return false;
-        }
-        return block[0] == AssConstants.StartOvrBlock && block[^1] == AssConstants.EndOvrBlock;
-    }
-    public static bool IsEventSpecialCharPair(ReadOnlySpan<char> ca) =>
-        ca.Length == 2 && ca[0] == '\\' &&
-        ca[1] is AssConstants.LineBreaker or AssConstants.WordBreaker or AssConstants.NoBreakSpace;
-    public static bool IsTextBlock(ReadOnlySpan<char> block) => !(IsOverrideBlock(block) || IsEventSpecialCharPair(block));
-    public bool WillSkip() => StartSemicolon || !IsDialogue || Text is null || Text.Length == 0;
 
-    public override string ToString()
-    {
-        var sb = new StringBuilder();
-        var formats = AssConstants.FormatV4P.Split(',').Select(s => s.Trim()).ToArray();
-        Write(sb, formats, true);
-        return sb.ToString();
+        AegisubExtradataIds = ids;
+        _text = Utils.GetString(textSpan[markerLen..]);
+        return true;
     }
 
-    public AssEvent DeepClone()
+    private static bool TryParseAegisubExtradataMarker(ReadOnlySpan<byte> text, out uint[] ids, out int markerLengthBytes)
     {
-        return new AssEvent(logger)
+        ids = Array.Empty<uint>();
+        markerLengthBytes = 0;
+
+        if (text.Length < 4 || text[0] != (byte)'{' || text[1] != (byte)'=')
+            return false;
+
+        var list = new List<uint>();
+
+        int pos = 1;
+        while (pos < text.Length && text[pos] == (byte)'=')
         {
-            Name = Name,
-            Style = Style,
-            Start = Start,
-            End = End,
-            Layer = Layer,
-            MarginL = MarginL,
-            MarginR = MarginR,
-            MarginV = MarginV,
-            MarginT = MarginT,
-            MarginB = MarginB,
-            Effect = Effect,
-            Text = Text,
-            IsDialogue = IsDialogue,
-            StartSemicolon = StartSemicolon,
-            Untouched = Untouched,
-            lineNumber = lineNumber,
-        };
+            pos++;
+            int start = pos;
+            while (pos < text.Length && text[pos] >= (byte)'0' && text[pos] <= (byte)'9')
+                pos++;
+            if (pos == start)
+                return false;
+
+            if (!Utf8Parser.TryParse(text.Slice(start, pos - start), out uint id, out int consumed) || consumed != (pos - start))
+                return false;
+
+            list.Add(id);
+
+            if (pos >= text.Length)
+                return false;
+
+            if (text[pos] == (byte)'}')
+            {
+                markerLengthBytes = pos + 1;
+                ids = list.Count > 0 ? list.ToArray() : Array.Empty<uint>();
+                return true;
+            }
+
+            if (text[pos] != (byte)'=')
+                return false;
+        }
+
+        return false;
     }
 }

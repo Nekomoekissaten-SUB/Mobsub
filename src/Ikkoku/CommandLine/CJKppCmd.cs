@@ -1,20 +1,33 @@
-﻿using Mobsub.Ikkoku.SubtileProcess;
+using Mobsub.SubtitleProcess;
 using Mobsub.SubtitleParse.AssTypes;
 using Mobsub.Helper.ZhConvert;
 using OpenCCSharp.Conversion;
 using System.CommandLine;
 using System.Text;
-using Mobsub.SubtitleProcess;
+using System.Text.Json;
 
 namespace Mobsub.Ikkoku.CommandLine;
+
+internal enum CJKppMode
+{
+    OpenCC,
+    Fanhuaji
+}
+
 
 internal class CJKppCmd
 {
     internal static Command Build(Argument<FileSystemInfo> path, Option<FileSystemInfo> optPath, Option<FileInfo> convConf)
     {
+        var modeOpt = new Option<CJKppMode>("--mode")
+        {
+            Description = "Conversion mode.",
+            DefaultValueFactory = _ => CJKppMode.OpenCC
+        };
+
         var cjkppCommand = new Command("cjkpp", "CJK post-processor, such as simplified and traditional conversion of Hanzi.")
         {
-            path, optPath, convConf
+            path, optPath, convConf, modeOpt
         };
         cjkppCommand.Validators.Add((result) =>
         {
@@ -32,16 +45,18 @@ internal class CJKppCmd
         }
         );
 
-        cjkppCommand.SetAction(result =>
+        cjkppCommand.SetAction(async result =>
         {
             var pathValue = result.GetValue(path);
             var optPathValue = result.GetValue(optPath);
             var configFile = result.GetValue(convConf);
-            if (configFile is null)
+            var mode = result.GetValue(modeOpt);
+
+            if (configFile is null && mode == CJKppMode.OpenCC)
             {
-                throw new ArgumentException("Please specify a conversion config file!");
+                throw new ArgumentException("Please specify a conversion config file for OpenCC mode!");
             }
-            Execute(pathValue!, optPathValue!, configFile);
+            await ExecuteAsync(pathValue!, optPathValue!, configFile, mode);
         });
 
         // subcommand build-dict
@@ -56,7 +71,7 @@ internal class CJKppCmd
         {
             path, optPath
         };
-        
+
         convDictCommand.Validators.Add((result) =>
         {
             switch (result.GetValue(optPath))
@@ -83,48 +98,107 @@ internal class CJKppCmd
         return convDictCommand;
     }
 
-    internal static void Execute(FileSystemInfo path, FileSystemInfo opt, FileInfo config)
+    internal static async Task ExecuteAsync(FileSystemInfo path, FileSystemInfo opt, FileInfo? config, CJKppMode mode)
     {
-        var dicts = OpenCCSharpUtils.LoadJson(config);
-        var converter = OpenCCSharpUtils.GetConverter(dicts);
-
-        switch (path)
+        if (mode == CJKppMode.OpenCC)
         {
-            case FileInfo f:
-                switch (opt)
-                {
-                    case FileInfo fo:
-                        ConvertAssByOpencc(f, fo, converter);
-                        break;
-                    case DirectoryInfo diro:
-                        if (!diro.Exists)
-                        {
-                            diro.Create();
-                        }
-                        ConvertAssByOpencc(f, new FileInfo(Path.Combine(diro.FullName, f.Name)), converter);
-                        break;
-                }
-                break;
+            var dicts = OpenCCSharpUtils.LoadJson(config!);
+            var converter = OpenCCSharpUtils.GetConverter(dicts);
 
-            case DirectoryInfo dir:
-
-                var subfiles = Utils.Traversal(dir, ".ass");
-                switch (opt)
-                {
-                    case DirectoryInfo diro:
-
-                        if (!diro.Exists)
-                        {
-                            diro.Create();
-                        }
-                        foreach (var f in subfiles)
-                        {
+            switch (path)
+            {
+                case FileInfo f:
+                    switch (opt)
+                    {
+                        case FileInfo fo:
+                            ConvertAssByOpencc(f, fo, converter);
+                            break;
+                        case DirectoryInfo diro:
+                            if (!diro.Exists)
+                            {
+                                diro.Create();
+                            }
                             ConvertAssByOpencc(f, new FileInfo(Path.Combine(diro.FullName, f.Name)), converter);
-                        }
+                            break;
+                    }
+                    break;
 
-                        break;
-                }
-                break;
+                case DirectoryInfo dir:
+
+                    var subfiles = Utils.Traversal(dir, ".ass");
+                    switch (opt)
+                    {
+                        case DirectoryInfo diro:
+
+                            if (!diro.Exists)
+                            {
+                                diro.Create();
+                            }
+                            foreach (var f in subfiles)
+                            {
+                                ConvertAssByOpencc(f, new FileInfo(Path.Combine(diro.FullName, f.Name)), converter);
+                            }
+
+                            break;
+                    }
+                    break;
+            }
+        }
+        else if (mode == CJKppMode.Fanhuaji)
+        {
+            FanhuajiOptions options;
+            if (config != null && config.Exists)
+            {
+                using var fs = config.OpenRead();
+                options = JsonSerializer.Deserialize(fs, FanhuajiJsonContext.Default.FanhuajiOptions) ?? new FanhuajiOptions();
+            }
+            else
+            {
+                options = new FanhuajiOptions();
+            }
+
+            using var httpClient = new HttpClient();
+            var client = new FanhuajiClient(httpClient);
+            var converter = new ConvertFanhuaji(options);
+
+            switch (path)
+            {
+                case FileInfo f:
+                    switch (opt)
+                    {
+                        case FileInfo fo:
+                            await ConvertAssByFanhuaji(f, fo, converter, client);
+                            break;
+                        case DirectoryInfo diro:
+                            if (!diro.Exists)
+                            {
+                                diro.Create();
+                            }
+                            await ConvertAssByFanhuaji(f, new FileInfo(Path.Combine(diro.FullName, f.Name)), converter, client);
+                            break;
+                    }
+                    break;
+
+                case DirectoryInfo dir:
+
+                    var subfiles = Utils.Traversal(dir, ".ass");
+                    switch (opt)
+                    {
+                        case DirectoryInfo diro:
+
+                            if (!diro.Exists)
+                            {
+                                diro.Create();
+                            }
+                            foreach (var f in subfiles)
+                            {
+                                await ConvertAssByFanhuaji(f, new FileInfo(Path.Combine(diro.FullName, f.Name)), converter, client);
+                            }
+
+                            break;
+                    }
+                    break;
+            }
         }
     }
 
@@ -183,12 +257,15 @@ internal class CJKppCmd
         Console.WriteLine($"Output: {opt}");
         var data = new AssData();
         data.ReadAssFile(f.FullName);
+        var events = data.Events ?? throw new InvalidDataException($"ASS events missing in {f.FullName}.");
         var evtConverter = new ConvertSimplifiedChinese(converter);
         Dictionary<int, string[]> changesRecord = [];
 
-        foreach (var et in data.Events.Collection)
+        for (var i = 0; i < events.Collection.Count; i++)
         {
-            evtConverter.ZhConvertEventByOpenccSharp(et, changesRecord);
+            var evt = events.Collection[i];
+            evtConverter.ZhConvertEventByOpenccSharp(ref evt, changesRecord);
+            events.Collection[i] = evt;
         }
 
         data.WriteAssFile(opt.FullName);
@@ -204,6 +281,36 @@ internal class CJKppCmd
                 Console.WriteLine();
             }
         }
+
+        Console.WriteLine("fine");
+        Console.WriteLine();
+    }
+
+    private static async Task ConvertAssByFanhuaji(FileInfo f, FileInfo opt, ConvertFanhuaji converter, FanhuajiClient client)
+    {
+        if (f.FullName.Equals(opt.FullName))
+        {
+            throw new ArgumentException("Output file path can’t same as input file!");
+        }
+
+        Console.WriteLine($"Input: {f}");
+        Console.WriteLine($"Output: {opt}");
+        var data = new AssData();
+        data.ReadAssFile(f.FullName);
+        var events = data.Events ?? throw new InvalidDataException($"ASS events missing in {f.FullName}.");
+
+        try
+        {
+            await converter.ConvertEventsAsync(events.Collection, client);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error during conversion: {ex.GetType().Name}: {ex.Message}");
+            Console.WriteLine(ex.StackTrace);
+            throw;
+        }
+
+        data.WriteAssFile(opt.FullName);
 
         Console.WriteLine("fine");
         Console.WriteLine();

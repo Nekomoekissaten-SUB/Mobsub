@@ -1,4 +1,3 @@
-#:package LibGit2Sharp@0.31.0
 #:package SharpSevenZip@2.0.32
 #:project ../SubtitleProcess/Mobsub.SubtitleProcess.csproj
 #:property PublishAot=false
@@ -8,7 +7,6 @@
 using System.Text.Json.Serialization;
 using System.Diagnostics;
 using System.Text;
-using LibGit2Sharp;
 using Mobsub.SubtitleProcess;
 using SharpSevenZip;
 using System.Text.Json;
@@ -300,16 +298,8 @@ public class GitManage(BaseConfig config)
 
     internal string? GetLatestCommitsUri(string relativePath)
     {
-        using var repo = new Repository(config.PrivateRepoPath);
-
-        var branch = repo.Branches["master"];
-        if (branch == null)
-            return null;
-
-        var latestCommit = branch.Commits.FirstOrDefault(
-            commit => commit.Parents.Select(
-                    parent => repo.Diff.Compare<TreeChanges>(parent.Tree, commit.Tree))
-            .Any(changes => changes.Any(change => change.Path.StartsWith(relativePath, StringComparison.OrdinalIgnoreCase))));
+        var latestCommit = MergeSimplifiedChineseGitDiff.GetLatestCommitInfo(
+            config.PrivateRepoPath, relativePath, "refs/heads/master");
 
         return latestCommit == null ? null : $"{privateRepoUrl}/commits/{latestCommit.Sha}/{relativePath}";
     }

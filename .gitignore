@@ -13,3 +13,7 @@ dep_files/
 debug.log
 *.user
 /BenchmarkSuite1
+
+**/_ref/
+
+src/SubtitleParse/AssEditExp/

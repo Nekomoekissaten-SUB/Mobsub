@@ -1,6 +1,5 @@
-﻿using Mobsub.Ikkoku.SubtileProcess;
-using Mobsub.SubtitleParse.AssTypes;
 using Mobsub.SubtitleProcess;
+using Mobsub.SubtitleParse.AssTypes;
 using System.Collections.Generic;
 using System.CommandLine;
 using System.Diagnostics;
@@ -44,11 +43,15 @@ internal partial class MergeCmd
         {
             throw new Exception($"{optPath.FullName} must be directory");
         }
+        if (confVar is null || confVar.Length < 2)
+        {
+            throw new ArgumentException("Missing --config-var values.");
+        }
 
         var d = (DirectoryInfo)path;
-        var assFiles = d.GetFiles($"*.{confVar![1]}.ass");
+        var assFiles = d.GetFiles($"*.{confVar[1]}.ass");
 
-        if (SplitFirstConfigVariable(confVar![0], out var _epStart, out var _epEnd, out var _length))
+        if (SplitFirstConfigVariable(confVar[0], out var _epStart, out var _epEnd, out var _length))
         {
             for (var i = _epStart; i <= _epEnd; i++)
             {
@@ -88,23 +91,47 @@ internal partial class MergeCmd
         // read main ass
         var mainAssData = new AssData();
         var mainFile = files.FirstOrDefault(f => f.Name.Contains("Main"));
-        mainAssData.ReadAssFile(mainFile!.FullName);
+        if (mainFile is null)
+        {
+            throw new FileNotFoundException("Main ass not found.");
+        }
+        mainAssData.ReadAssFile(mainFile.FullName);
+        var mainEvents = mainAssData.Events ?? throw new InvalidDataException($"ASS events missing in {mainFile.FullName}.");
         var filePrefix = mainFile.Name.AsSpan(0, mainFile.Name.AsSpan().IndexOf($"][") + 1);
         var fileSuffix = mainFile.Name.AsSpan(mainFile.Name.AsSpan().LastIndexOf($"][") + 1);
-        _ = NijigasakiSplitValue(mainAssData.Events.Collection[0].Text!, out _, out var mainFrameLength);
+        if (mainEvents.Collection.Count == 0)
+        {
+            throw new InvalidDataException($"No events in {mainFile.FullName}.");
+        }
+        _ = NijigasakiSplitValue(mainEvents.Collection[0].Text, out _, out var mainFrameLength);
 
         // read end ass
         var endAssData = new AssData();
         var endFile = files.FirstOrDefault(f => f.Name.Contains("End"));
-        endAssData.ReadAssFile(endFile!.FullName);
+        if (endFile is null)
+        {
+            throw new FileNotFoundException("End ass not found.");
+        }
+        endAssData.ReadAssFile(endFile.FullName);
+        var endEvents = endAssData.Events ?? throw new InvalidDataException($"ASS events missing in {endFile.FullName}.");
 
         // Previous part
         var assData = new AssData();
         var prevDict = new Dictionary<string, EventPart>();
         var prevNonYuFile = files.FirstOrDefault(f => f.Name.Contains("Prev") && f.Name.Contains("Non-Yu"));
         var preYuFile = files.FirstOrDefault(f => f.Name.Contains("Prev") && !f.Name.Contains("Non-Yu"));
+        if (prevNonYuFile is null)
+        {
+            throw new FileNotFoundException("Prev Non-Yu ass not found.");
+        }
+        if (preYuFile is null)
+        {
+            throw new FileNotFoundException("Prev Yu ass not found.");
+        }
 
-        var prevNonYuAss = assData.ReadAssFile(prevNonYuFile!.FullName).Events.Collection;
+        assData.ReadAssFile(prevNonYuFile.FullName);
+        var prevNonYuEvents = assData.Events ?? throw new InvalidDataException($"ASS events missing in {prevNonYuFile.FullName}.");
+        var prevNonYuAss = prevNonYuEvents.Collection;
         var partStart = 0;
         var partName = string.Empty;
         var frameLength = 0;
@@ -151,8 +178,14 @@ internal partial class MergeCmd
         }
 
         assData = new AssData();
-        var prevYuAss = assData.ReadAssFile(preYuFile!.FullName).Events.Collection;
-        _ = NijigasakiSplitValue(prevYuAss[0].Text!, out partName, out frameLength);
+        assData.ReadAssFile(preYuFile.FullName);
+        var prevYuEvents = assData.Events ?? throw new InvalidDataException($"ASS events missing in {preYuFile.FullName}.");
+        var prevYuAss = prevYuEvents.Collection;
+        if (prevYuAss.Count == 0)
+        {
+            throw new InvalidDataException($"No events in {preYuFile.FullName}.");
+        }
+        _ = NijigasakiSplitValue(prevYuAss[0].Text, out partName, out frameLength);
         for (var i = 0; i < prevYuAss.Count; i++)
         {
             UpdateStartLineNumber(prevYuAss[i], i, 0, ref jpnStart, ref zhoStart);
@@ -173,14 +206,15 @@ internal partial class MergeCmd
             var newAss = new AssData();
             newAss.Like(mainAssData);
             newAss.Styles = (AssStyles)mainAssData.Styles.DeepClone();
+            var newEvents = newAss.Events ?? throw new InvalidDataException("Missing events in merged ass.");
 
             var jpnEndLine = 0;
 
             if (!k.Equals("Yu"))
             {
-                AddPrevPart(newAss.Events.Collection, prevShared!, ref jpnEndLine);
+                AddPrevPart(newEvents.Collection, prevShared!, ref jpnEndLine);
             }
-            AddPrevPart(newAss.Events.Collection, v, ref jpnEndLine);
+            AddPrevPart(newEvents.Collection, v, ref jpnEndLine);
 
             if (target == "m2ts" || (target == "main" && !k.Equals("Yu")))
             {
@@ -188,11 +222,11 @@ internal partial class MergeCmd
             }
             else
             {
-                var mainCopy = mainAssData.Events.Collection.Select(x => x.DeepClone()).ToList();
-                var endCopy = endAssData.Events.Collection.Select(x => x.DeepClone()).ToList();
+                var mainCopy = mainEvents.Collection.Select(x => x.DeepClone()).ToList();
+                var endCopy = endEvents.Collection.Select(x => x.DeepClone()).ToList();
 
-                AddMainPart(newAss.Events.Collection, mainCopy, v.frameOffset);
-                AddEndPart(newAss.Events.Collection, endCopy, v.frameOffset + mainFrameLength);
+                AddMainPart(newEvents.Collection, mainCopy, v.frameOffset);
+                AddEndPart(newEvents.Collection, endCopy, v.frameOffset + mainFrameLength);
                 WriteToFile(newAss, GetMainFileName(filePrefix, fileSuffix, k, optDir), cleanAssArgs);
             }
         }
@@ -231,17 +265,23 @@ internal partial class MergeCmd
     
         static void AddPrevPart(List<AssEvent> evt, EventPart part, ref int jpnEndLine)
         {
-            foreach (var e in part.events)
+            for (var i = 0; i < part.events.Length; i++)
             {
+                var e = part.events[i];
                 if (!string.IsNullOrEmpty(e.Name))
                 {
                     e.Name = string.Empty;
                 }
                 if (!e.IsDialogue)
                 {
-                    if ((e.Style is "Default" or "Top") && string.IsNullOrEmpty(e.Text)) continue;
+                    if ((e.Style is "Default" or "Top") && string.IsNullOrEmpty(e.Text))
+                    {
+                        part.events[i] = e;
+                        continue;
+                    }
                     e.IsDialogue = true;
                 }
+                part.events[i] = e;
             }
 
             if (evt.Count == 0)
@@ -314,7 +354,7 @@ internal partial class MergeCmd
 
     private class EventPart
     {
-        internal AssEvent[] events;
+        internal AssEvent[] events = [];
         internal int frameOffset;
         internal int jpnStart;
         internal int zhoStart;

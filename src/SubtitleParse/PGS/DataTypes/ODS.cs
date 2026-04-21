@@ -1,4 +1,4 @@
-﻿using Mobsub.Helper;
+﻿﻿using Mobsub.Helper;
 
 namespace Mobsub.SubtitleParse.PGS.DataTypes;
 
@@ -43,7 +43,7 @@ public struct ObjectDefinitionSegment
     /// <summary>
     /// This is the image data compressed using Run-length Encoding (RLE).
     /// </summary>
-    public byte[] ObjectData;
+    //public byte[] ObjectData;
 }
 
 [Flags]

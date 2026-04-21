@@ -2,9 +2,7 @@
 using System.Globalization;
 using Avalonia.Data;
 using Avalonia.Data.Converters;
-using LibGit2Sharp;
-using Mobsub.SubtitleParse;
-using Mobsub.SubtitleParse.AssTypes;
+using Mobsub.SubtitleProcess;
 
 namespace Mobsub.IkkokuMergeBaseDiff.ViewModels.Converter;
 
@@ -17,9 +15,11 @@ public class DisplayCommitConverter : IValueConverter
             return string.Empty;
         }
         
-        if (value is Commit commit && targetType.IsAssignableTo(typeof(string)))
+        if (value is MergeSimplifiedChineseGitDiff.GitCommitInfo commit && targetType.IsAssignableTo(typeof(string)))
         {
-            return $"{commit.Id.Sha.AsSpan(0, 7)} ({commit.MessageShort})<{commit.Committer.Name} {commit.Committer.When}>";
+            var sha = commit.Sha;
+            var shortSha = sha.Length > 7 ? sha.AsSpan(0, 7) : sha.AsSpan();
+            return $"{shortSha} ({commit.Summary})<{commit.CommitterName} {commit.When}>";
         }
         
         return new BindingNotification(new InvalidCastException(), BindingErrorType.Error);

@@ -1,0 +1,19 @@
+{
+  "$schema": "../schema/dialog.schema.json",
+  "rows": [
+    [
+      // "columns" is optional; it defaults to the widest row (in grid units).
+      // This first row could also be expressed with {"left":[...],"right":[...],"gap":...}.
+      { "class": "label", "label": "Hydra (generated)", "w": 7 },
+      { "class": "label", "label": "Special:" },
+      { "class": "dropdown", "name": "special", "items": [ "sort_tags", "convert_clip" ], "w": 2 }
+    ],
+    [
+      { "class": "checkbox", "name": "c_on", "label": "\\c" },
+      { "class": "coloralpha", "name": "c" },
+      { "spacer": 1 },
+      { "class": "checkbox", "name": "alpha_on", "label": "\\alpha" },
+      { "class": "dropdown", "name": "alpha", "items": [ "00", "80", "FF" ] }
+    ]
+  ]
+}

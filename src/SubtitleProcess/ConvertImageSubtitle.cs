@@ -1,4 +1,3 @@
-﻿using System.Diagnostics;
 using System.Text;
 using Mobsub.Helper;
 using Mobsub.SubtitleParse.PGS;

@@ -1,234 +1,33 @@
-using Microsoft.Extensions.Logging;
-using ZLogger;
+using System.Buffers;
+using System.Text;
+using Mobsub.SubtitleParse.AssUtils;
 
 namespace Mobsub.SubtitleParse.AssTypes;
 
-public class AssStyles(ILogger? logger = null)
+public struct AssStyle
 {
-    private readonly string formatV4 = "Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, TertiaryColour, BackColour, Bold, Italic, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, AlphaLevel, Encoding";
-    private readonly string formatV4P = "Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding";
-    private readonly string formatV4PP = "Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginT, MarginB, Encoding, RelativeTo";
-    internal const string sectionNameV4 = "[V4 Styles]";
-    internal const string sectionNameV4P = "[V4+ Styles]";
-    internal const string sectionNameV4PP = "[V4++ Styles]";
+    public ReadOnlyMemory<byte> LineRaw { get; set; }
+    public bool IsCommentLine { get; set; } = false;
 
-    private string[]? formats;
-    // public string Version;
-    public string[] Formats
-    {
-        get => formats ?? formatV4P.Split(',').Select(s => s.Trim()).ToArray();
-        set => formats = value;
-    }
-    public List<AssStyle> Collection = [];
-    public HashSet<string> Names = [];
-
-    public void Read(ReadOnlySpan<char> sp, int lineNumber, AssParseOption option = AssParseOption.None)
-    {
-        if (sp[0] == '/')
-        {
-            logger?.ZLogDebug($"Line {lineNumber} is comment, will not parse");
-            return;
-        }
-
-        var sepIndex = sp.IndexOf(':');
-
-        if (sp[..sepIndex].SequenceEqual("Format".AsSpan()))
-        {
-            Formats = Utils.SplitBySeparator(sp[(sepIndex + 1)..]);
-            logger?.ZLogDebug($"Line {lineNumber} is a format line, parse completed");
-        }
-        else if (sp[..sepIndex].SequenceEqual("Style".AsSpan()))
-        {
-            var syl = new AssStyle(logger);
-            var line = sp[(sepIndex + 1)..];
-            var ranges = Utils.SplitBySeparatorInternal(line, out var count);
-
-            if (count != Formats.Length)
-            {
-                throw new Exception($"Please check style line: {sp.ToString()}");
-            }
-            var i = 0;
-            foreach (var range in ranges)
-            {
-                switch (Formats[i])
-                {
-                    case "Name":
-                        var target = Utils.AssParseStyleName(line[range]);
-                        if (!target.SequenceEqual(line[range]))
-                        {
-                            logger?.ZLogWarning($"Line {lineNumber}: The style will be fixed from '{line[range].ToString()}' to '{target.ToString()}'.");
-                        }
-                        syl.Name = option.HasFlag(AssParseOption.FixStyleName) ? target.ToString() : line[range].ToString();
-                        break;
-                    default:
-                        Utils.SetProperty(syl, typeof(AssStyle), Formats[i], line[range]);
-                        break;
-                }
-                i++;
-            }
-            
-            if (syl.Fontname.Length > 31)
-            {
-                logger?.ZLogWarning($"Length ({syl.Fontname.Length}) of style {syl.Name}’s fontname “{syl.Fontname}” exceeds 31 characters, may affect the correct rendering of VSFilter");
-            }
-            if (!Names.Add(syl.Name))
-            {
-                logger?.ZLogWarning($"Styles: duplicate style {syl.Name} in line {lineNumber}.");
-                if (option.HasFlag(AssParseOption.DropDuplicateStyle))
-                {
-                    Collection.RemoveAll(x => x.Name == syl.Name);
-                }
-            }
-
-            Collection.Add(syl);
-            logger?.ZLogDebug($"Line {lineNumber} is a style line, parse completed, style name is {syl.Name}");
-        }
-        else
-        {
-            throw new Exception($"Styles: invalid format {sp.ToString()}");
-        }
-    }
-
-    public void Write(StreamWriter sw, char[] newline, string scriptType)
-    {
-        var fmtStr = string.Join(", ", Formats);
-        switch (scriptType)
-        {
-            case "v4.00":
-            case "V4.00":
-                if (fmtStr != formatV4)
-                {
-                    throw new Exception("Invalid style format for v4.00 script. Expected: " + formatV4 + ", got: " + fmtStr);
-                }
-                logger?.ZLogInformation($"Start write section {sectionNameV4}");
-                sw.Write(sectionNameV4);
-                break;
-            case "v4.00+":
-            case "V4.00+":
-                if (fmtStr != formatV4P)
-                {
-                    throw new Exception("Invalid style format for v4.00 script. Expected: " + formatV4P + ", got: " + fmtStr);
-                }
-                logger?.ZLogInformation($"Start write section {sectionNameV4P}");
-                sw.Write(sectionNameV4P);
-                break;
-            case "v4.00++":
-            case "V4.00++":
-                if (fmtStr != formatV4PP)
-                {
-                    Formats = formatV4PP.Split(',').Select(s => s.Trim()).ToArray();
-                }
-                logger?.ZLogInformation($"Start write section {sectionNameV4PP}");
-                sw.Write(sectionNameV4PP);
-            break;
-        }
-        sw.Write(newline);
-        sw.Write($"Format: {fmtStr}");
-        sw.Write(newline);
-        logger?.ZLogDebug($"Write format line fine");
-
-        for (var i = 0; i < Collection.Count; i++)
-        {
-            Collection[i].Write(sw, Formats);
-            sw.Write(newline);
-        }
-        logger?.ZLogDebug($"Write style lines fine");
-        //sw.Write(newline);
-        logger?.ZLogDebug($"Section write completed");
-    }
-
-    public bool TryGetStyle(ReadOnlySpan<char> sylName, out AssStyle? style)
-    {
-        List<AssStyle> matched = [];
-        foreach (var syl in Collection)
-        {
-            if (syl.Name.AsSpan().SequenceEqual(sylName))
-            {
-                matched.Add(syl);
-            }
-        }
-        
-        if (matched.Count == 0)
-        {
-            style = null;
-            return false;
-        }
-        else
-        {
-            if (matched.Count > 1)
-            {
-                logger?.ZLogWarning($"Find {matched.Count} styles named {sylName.ToString()}");
-            }
-
-            style = matched.Last();
-            return true;
-        }
-    }
-
-    public bool TryGetStyleWithFallback(ReadOnlySpan<char> sylName, out AssStyle? style)
-    {
-        if (TryGetStyle(sylName, out style))
-        {
-            return true;
-        }
-
-        if (sylName is not "Default")
-        {
-            if (TryGetStyle("Default", out style))
-            {
-                logger?.ZLogWarning($"Style {sylName.ToString()} not found, fallback to style Default");
-                return false;
-            }
-        }
-        
-        style = new AssStyle().GetDefault();
-        logger?.ZLogWarning($"Style {sylName.ToString()} not found, fallback to ass default style");
-        return false;
-    }
-
-    public object DeepClone()
-    {
-        return new AssStyles(logger)
-        {
-            Formats = Formats,
-            Collection = [.. Collection.Select(s => s.DeepClone())],
-            Names = [.. Names]
-        };
-    }
-}
-
-public class AssStyle(ILogger? logger = null)
-{
-    private string? name;
-    private string? fontname;
-
-    public string Name
-    {
-        get => name ?? "Default";
-        set => name = value;
-    }
-    public string Fontname
-    {
-        get => fontname ?? "Arial";  // GDI max 32, last is null
-        set => fontname = value;
-    }
-    public double Fontsize { get; set; }  // ushort; Is negative and float really correct?
-    public AssRGB8 PrimaryColour { get; set; }
-    public AssRGB8 SecondaryColour { get; set; }
-    public AssRGB8 OutlineColour { get; set; }
-    public AssRGB8 BackColour { get; set; }
-    public bool Bold { get; set; }     // ? 0 / 400, 1 / 700
+    public Range NameReadOnly { get; set; }
+    public Range FontnameReadOnly { get; set; }
+    public double Fontsize { get; set; }
+    public AssColor32 PrimaryColour { get; set; }
+    public AssColor32 SecondaryColour { get; set; }
+    public AssColor32 OutlineColour { get; set; }
+    public AssColor32 BackColour { get; set; }
+    public bool Bold { get; set; }
     public bool Italic { get; set; }
-    public bool Underline { get; set; }  // 0 = false, -1 = true
+    public bool Underline { get; set; }
     public bool StrikeOut { get; set; }
     public double ScaleX { get; set; }
     public double ScaleY { get; set; }
     public double Spacing { get; set; }
     public double Angle { get; set; }
-    public short BorderStyle { get; set; }  // 1, 3?
+    public byte BorderStyle { get; set; }
     public double Outline { get; set; }
     public double Shadow { get; set; }
-    public short Alignment { get; set; }  // 1-9
+    public byte Alignment { get; set; }
     public int MarginL { get; set; }
     public int MarginR { get; set; }
     public int MarginV { get; set; }
@@ -238,231 +37,131 @@ public class AssStyle(ILogger? logger = null)
     public int AlphaLevel { get; set; }
     public int RelativeTo { get; set; }
 
-    // from libass, wait…
-    // public int TreatFontNameAsPattern { get; set; }
-    // public double Blur { get; set; }
-    // public int Justify { get; set; }
+    private string? _name;
+    private string? _fontname;
 
-    public AssStyle GetDefault()
+    public string Name
     {
-        Name = "Default";
-        Fontname = "Arial";
-        Fontsize = 18;
-        PrimaryColour = new AssRGB8(255, 255, 255, 0);
-        SecondaryColour = new AssRGB8(255, 0, 0, 0);
-        OutlineColour = new AssRGB8(0, 0, 0, 0);
-        BackColour = new AssRGB8(0, 0, 0, 0);
-        Bold = Italic = Underline = StrikeOut = false;
-        ScaleX = ScaleY = 100;
+        get => _name ?? Utils.GetString(LineRaw, NameReadOnly);
+        set => _name = value;
+    }
+    public string Fontname
+    {
+        get => _fontname ?? Utils.GetString(LineRaw, FontnameReadOnly);
+        set => _fontname = value;
+    }
+
+    public bool TryGetNameOverride(out ReadOnlySpan<char> name)
+    {
+        if (_name is null)
+        {
+            name = default;
+            return false;
+        }
+
+        name = _name.AsSpan();
+        return true;
+    }
+
+    public ReadOnlySpan<byte> NameSpan => LineRaw.Span[NameReadOnly];
+    public ReadOnlySpan<byte> FontnameSpan => LineRaw.Span[FontnameReadOnly];
+
+    public AssStyle(ReadOnlyMemory<byte> line, ReadOnlySpan<byte> header, string[] formats)
+    {
+        var sepIndex = header.Length;
+        var sp = line.Span;
+
+        LineRaw = line;
+
+        // Initialize other fields to default
+        NameReadOnly = default;
+        FontnameReadOnly = default;
+        Fontsize = 0;
+        PrimaryColour = default;
+        SecondaryColour = default;
+        OutlineColour = default;
+        BackColour = default;
+        Bold = false;
+        Italic = false;
+        Underline = false;
+        StrikeOut = false;
+        ScaleX = 100;
+        ScaleY = 100;
         Spacing = 0;
         Angle = 0;
         BorderStyle = 1;
-        Outline = 2;
-        Shadow = 3;
+        Outline = 0;
+        Shadow = 0;
         Alignment = 2;
-        MarginL = MarginR = MarginV = 20;
-        Encoding = 1;
-        return this;
-    }
+        MarginL = 0;
+        MarginR = 0;
+        MarginV = 0;
+        MarginT = 0;
+        MarginB = 0;
+        Encoding = 0;
+        AlphaLevel = 0;
+        RelativeTo = 0;
 
-    public void Write(StreamWriter sw, string[] formats)
-    {
-        sw.Write("Style: ");
-        for (var i = 0; i < formats.Length; i++)
+        _name = null;
+        _fontname = null;
+
+        if (header.SequenceEqual(AssConstants.StylesLineHeaders.CommentSlash))
         {
-            switch (formats[i])
-            {
-                case "Name":
-                    sw.Write(Name);
-                    break;
-                case "Fontname":
-                    sw.Write(Fontname);
-                    break;
-                case "Fontsize":
-                    sw.Write(Fontsize);
-                    break;
-                case "PrimaryColour":
-                    sw.Write("&H");
-                    sw.Write(PrimaryColour.ConvertToString(true));
-                    break;
-                case "SecondaryColour":
-                    sw.Write("&H");
-                    sw.Write(SecondaryColour.ConvertToString(true));
-                    break;
-                case "OutlineColour":
-                    sw.Write("&H");
-                    sw.Write(OutlineColour.ConvertToString(true));
-                    break;
-                case "BackColour":
-                    sw.Write("&H");
-                    sw.Write(BackColour.ConvertToString(true));
-                    break;
-                case "Bold":
-                    sw.Write(Bold ? -1 : 0);
-                    break;
-                case "Italic":
-                    sw.Write(Italic ? -1 : 0);
-                    break;
-                case "Underline":
-                    sw.Write(Underline ? -1 : 0);
-                    break;
-                case "StrikeOut":
-                    sw.Write(StrikeOut ? -1 : 0);
-                    break;
-                case "ScaleX":
-                    sw.Write(ScaleX);
-                    break;
-                case "ScaleY":
-                    sw.Write(ScaleY);
-                    break;
-                case "Spacing":
-                    sw.Write(Spacing);
-                    break;
-                case "Angle":
-                    sw.Write(Angle);
-                    break;
-                case "BorderStyle":
-                    sw.Write(BorderStyle);
-                    break;
-                case "Outline":
-                    sw.Write(Outline);
-                    break;
-                case "Shadow":
-                    sw.Write(Shadow);
-                    break;
-                case "Alignment":
-                    sw.Write(Alignment);
-                    break;
-                case "MarginL":
-                    sw.Write(MarginL);
-                    break;
-                case "MarginR":
-                    sw.Write(MarginR);
-                    break;
-                case "MarginV":
-                    sw.Write(MarginV);
-                    break;
-                case "MarginT":
-                    sw.Write(MarginT);
-                    break;
-                case "MarginB":
-                    sw.Write(MarginB);
-                    break;
-                case "Encoding":
-                    sw.Write(Encoding);
-                    break;
-                case "AlphaLevel":
-                    sw.Write(AlphaLevel);
-                    break;
-                case "RelativeTo":
-                    sw.Write(RelativeTo);
-                    break;
-            }
-
-            if (i < formats.Length - 1)
-            {
-                sw.Write(',');
-            }
+            IsCommentLine = true;
+            return;
         }
-        logger?.ZLogDebug($"Write {Name} style line fine");
-    }
-
-    public override bool Equals(object? obj)
-    {
-        return obj is AssStyle style &&
-               Name == style.Name &&
-               Fontname == style.Fontname &&
-               Fontsize == style.Fontsize &&
-               EqualityComparer<AssRGB8>.Default.Equals(PrimaryColour, style.PrimaryColour) &&
-               EqualityComparer<AssRGB8>.Default.Equals(SecondaryColour, style.SecondaryColour) &&
-               EqualityComparer<AssRGB8>.Default.Equals(OutlineColour, style.OutlineColour) &&
-               EqualityComparer<AssRGB8>.Default.Equals(BackColour, style.BackColour) &&
-               Bold == style.Bold &&
-               Italic == style.Italic &&
-               Underline == style.Underline &&
-               StrikeOut == style.StrikeOut &&
-               ScaleX == style.ScaleX &&
-               ScaleY == style.ScaleY &&
-               Spacing == style.Spacing &&
-               Angle == style.Angle &&
-               BorderStyle == style.BorderStyle &&
-               Outline == style.Outline &&
-               Shadow == style.Shadow &&
-               Alignment == style.Alignment &&
-               MarginL == style.MarginL &&
-               MarginR == style.MarginR &&
-               MarginV == style.MarginV &&
-               MarginT == style.MarginT &&
-               MarginB == style.MarginB &&
-               Encoding == style.Encoding &&
-               AlphaLevel == style.AlphaLevel &&
-               RelativeTo == style.RelativeTo;
-    }
-
-    public override int GetHashCode()
-    {
-        HashCode hash = new HashCode();
-        hash.Add(Name);
-        hash.Add(Fontname);
-        hash.Add(Fontsize);
-        hash.Add(PrimaryColour);
-        hash.Add(SecondaryColour);
-        hash.Add(OutlineColour);
-        hash.Add(BackColour);
-        hash.Add(Bold);
-        hash.Add(Italic);
-        hash.Add(Underline);
-        hash.Add(StrikeOut);
-        hash.Add(ScaleX);
-        hash.Add(ScaleY);
-        hash.Add(Spacing);
-        hash.Add(Angle);
-        hash.Add(BorderStyle);
-        hash.Add(Outline);
-        hash.Add(Shadow);
-        hash.Add(Alignment);
-        hash.Add(MarginL);
-        hash.Add(MarginR);
-        hash.Add(MarginV);
-        hash.Add(MarginT);
-        hash.Add(MarginB);
-        hash.Add(Encoding);
-        hash.Add(AlphaLevel);
-        hash.Add(RelativeTo);
-        return hash.ToHashCode();
-    }
-
-    public AssStyle DeepClone()
-    {
-        return new AssStyle(logger)
+        else if (header.SequenceEqual(AssConstants.StylesLineHeaders.Style))
         {
-            Name = Name,
-            Fontname = Fontname,
-            Fontsize = Fontsize,
-            PrimaryColour = PrimaryColour,
-            SecondaryColour = SecondaryColour,
-            OutlineColour = OutlineColour,
-            BackColour = BackColour,
-            Bold = Bold,
-            Italic = Italic,
-            Underline = Underline,
-            StrikeOut = StrikeOut,
-            ScaleX = ScaleX,
-            ScaleY = ScaleY,
-            Spacing = Spacing,
-            Angle = Angle,
-            BorderStyle = BorderStyle,
-            Outline = Outline,
-            Shadow = Shadow,
-            Alignment = Alignment,
-            MarginL = MarginL,
-            MarginR = MarginR,
-            MarginV = MarginV,
-            MarginT = MarginT,
-            MarginB = MarginB,
-            Encoding = Encoding,
-            AlphaLevel = AlphaLevel,
-            RelativeTo = RelativeTo
-        };
+
+        }
+        else
+        {
+            throw new Exception($"Unknown Styles line '{Utils.GetString(line)}'");
+        }
+
+        sepIndex += (sp[sepIndex + 1] == 0x20) ? 2 : 1;
+        sp = sp[sepIndex..];
+        var segCount = 0;
+        foreach (var range in sp.Split((byte)','))
+        {
+            var value = sp[range];
+            switch (formats[segCount])
+            {
+                case AssConstants.StyleFields.Name: NameReadOnly = new Range(range.Start.Value + sepIndex, range.End.Value + sepIndex); break;
+                case AssConstants.StyleFields.Fontname: FontnameReadOnly = new Range(range.Start.Value + sepIndex, range.End.Value + sepIndex); break;
+                case AssConstants.StyleFields.Fontsize: Fontsize = Utils.ParseDouble(value); break;
+                case AssConstants.StyleFields.PrimaryColour: PrimaryColour = AssColor32.Parse(value); break;
+                case AssConstants.StyleFields.SecondaryColour: SecondaryColour = AssColor32.Parse(value); break;
+                case AssConstants.StyleFields.OutlineColour: OutlineColour = AssColor32.Parse(value); break;
+                case AssConstants.StyleFields.BackColour: BackColour = AssColor32.Parse(value); break;
+                case AssConstants.StyleFields.Bold: Bold = Utils.ParseSByte(value) == -1; break;
+                case AssConstants.StyleFields.Italic: Italic = Utils.ParseSByte(value) == -1; break;
+                case AssConstants.StyleFields.Underline: Underline = Utils.ParseSByte(value) == -1; break;
+                case AssConstants.StyleFields.StrikeOut: StrikeOut = Utils.ParseSByte(value) == -1; break;
+                case AssConstants.StyleFields.ScaleX: ScaleX = Utils.ParseDouble(value); break;
+                case AssConstants.StyleFields.ScaleY: ScaleY = Utils.ParseDouble(value); break;
+                case AssConstants.StyleFields.Spacing: Spacing = Utils.ParseDouble(value); break;
+                case AssConstants.StyleFields.Angle: Angle = Utils.ParseDouble(value); break;
+                case AssConstants.StyleFields.BorderStyle: BorderStyle = Utils.ParseByte(value); break;
+                case AssConstants.StyleFields.Outline: Outline = Utils.ParseDouble(value); break;
+                case AssConstants.StyleFields.Shadow: Shadow = Utils.ParseDouble(value); break;
+                case AssConstants.StyleFields.Alignment: Alignment = Utils.ParseByte(value); break;
+                case AssConstants.StyleFields.MarginL: MarginL = Utils.ParseInt(value); break;
+                case AssConstants.StyleFields.MarginR: MarginR = Utils.ParseInt(value); break;
+                case AssConstants.StyleFields.MarginV: MarginV = Utils.ParseInt(value); break;
+                case AssConstants.StyleFields.MarginT: MarginT = Utils.ParseInt(value); break;
+                case AssConstants.StyleFields.MarginB: MarginB = Utils.ParseInt(value); break;
+                case AssConstants.StyleFields.Encoding: Encoding = Utils.ParseInt(value); break;
+                case AssConstants.StyleFields.AlphaLevel: AlphaLevel = Utils.ParseInt(value); break;
+                case AssConstants.StyleFields.RelativeTo: RelativeTo = Utils.ParseInt(value); break;
+            }
+
+            segCount++;
+        }
+    }
+
+    public void Write(TextWriter writer, string[] formats)
+    {
+        Helper.Write(writer, this, formats);
     }
 }
